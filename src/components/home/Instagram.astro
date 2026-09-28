@@ -1,0 +1,57 @@
+---
+import Icon from '../ui/Icon.astro';
+import { posts, postUrl, social, contact } from '../../data/site.js';
+interface Props { limit?: number }
+const { limit = 8 } = Astro.props;
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+const list = posts.slice(0, limit);
+const fmt = (d: string) => new Date(d + 'T12:00:00').toLocaleDateString('es-VE', { day: 'numeric', month: 'short', year: 'numeric' });
+---
+<section class="ig section" id="instagram" aria-labelledby="ig-title">
+  <div class="container">
+    <div class="ig__head">
+      <div>
+        <p class="eyebrow">Instagram</p>
+        <h2 id="ig-title" data-split="words">Lo que publicamos en <span class="accent">@{contact.instagram}</span></h2>
+      </div>
+      <a class="btn btn--ghost" href={social.instagram} target="_blank" rel="noopener" data-reveal="left"><Icon name="instagram" size={20} />Seguir en Instagram</a>
+    </div>
+  </div>
+
+  <div class="ig__scroller">
+    <ul class="ig__grid container" data-stagger="0.06">
+      {list.map((p, i) => (
+        <li class="ig__item">
+          <a class="ig__card" href={postUrl(p.code)} target="_blank" rel="noopener" aria-label={`${p.title} — ver publicación en Instagram`} data-tilt="4">
+            <img src={`${base}/ig/${p.code}.webp`} width="640" height="811" alt={p.title} loading={i < 4 ? 'eager' : 'lazy'} decoding="async" />
+            <span class="ig__meta">
+              <span class="ig__date mono">{fmt(p.date)}</span>
+              <strong class="ig__title">{p.title}</strong>
+              <span class="ig__text">{p.text}</span>
+            </span>
+            <span class="ig__icon"><Icon name="arrowUpRight" size={18} /></span>
+          </a>
+        </li>
+      ))}
+    </ul>
+  </div>
+</section>
+
+<style>
+  .ig { background: var(--navy-950); overflow: hidden; }
+  .ig__head { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 20px; margin-bottom: clamp(28px, 4vw, 48px); }
+  .ig__head h2 { max-width: 18ch; }
+  .ig__grid { list-style: none; margin: 0; padding: 0; display: grid; gap: 14px; grid-template-columns: repeat(2, 1fr); }
+  @media (min-width: 720px) { .ig__grid { grid-template-columns: repeat(4, 1fr); gap: 18px; } }
+  .ig__card { position: relative; display: block; overflow: hidden; border-radius: var(--radius); aspect-ratio: 4 / 5; background: var(--navy-800); isolation: isolate; }
+  .ig__card img { width: 100%; height: 100%; object-fit: cover; transition: transform 1s var(--ease-out), filter 0.6s; }
+  .ig__card:hover img { transform: scale(1.06); filter: brightness(0.55); }
+  .ig__meta { position: absolute; inset: auto 0 0 0; display: grid; gap: 4px; padding: 16px; color: #fff; background: linear-gradient(180deg, transparent, rgba(6, 13, 31, 0.92)); transform: translateY(30%); opacity: 0; transition: transform 0.6s var(--ease-out), opacity 0.4s; }
+  .ig__card:hover .ig__meta, .ig__card:focus-visible .ig__meta { transform: none; opacity: 1; }
+  .ig__date { font-size: 0.7rem; color: var(--amber-400); text-transform: uppercase; }
+  .ig__title { font-family: var(--font-display); font-size: 1rem; line-height: 1.2; }
+  .ig__text { font-size: 0.82rem; color: rgba(255, 255, 255, 0.78); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .ig__icon { position: absolute; top: 12px; right: 12px; display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; background: rgba(255, 255, 255, 0.12); backdrop-filter: blur(6px); color: #fff; opacity: 0; transform: scale(0.6); transition: opacity 0.3s, transform 0.5s var(--ease-out); }
+  .ig__card:hover .ig__icon { opacity: 1; transform: none; }
+  @media (hover: none) { .ig__meta { transform: none; opacity: 1; } .ig__text { display: none; } }
+</style>

@@ -1,0 +1,27 @@
+---
+import Base from '../layouts/Base.astro';
+import Icon from '../components/ui/Icon.astro';
+import { wa } from '../data/site.js';
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+---
+<Base title="Página no encontrada" description="La página que buscas no existe.">
+  <section class="nf section">
+    <span class="streak streak--thick" style="top: 40%; --angle: -12deg" aria-hidden="true"></span>
+    <div class="container nf__inner">
+      <p class="eyebrow">Error 404 · circuito abierto</p>
+      <h1 data-split="words">Aquí no llega la corriente.</h1>
+      <p class="lead" data-reveal="up" data-delay=".15">La página que buscas no existe o cambió de dirección. Volvamos al tablero principal.</p>
+      <div class="btn-row" data-reveal="up" data-delay=".3">
+        <a class="btn btn--primary" href={`${base}/`}><Icon name="arrow" size={18} />Ir al inicio</a>
+        <a class="btn btn--ghost" href={wa()} target="_blank" rel="noopener"><Icon name="whatsapp" size={18} />Escríbenos</a>
+      </div>
+    </div>
+  </section>
+</Base>
+
+<style>
+  .nf { min-height: 100svh; display: grid; align-items: center; overflow: hidden; padding-top: calc(var(--header-h) + 40px); }
+  .nf__inner { position: relative; max-width: 60ch; }
+  .nf h1 { max-width: 14ch; }
+  .nf .lead { margin: 22px 0 32px; }
+</style>

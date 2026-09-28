@@ -1,0 +1,111 @@
+---
+import Base from '../../layouts/Base.astro';
+import Icon from '../../components/ui/Icon.astro';
+import Cta from '../../components/ui/Cta.astro';
+import { services, process, wa } from '../../data/site.js';
+
+export function getStaticPaths() {
+  return services.map((s) => ({ params: { slug: s.slug }, props: { service: s } }));
+}
+const { service: s } = Astro.props;
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+const others = services.filter((o) => o.slug !== s.slug);
+const icons = { 'potencia-electrica': 'transformer', 'respaldo-energetico': 'generator', climatizacion: 'snowflake' } as const;
+const icon = icons[s.slug as keyof typeof icons];
+---
+<Base title={s.name} description={s.summary}>
+  <section class="sd-hero section">
+    <div class="sd-hero__bg" aria-hidden="true">
+      <span class="streak streak--thick" style="top: 30%; --angle: -12deg"></span>
+      <span class="streak" style="top: 70%; --angle: -12deg; --streak-opacity: .5"></span>
+    </div>
+    <div class="container sd-hero__grid">
+      <div>
+        <p class="eyebrow">{s.code} · {s.kicker}</p>
+        <h1 data-split="words">{s.headline}</h1>
+        <p class="lead" data-reveal="up" data-delay=".15">{s.intro}</p>
+        <div class="btn-row" data-reveal="up" data-delay=".3">
+          <a class="btn btn--primary" href={wa(s.waText)} target="_blank" rel="noopener" data-magnetic="0.25"><Icon name="whatsapp" size={20} />{s.cta}</a>
+          <a class="btn btn--ghost" href="#detalle">Ver alcance</a>
+        </div>
+      </div>
+      <div class="sd-hero__badge" data-reveal="scale" data-delay=".25" data-tilt="5">
+        <Icon name={icon} size={84} stroke={1.2} />
+        <span class="mono">{s.name}</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="section on-light" id="detalle">
+    <div class="container">
+      <div class="section__head">
+        <p class="eyebrow">Alcance del servicio</p>
+        <h2 data-split="words">Qué hacemos en {s.short.toLowerCase()}.</h2>
+      </div>
+      <ol class="grid grid--2 sd-items" data-stagger="0.1">
+        {s.items.map((it, i) => (
+          <li class="card" data-glow>
+            <span class="sd-items__n mono">0{i + 1}</span>
+            <h3>{it.t}</h3>
+            <p class="muted">{it.d}</p>
+          </li>
+        ))}
+      </ol>
+    </div>
+  </section>
+
+  <section class="section section--tight">
+    <div class="container sd-process">
+      <div>
+        <p class="eyebrow">Proceso</p>
+        <h2 data-split="words">Todo el ciclo, con un solo equipo.</h2>
+      </div>
+      <ol class="sd-process__list" data-stagger="0.1">
+        {process.map((p) => (
+          <li><span class="num accent">{p.n}</span><div><strong>{p.t}</strong><p class="muted">{p.d}</p></div></li>
+        ))}
+      </ol>
+    </div>
+  </section>
+
+  <section class="section section--tight on-light">
+    <div class="container">
+      <p class="eyebrow">Otros servicios</p>
+      <div class="grid grid--2" data-stagger="0.1">
+        {others.map((o) => (
+          <a class="card sd-other" href={`${base}/servicios/${o.slug}/`}>
+            <span class="mono accent">{o.code}</span>
+            <h3>{o.name}</h3>
+            <p class="muted">{o.summary}</p>
+            <span class="sd-other__arrow"><Icon name="arrow" size={20} /></span>
+          </a>
+        ))}
+      </div>
+    </div>
+  </section>
+
+  <Cta title={s.headline} text={s.intro} waText={s.waText} label={s.cta} />
+</Base>
+
+<style>
+  .sd-hero { overflow: hidden; padding-top: calc(var(--header-h) + clamp(56px, 9vw, 120px)); background: radial-gradient(80% 60% at 100% 10%, rgba(242, 106, 27, 0.25), transparent 60%), var(--navy-900); }
+  .sd-hero__bg { position: absolute; inset: 0; pointer-events: none; }
+  .sd-hero__grid { position: relative; display: grid; gap: 40px; align-items: center; }
+  @media (min-width: 900px) { .sd-hero__grid { grid-template-columns: 1.3fr 0.7fr; } }
+  .sd-hero h1 { max-width: 14ch; }
+  .sd-hero .lead { margin: 22px 0 32px; max-width: 50ch; }
+  .sd-hero__badge { display: none; aspect-ratio: 1; border-radius: var(--radius-lg); border: 1px solid var(--line); background: linear-gradient(160deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.01)); place-content: center; gap: 18px; text-align: center; color: var(--amber-400); }
+  .sd-hero__badge span { color: var(--muted); font-size: 0.75rem; letter-spacing: 0.14em; text-transform: uppercase; }
+  @media (min-width: 900px) { .sd-hero__badge { display: grid; } }
+  .sd-items h3 { margin: 12px 0 10px; }
+  .sd-items__n { color: var(--accent); font-size: 0.8rem; }
+  .sd-process { display: grid; gap: 32px; }
+  @media (min-width: 900px) { .sd-process { grid-template-columns: 1fr 1.4fr; } }
+  .sd-process__list { list-style: none; margin: 0; padding: 0; display: grid; gap: 18px; }
+  .sd-process__list li { display: grid; grid-template-columns: auto 1fr; gap: 18px; padding-bottom: 18px; border-bottom: 1px solid var(--line); }
+  .sd-process__list .num { font-size: var(--step-1); font-weight: 800; }
+  .sd-process__list strong { font-family: var(--font-display); font-size: var(--step-1); display: block; margin-bottom: 4px; }
+  .sd-other { display: grid; gap: 10px; }
+  .sd-other__arrow { justify-self: end; display: grid; place-items: center; width: 42px; height: 42px; border-radius: 50%; border: 1px solid var(--line); transition: background-color 0.3s, color 0.3s, transform 0.5s var(--ease-out); }
+  .sd-other:hover .sd-other__arrow { background: var(--accent); color: #fff; border-color: var(--accent); transform: rotate(-35deg); }
+</style>

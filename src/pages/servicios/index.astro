@@ -1,0 +1,81 @@
+---
+import Base from '../../layouts/Base.astro';
+import Icon from '../../components/ui/Icon.astro';
+import Cta from '../../components/ui/Cta.astro';
+import { services, process } from '../../data/site.js';
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+const icons = { 'potencia-electrica': 'transformer', 'respaldo-energetico': 'generator', climatizacion: 'snowflake' } as const;
+---
+<Base title="Servicios" description="Servicios eléctricos de potencia en media y baja tensión, respaldo energético con plantas eléctricas y tableros ATS, y climatización industrial y comercial.">
+  <section class="sv-hero section">
+    <span class="streak streak--thick" style="top: 34%; --angle: -12deg" aria-hidden="true"></span>
+    <div class="container">
+      <p class="eyebrow">Portafolio de servicios</p>
+      <h1 data-split="words">Distribuir, automatizar y proteger la energía.</h1>
+      <p class="lead" data-reveal="up" data-delay=".15">Acompañamos al sector comercial e industrial con un portafolio especializado. Rigor técnico, respuesta oportuna y máxima seguridad en cada proyecto.</p>
+    </div>
+  </section>
+
+  <section class="section section--tight sv-list">
+    <div class="container">
+      <ol class="sv-list__items">
+        {services.map((s, i) => (
+          <li class="sv-item" data-reveal="up" data-delay={String(i * 0.08)}>
+            <a class="sv-item__link" href={`${base}/servicios/${s.slug}/`} data-glow>
+              <span class="sv-item__code mono">{s.code}</span>
+              <span class="sv-item__icon"><Icon name={icons[s.slug as keyof typeof icons]} size={34} stroke={1.5} /></span>
+              <span class="sv-item__body">
+                <span class="sv-item__kicker mono">{s.kicker}</span>
+                <h2 class="sv-item__title">{s.name}</h2>
+                <p class="sv-item__summary">{s.summary}</p>
+                <span class="sv-item__tags">{s.tags.map((t) => <span>{t}</span>)}</span>
+              </span>
+              <span class="sv-item__arrow"><Icon name="arrow" size={22} /></span>
+            </a>
+          </li>
+        ))}
+      </ol>
+    </div>
+  </section>
+
+  <section class="section on-light sv-process">
+    <div class="container">
+      <div class="section__head">
+        <p class="eyebrow">Cómo trabajamos</p>
+        <h2 data-split="words">De la evaluación inicial al mantenimiento.</h2>
+      </div>
+      <ol class="grid grid--4 sv-process__steps" data-stagger="0.12">
+        {process.map((p) => (
+          <li class="card">
+            <span class="sv-process__n num">{p.n}</span>
+            <h3>{p.t}</h3>
+            <p class="muted">{p.d}</p>
+          </li>
+        ))}
+      </ol>
+    </div>
+  </section>
+
+  <Cta />
+</Base>
+
+<style>
+  .sv-hero { overflow: hidden; padding-top: calc(var(--header-h) + clamp(56px, 9vw, 120px)); padding-bottom: clamp(32px, 5vw, 56px); }
+  .sv-hero h1 { max-width: 16ch; }
+  .sv-hero .lead { margin-top: 22px; max-width: 52ch; }
+  .sv-list__items { list-style: none; margin: 0; padding: 0; display: grid; gap: 14px; counter-reset: sv; }
+  .sv-item__link { position: relative; display: grid; grid-template-columns: auto 1fr auto; gap: 18px 22px; align-items: start; padding: clamp(22px, 3vw, 36px); border-radius: var(--radius-lg); border: 1px solid var(--line); background: var(--card); transition: border-color 0.3s, transform 0.6s var(--ease-out), background-color 0.3s; }
+  .sv-item__link:hover { border-color: color-mix(in srgb, var(--accent) 50%, var(--line)); transform: translateY(-3px); background: rgba(255, 255, 255, 0.06); }
+  .sv-item__code { grid-row: span 2; color: var(--accent); font-size: 0.85rem; padding-top: 6px; }
+  .sv-item__icon { display: none; color: var(--amber-400); }
+  .sv-item__kicker { display: block; font-size: 0.72rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); margin-bottom: 8px; }
+  .sv-item__title { font-size: var(--step-2); }
+  .sv-item__summary { margin-top: 10px; color: var(--muted); max-width: 60ch; }
+  .sv-item__tags { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+  .sv-item__tags span { font-family: var(--font-mono); font-size: 0.72rem; letter-spacing: 0.06em; padding: 6px 10px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); }
+  .sv-item__arrow { display: grid; place-items: center; width: 48px; height: 48px; border-radius: 50%; border: 1px solid var(--line); color: var(--fg); transition: background-color 0.3s, color 0.3s, transform 0.5s var(--ease-out); }
+  .sv-item__link:hover .sv-item__arrow { background: var(--accent); color: #fff; border-color: var(--accent); transform: rotate(-35deg); }
+  @media (min-width: 900px) { .sv-item__link { grid-template-columns: auto auto 1fr auto; align-items: center; } .sv-item__icon { display: block; } .sv-item__code { grid-row: auto; } }
+  .sv-process__n { display: block; color: var(--accent); font-size: var(--step-2); font-weight: 800; margin-bottom: 14px; }
+  .sv-process__steps h3 { margin-bottom: 10px; }
+</style>

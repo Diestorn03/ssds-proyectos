@@ -1,0 +1,47 @@
+---
+import Icon from './Icon.astro';
+import { contact, wa } from '../../data/site.js';
+interface Props {
+  title?: string;
+  text?: string;
+  waText?: string;
+  label?: string;
+}
+const {
+  title = '¿Tu infraestructura eléctrica necesita atención?',
+  text = 'La respuesta rápida es clave para evitar paradas críticas. Escríbenos y agendamos una inspección, en Maracay o en cualquier estado del país.',
+  waText = 'Hola SSD&S, quiero agendar una inspección técnica.',
+  label = 'Agendar por WhatsApp',
+} = Astro.props;
+---
+<section class="cta section" aria-labelledby="cta-title">
+  <div class="cta__bg" aria-hidden="true">
+    <span class="streak streak--thick" style="top: 28%; --angle: -11deg"></span>
+    <span class="streak" style="top: 74%; --angle: -11deg; --streak-opacity: .55"></span>
+  </div>
+  <div class="container cta__inner">
+    <div class="cta__copy">
+      <p class="eyebrow">Contacto directo</p>
+      <h2 id="cta-title" data-split="words">{title}</h2>
+      <p class="lead" data-reveal="up" data-delay=".15">{text}</p>
+    </div>
+    <div class="cta__actions" data-stagger="0.1">
+      <a class="btn btn--primary" href={wa(waText)} target="_blank" rel="noopener" data-magnetic="0.25"><Icon name="whatsapp" size={20} />{label}</a>
+      <a class="btn btn--ghost" href={`tel:${contact.phoneE164}`}><Icon name="phone" size={18} />{contact.phoneDisplay}</a>
+      <a class="cta__mail" href={`mailto:${contact.email}`}><Icon name="mail" size={18} />{contact.email}</a>
+    </div>
+  </div>
+</section>
+
+<style>
+  .cta { overflow: hidden; background: radial-gradient(120% 140% at 100% 0%, rgba(242, 106, 27, 0.35), transparent 55%), linear-gradient(160deg, var(--navy-800), var(--navy-950)); border-top: 1px solid var(--line); }
+  .cta__bg { position: absolute; inset: 0; pointer-events: none; }
+  .cta__inner { position: relative; display: grid; gap: 36px; align-items: end; }
+  @media (min-width: 900px) { .cta__inner { grid-template-columns: 1.4fr 1fr; } }
+  .cta__copy h2 { max-width: 16ch; }
+  .cta__copy .lead { margin-top: 20px; max-width: 46ch; }
+  .cta__actions { display: flex; flex-direction: column; align-items: flex-start; gap: 14px; }
+  .cta__mail { display: inline-flex; align-items: center; gap: 10px; color: var(--muted); font-family: var(--font-mono); font-size: 0.9rem; transition: color 0.3s; }
+  .cta__mail:hover { color: var(--glow); }
+  @media (min-width: 900px) { .cta__actions { align-items: flex-end; } }
+</style>
