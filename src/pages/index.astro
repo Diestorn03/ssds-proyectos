@@ -1,0 +1,13 @@
+---
+import Base from '../layouts/Base.astro';
+import { brand } from '../data/site.js';
+---
+<Base title="Inicio" home>
+  <section class="section" style="min-height: 100vh; display: grid; place-items: center;">
+    <div class="container">
+      <p class="eyebrow">{brand.tagline}</p>
+      <h1 data-split="words">Energía confiable para tu negocio.</h1>
+      <p class="lead" data-reveal="up" data-delay=".2">{brand.description}</p>
+    </div>
+  </section>
+</Base>

@@ -1,0 +1,68 @@
+---
+import Logo from './Logo.astro';
+import { brand, contact, nav, services, social, wa } from '../../data/site.js';
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+const demo = !!import.meta.env.PUBLIC_DEMO;
+const year = new Date().getFullYear();
+---
+<footer class="footer">
+  <div class="footer__streaks" aria-hidden="true">
+    <span class="streak" style="top: 18%; --angle: -9deg; --streak-opacity: .5"></span>
+    <span class="streak" style="top: 62%; --angle: -9deg; --streak-opacity: .35"></span>
+  </div>
+  <div class="container footer__grid">
+    <div class="footer__brand">
+      <Logo size={44} tagline />
+      <p class="footer__claim">Ingeniería integral para mantener tu empresa en movimiento.</p>
+      <div class="btn-row">
+        <a class="btn btn--primary" href={wa()} target="_blank" rel="noopener">Cotizar por WhatsApp</a>
+        <a class="btn btn--ghost" href={`${base}/contacto/`}>Contacto</a>
+      </div>
+    </div>
+
+    <div>
+      <h4 class="footer__h">Servicios</h4>
+      <ul class="footer__list">
+        {services.map((s) => <li><a href={`${base}/servicios/${s.slug}/`}>{s.name}</a></li>)}
+      </ul>
+    </div>
+
+    <div>
+      <h4 class="footer__h">Empresa</h4>
+      <ul class="footer__list">
+        {nav.map((n) => <li><a href={`${base}${n.href}`}>{n.label}</a></li>)}
+        <li><a href={social.instagram} target="_blank" rel="noopener">Instagram</a></li>
+      </ul>
+    </div>
+
+    <div>
+      <h4 class="footer__h">Contacto</h4>
+      <ul class="footer__list">
+        <li><a href={`tel:${contact.phoneE164}`}>{contact.phoneDisplay}</a></li>
+        <li><a href={`mailto:${contact.email}`}>{contact.email}</a></li>
+        <li><span>{contact.address}</span></li>
+        <li><span class="muted">Atención en todo el territorio nacional</span></li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="container footer__bottom">
+    <span>© {year} {brand.legalName} · {brand.tagline}</span>
+    {demo && <span class="footer__demo">Propuesta de sitio web · demo</span>}
+    <a href={social.instagram} target="_blank" rel="noopener">@{contact.instagram}</a>
+  </div>
+</footer>
+
+<style>
+  .footer { position: relative; overflow: hidden; background: var(--navy-950); color: var(--fg); padding-block: clamp(56px, 8vw, 96px) 28px; border-top: 1px solid var(--line); }
+  .footer__streaks { position: absolute; inset: 0; pointer-events: none; }
+  .footer__grid { position: relative; display: grid; gap: 40px 32px; }
+  @media (min-width: 720px) { .footer__grid { grid-template-columns: 1.6fr 1fr 1fr 1.2fr; } }
+  .footer__claim { margin: 22px 0 26px; max-width: 34ch; color: var(--muted); text-wrap: pretty; }
+  .footer__h { font-family: var(--font-mono); font-size: 0.78rem; letter-spacing: 0.16em; text-transform: uppercase; color: var(--accent); margin-bottom: 18px; font-weight: 500; }
+  .footer__list { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+  .footer__list a { color: rgba(255, 255, 255, 0.82); transition: color 0.3s; }
+  .footer__list a:hover { color: var(--glow); }
+  .footer__bottom { position: relative; display: flex; flex-wrap: wrap; gap: 10px 24px; justify-content: space-between; margin-top: clamp(40px, 6vw, 72px); padding-top: 22px; border-top: 1px solid var(--line); font-size: 0.85rem; color: var(--muted); }
+  .footer__demo { font-family: var(--font-mono); letter-spacing: 0.08em; text-transform: uppercase; font-size: 0.72rem; color: var(--amber-400); }
+</style>

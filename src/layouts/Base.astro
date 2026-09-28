@@ -1,0 +1,82 @@
+---
+import { ClientRouter } from 'astro:transitions';
+import '@fontsource-variable/sora/wght.css';
+import '@fontsource-variable/inter/wght.css';
+import '@fontsource-variable/jetbrains-mono/wght.css';
+import 'lenis/dist/lenis.css';
+import '../styles/base.css';
+import soraLatin from '@fontsource-variable/sora/files/sora-latin-wght-normal.woff2?url';
+import interLatin from '@fontsource-variable/inter/files/inter-latin-wght-normal.woff2?url';
+import Header from '../components/chrome/Header.astro';
+import Footer from '../components/chrome/Footer.astro';
+import WhatsAppFab from '../components/chrome/WhatsAppFab.astro';
+import { brand, contact, social } from '../data/site.js';
+
+interface Props {
+  title: string;         // page title (without the site name)
+  description?: string;
+  image?: string;        // base-less path of the share image
+  home?: boolean;
+}
+const { title, description = brand.description, image = '/og.png', home = false } = Astro.props;
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+const origin = Astro.site?.origin ?? '';
+const canonical = origin + Astro.url.pathname;
+const demo = !!import.meta.env.PUBLIC_DEMO;
+const fullTitle = home ? `${brand.name} · ${brand.tagline}` : `${title} · ${brand.name}`;
+const jsonLd = {
+  '@context': 'https://schema.org',
+  '@type': ['Electrician', 'HVACBusiness'],
+  name: brand.name,
+  alternateName: brand.legalName,
+  description: brand.description,
+  url: origin + base + '/',
+  telephone: contact.phoneE164,
+  email: contact.email,
+  address: { '@type': 'PostalAddress', addressLocality: brand.city, addressRegion: brand.region, addressCountry: 'VE' },
+  areaServed: { '@type': 'Country', name: 'Venezuela' },
+  sameAs: [social.instagram, social.instagramAlt],
+  image: origin + base + image,
+};
+---
+<!doctype html>
+<html lang="es" data-theme="dark">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>{fullTitle}</title>
+    <meta name="description" content={description} />
+    {demo && <meta name="robots" content="noindex, nofollow" />}
+    <meta name="theme-color" content="#0b1a3a" />
+    <link rel="icon" href={`${base}/favicon.svg`} type="image/svg+xml" />
+    <link rel="apple-touch-icon" href={`${base}/apple-touch-icon.png`} />
+    <link rel="canonical" href={canonical} />
+    <link rel="preload" href={soraLatin} as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href={interLatin} as="font" type="font/woff2" crossorigin />
+    <meta property="og:title" content={fullTitle} />
+    <meta property="og:description" content={description} />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content={canonical} />
+    <meta property="og:image" content={origin + base + image} />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:locale" content="es_VE" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <script type="application/ld+json" set:html={JSON.stringify(jsonLd)} />
+    <script is:inline>document.documentElement.classList.add('js');</script>
+    <ClientRouter />
+    <slot name="head" />
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Ir al contenido</a>
+    <Header />
+    <main id="main" tabindex="-1">
+      <slot />
+    </main>
+    <Footer />
+    <WhatsAppFab />
+    <script>
+      import '../scripts/engine.js';
+    </script>
+  </body>
+</html>

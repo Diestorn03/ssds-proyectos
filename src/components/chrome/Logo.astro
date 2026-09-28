@@ -1,0 +1,42 @@
+---
+/*
+  SSD&S logo. The isotype is a vector approximation of the hexagonal "S" mark seen on Instagram (orange upper half,
+  white lower half). Replace `Mark` with the client's official vector file when available.
+*/
+interface Props {
+  variant?: 'full' | 'mark' | 'wordmark';
+  size?: number;        // mark height in px
+  tagline?: boolean;    // show "Potencia e Ingeniería Industrial" under the wordmark
+  class?: string;
+}
+const { variant = 'full', size = 40, tagline = false, class: cls = '' } = Astro.props;
+---
+<span class:list={['logo', `logo--${variant}`, cls]} style={`--mark:${size}px`}>
+  {variant !== 'wordmark' && (
+    <svg class="logo__mark" viewBox="0 0 100 100" width={size} height={size} aria-hidden="true" focusable="false">
+      <!-- hex outline, split in two colours -->
+      <polyline points="14,71 14,29 50,8 86,29" fill="none" stroke="var(--logo-a, #f26a1b)" stroke-width="10" stroke-linejoin="round" stroke-linecap="round" />
+      <polyline points="86,29 86,71 50,92 14,71" fill="none" stroke="var(--logo-b, #ffffff)" stroke-width="10" stroke-linejoin="round" stroke-linecap="round" />
+      <!-- inner S -->
+      <path d="M66 32 H38 a6 6 0 0 0 -6 6 v6 a6 6 0 0 0 6 6 H50" fill="none" stroke="var(--logo-a, #f26a1b)" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" />
+      <path d="M50 50 H62 a6 6 0 0 1 6 6 v6 a6 6 0 0 1 -6 6 H34" fill="none" stroke="var(--logo-b, #ffffff)" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" />
+    </svg>
+  )}
+  {variant !== 'mark' && (
+    <span class="logo__text">
+      <span class="logo__word">SSD<span class="logo__amp">&amp;</span>S <small>C.A.</small></span>
+      {tagline && <span class="logo__tag">Potencia e Ingeniería Industrial</span>}
+    </span>
+  )}
+</span>
+
+<style>
+  .logo { display: inline-flex; align-items: center; gap: calc(var(--mark) * 0.3); line-height: 1; color: var(--fg); }
+  .logo__mark { flex: none; height: var(--mark); width: var(--mark); }
+  .logo__text { display: flex; flex-direction: column; gap: 0.25em; }
+  .logo__word { font-family: var(--font-display); font-weight: 800; font-style: italic; letter-spacing: -0.04em; font-size: calc(var(--mark) * 0.62); white-space: nowrap; }
+  .logo__word small { font-size: 0.42em; font-weight: 600; letter-spacing: 0.08em; font-style: normal; margin-left: 0.15em; vertical-align: 0.15em; opacity: 0.85; }
+  .logo__amp { color: var(--accent); }
+  .logo__tag { font-family: var(--font-mono); font-size: calc(var(--mark) * 0.2); letter-spacing: 0.18em; text-transform: uppercase; color: var(--muted); white-space: nowrap; }
+  .on-light .logo, [data-theme='light'] .logo { --logo-b: var(--ink); }
+</style>
