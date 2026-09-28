@@ -1,0 +1,118 @@
+---
+/*
+  Interior hero background ("Corriente Viva"). Decorative only (aria-hidden), one per page, placed first inside a
+  dark hero <section>. Layers: schematic grid, two glows (one follows the pointer on desktop), faint circuit traces
+  drawn in with DrawSVG, the brand's three diagonal rays that shoot in and then carry travelling pulses
+  (compositor-only CSS transforms), an optional outline bleed word.
+  Elements inside the same section marked [data-hfx-exit] drift up and fade as the hero leaves (desktop scrub).
+  Reduced motion: everything static and fully drawn.
+*/
+interface Props { bleed?: string; tone?: 'a' | 'b' }
+const { bleed, tone = 'a' } = Astro.props;
+---
+<div class:list={['hfx', `hfx--${tone}`]} aria-hidden="true">
+  <div class="hfx__grid"></div>
+  <div class="hfx__glow hfx__glow--a"></div>
+  <div class="hfx__glow hfx__glow--b" data-hfx-glow></div>
+  <svg class="hfx__traces" viewBox="0 0 1600 900" preserveAspectRatio="xMaxYMin slice" focusable="false" data-draw data-delay=".5">
+    <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path class="hfx__t" d="M1640 170H1330l-60 60h-190" />
+      <circle class="hfx__t" cx="1072" cy="230" r="7" />
+      <path class="hfx__t hfx__t--hot" d="M1640 300h-230l-60 60v170h-170" />
+      <circle class="hfx__t hfx__t--hot" cx="1172" cy="530" r="7" />
+      <path class="hfx__t" d="M1640 640h-170l-60 60h-150" />
+      <circle class="hfx__t" cx="1252" cy="700" r="7" />
+      <path class="hfx__t" d="M1530 940V800l-60-60h-110" />
+      <path class="hfx__t" d="M1250 -40v110l40 40h120" />
+    </g>
+  </svg>
+  <div class="hfx__rays" data-hfx-rays>
+    <div class="hfx__ray hfx__ray--1"><span class="hfx__beam"></span><span class="hfx__pulse"></span></div>
+    <div class="hfx__ray hfx__ray--2"><span class="hfx__beam"></span><span class="hfx__pulse"></span></div>
+    <div class="hfx__ray hfx__ray--3"><span class="hfx__beam"></span></div>
+  </div>
+  {bleed && <p class="bleed-word hfx__bleed" data-text={bleed}>{bleed}</p>}
+</div>
+
+<style>
+  .hfx { position: absolute; inset: 0; z-index: -1; overflow: hidden; pointer-events: none; }
+  .hfx__grid {
+    position: absolute; inset: 0; opacity: 0.4;
+    background-image: linear-gradient(rgba(255, 255, 255, 0.045) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 255, 255, 0.045) 1px, transparent 1px);
+    background-size: 64px 64px;
+    -webkit-mask-image: radial-gradient(80% 75% at 70% 35%, #000, transparent);
+    mask-image: radial-gradient(80% 75% at 70% 35%, #000, transparent);
+  }
+  .hfx__glow { position: absolute; border-radius: 50%; }
+  .hfx__glow--a { width: 80vw; height: 80vw; max-width: 1100px; max-height: 1100px; right: -28vw; top: -34vw; background: radial-gradient(circle, rgba(242, 106, 27, 0.42) 0%, rgba(242, 106, 27, 0.14) 38%, transparent 70%); }
+  .hfx--b .hfx__glow--a { right: auto; left: -30vw; }
+  .hfx__glow--b { width: 46vw; height: 46vw; min-width: 320px; min-height: 320px; inset: 0; margin: auto; background: radial-gradient(circle, rgba(37, 72, 138, 0.7) 0%, rgba(37, 72, 138, 0.2) 42%, transparent 70%); will-change: transform; }
+  .hfx__traces { position: absolute; left: 0; top: 0; width: 100%; height: min(100%, 100svh); }
+  .hfx__t { stroke: rgba(255, 255, 255, 0.1); stroke-width: 1.5; }
+  .hfx__t--hot { stroke: rgba(255, 156, 92, 0.45); }
+  @media (max-width: 899px) { .hfx__traces { opacity: 0.45; } }
+
+  /* the three rays: rotated wrappers; the beam (static glow filter) shoots in once, the pulse is a sibling so moving it never re-filters the beam */
+  .hfx__rays { position: absolute; inset: 0; }
+  .hfx__ray { position: absolute; left: -15%; width: 130%; height: 3px; transform: rotate(-12deg); }
+  .hfx__ray--1 { top: 34%; }
+  .hfx__ray--2 { top: 70%; opacity: 0.55; }
+  .hfx__ray--3 { top: 90%; opacity: 0.3; }
+  .hfx__beam {
+    position: absolute; inset: 0; border-radius: 3px; transform-origin: 0 50%;
+    background: var(--grad-streak);
+    filter: drop-shadow(0 0 6px rgba(255, 150, 70, 0.9)) drop-shadow(0 0 22px rgba(255, 110, 30, 0.5));
+  }
+  .hfx__ray--2 .hfx__beam, .hfx__ray--3 .hfx__beam { top: 1px; bottom: 1px; }
+  .hfx__pulse {
+    position: absolute; left: 0; top: -2px; width: 12%; height: 7px; border-radius: 7px;
+    background: linear-gradient(90deg, transparent, rgba(255, 215, 154, 0.9) 70%, #fff 92%, transparent);
+    box-shadow: 0 0 18px 2px rgba(255, 170, 90, 0.35);
+    opacity: 0; will-change: transform;
+    animation: hfx-pulse 5.2s cubic-bezier(0.55, 0.1, 0.45, 0.9) 1.6s infinite;
+  }
+  .hfx__ray--2 .hfx__pulse { animation-duration: 7s; animation-delay: 3.1s; }
+  @keyframes hfx-pulse {
+    0% { transform: translateX(-100%); opacity: 0; }
+    8% { opacity: 1; }
+    60% { opacity: 1; }
+    72%, 100% { transform: translateX(840%); opacity: 0; }
+  }
+  /* outline bleed word; a gradient copy charges it up once, left to right */
+  .hfx__bleed { position: absolute; left: -1vw; bottom: -0.16em; margin: 0; -webkit-text-stroke-color: rgba(255, 255, 255, 0.08); }
+  .hfx__bleed::after { content: attr(data-text); position: absolute; inset: 0; -webkit-text-stroke: 0; background: var(--grad-brand); -webkit-background-clip: text; background-clip: text; color: transparent; opacity: 0.07; clip-path: inset(0 100% 0 0); animation: hfx-charge 2.8s cubic-bezier(0.65, 0, 0.35, 1) 0.8s forwards; }
+  @keyframes hfx-charge { to { clip-path: inset(0 0 0 0); } }
+  @media (prefers-reduced-motion: reduce) { .hfx__pulse { display: none; } .hfx__bleed::after { animation: none; clip-path: none; } }
+</style>
+
+<script>
+  import { onPage } from '../../scripts/engine.js';
+  onPage(({ gsap, env }) => {
+    const fx = document.querySelector<HTMLElement>('.hfx');
+    if (!fx) return;
+    const hero = fx.closest('section') as HTMLElement;
+    if (env.reduced) return;
+
+    // the rays shoot in from the left, one after the other
+    gsap.from(fx.querySelectorAll('.hfx__beam'), { scaleX: 0, duration: 1.6, ease: 'expo.out', stagger: 0.16, delay: 0.1 });
+
+    if (!env.desktop) return;
+    // scrubbed exit: copy drifts up and dims, rays sink a little (parallax depth)
+    const st = { trigger: hero, start: 'top top', end: 'bottom top', scrub: true };
+    hero.querySelectorAll('[data-hfx-exit]').forEach((el, i) => gsap.to(el, { yPercent: -8 - i * 6, opacity: 0.15, ease: 'none', scrollTrigger: st }));
+    gsap.to(fx.querySelector('[data-hfx-rays]'), { yPercent: 14, ease: 'none', scrollTrigger: st });
+
+    // the blue glow leans toward the pointer
+    const glow = fx.querySelector<HTMLElement>('[data-hfx-glow]');
+    if (!glow) return;
+    const xTo = gsap.quickTo(glow, 'x', { duration: 1.6, ease: 'power3.out' });
+    const yTo = gsap.quickTo(glow, 'y', { duration: 1.6, ease: 'power3.out' });
+    const move = (e: PointerEvent) => {
+      const r = hero.getBoundingClientRect();
+      xTo((e.clientX - r.left - r.width / 2) * 0.45);
+      yTo((e.clientY - r.top - r.height / 2) * 0.45);
+    };
+    hero.addEventListener('pointermove', move);
+    return () => hero.removeEventListener('pointermove', move);
+  });
+</script>

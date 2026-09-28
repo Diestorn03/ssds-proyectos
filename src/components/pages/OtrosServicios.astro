@@ -1,0 +1,63 @@
+---
+/*
+  "Otros servicios": link cards to the remaining service pages. Each card's icon draws in once (DrawSVG) and a
+  current runs along its top edge on hover. as="section" renders its own light/dark section; as="block" renders
+  only the block (to sit at the end of another section and keep the dark/light rhythm).
+*/
+import Icon from '../ui/Icon.astro';
+import { services } from '../../data/site.js';
+interface Props { current: string; as?: 'section' | 'block'; theme?: 'dark' | 'light' }
+const { current, as = 'block', theme = 'light' } = Astro.props;
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+const icons = { 'potencia-electrica': 'transformer', 'respaldo-energetico': 'generator', climatizacion: 'snowflake' } as const;
+const others = services.filter((o) => o.slug !== current);
+const Wrap = as === 'section' ? 'section' : 'div';
+const Name = as === 'section' ? 'h3' : 'h4';
+const wrapProps = as === 'section' ? { id: 'otros', class: 'section section--tight os', 'data-theme': theme, 'aria-labelledby': 'otros-title' } : { class: 'os os--block' };
+---
+<Wrap {...wrapProps}>
+  <div class:list={[as === 'section' && 'container']}>
+    {as === 'section' ? <h2 id="otros-title" class="eyebrow os__label">Otros servicios</h2> : <h3 class="eyebrow os__label">Otros servicios</h3>}
+    <ul class="os__grid" data-stagger="0.12">
+      {others.map((o) => (
+        <li>
+          <a class="os__card" href={`${base}/servicios/${o.slug}/`} data-glow data-tilt="3">
+            <span class="os__wire" aria-hidden="true"></span>
+            <span class="os__icon" data-draw aria-hidden="true"><Icon name={icons[o.slug as keyof typeof icons]} size={30} stroke={1.5} /></span>
+            <span class="os__body">
+              <span class="os__code mono">{o.code} · {o.kicker}</span>
+              <Name class="os__name">{o.name}</Name>
+              <span class="os__sum">{o.summary}</span>
+            </span>
+            <span class="os__arrow" aria-hidden="true"><Icon name="arrow" size={20} /></span>
+          </a>
+        </li>
+      ))}
+    </ul>
+  </div>
+</Wrap>
+
+<style>
+  .os--block { margin-top: clamp(56px, 8vw, 104px); padding-top: clamp(32px, 4vw, 48px); border-top: 1px solid var(--line); }
+  .os__label { margin-bottom: 22px; }
+  .os__grid { list-style: none; margin: 0; padding: 0; display: grid; gap: 16px; }
+  @media (min-width: 760px) { .os__grid { grid-template-columns: 1fr 1fr; } }
+  .os__grid > li { display: flex; }
+  .os__card {
+    position: relative; overflow: hidden; width: 100%; display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 16px 18px; align-items: start;
+    padding: clamp(20px, 2.6vw, 30px); border-radius: var(--radius-lg); border: 1px solid var(--line); background: var(--card);
+    transition: border-color 0.4s, box-shadow 0.6s var(--ease-out);
+  }
+  [data-theme='light'] .os__card { box-shadow: 0 16px 36px -28px rgba(11, 26, 58, 0.35); }
+  .os__card:hover { border-color: color-mix(in srgb, var(--accent) 50%, var(--line)); box-shadow: 0 24px 48px -26px rgba(242, 106, 27, 0.5); }
+  .os__wire { position: absolute; left: 0; right: 0; top: 0; height: 2px; background: var(--grad-brand); transform: scaleX(0); transform-origin: 0 50%; transition: transform 0.8s var(--ease-out); box-shadow: 0 0 12px rgba(255, 140, 60, 0.7); }
+  .os__card:hover .os__wire, .os__card:focus-visible .os__wire { transform: scaleX(1); }
+  .os__icon { display: grid; place-items: center; width: 56px; height: 56px; border-radius: 16px; color: var(--accent-text); background: color-mix(in srgb, var(--orange-500) 13%, transparent); transition: background-color 0.4s, color 0.4s; }
+  .os__card:hover .os__icon { background: var(--orange-500); color: #fff; }
+  .os__body { display: grid; gap: 8px; }
+  .os__code { font-size: 0.75rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--accent-text); }
+  .os__name { font-family: var(--font-display); font-weight: 700; font-size: var(--step-1); line-height: 1.1; letter-spacing: -0.02em; }
+  .os__sum { color: var(--muted); font-size: 0.95rem; }
+  .os__arrow { grid-column: 2; justify-self: end; display: grid; place-items: center; width: 46px; height: 46px; border-radius: 50%; border: 1px solid var(--line); transition: background-color 0.3s, color 0.3s, border-color 0.3s, transform 0.5s var(--ease-out); }
+  .os__card:hover .os__arrow { background: var(--orange-500); color: #fff; border-color: var(--orange-500); transform: rotate(-35deg); }
+</style>

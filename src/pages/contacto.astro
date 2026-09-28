@@ -1,66 +1,74 @@
 ---
+/*
+  Contacto. Theme rhythm: contact hero + form (dark, [data-fab-hide]) → qué pasa después (light) → footer.
+  Channels: each icon tile sends a signal ripple on hover and a current runs along the card's foot.
+  Form: a small "circuit" closes as the three required fields are filled (segments light, LED turns green,
+  the send button energises); the WhatsApp / mailto composition logic is unchanged.
+*/
 import Base from '../layouts/Base.astro';
 import Icon from '../components/ui/Icon.astro';
+import HeroFx from '../components/pages/HeroFx.astro';
+import Proceso from '../components/pages/Proceso.astro';
 import { brand, contact, services, social, wa } from '../data/site.js';
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+const channels = [
+  { href: wa(), icon: 'whatsapp', t: 'WhatsApp', v: contact.phoneDisplay, ext: true, wa: true },
+  { href: `tel:${contact.phoneE164}`, icon: 'phone', t: 'Llamada', v: contact.phoneDisplay },
+  { href: `mailto:${contact.email}`, icon: 'mail', t: 'Correo', v: contact.email },
+  { href: social.instagram, icon: 'instagram', t: 'Instagram', v: `@${contact.instagram}`, ext: true },
+] as const;
+const next = [
+  { n: '01', t: 'Escríbenos', d: 'Por WhatsApp, llamada o correo: cuéntanos la instalación, el equipo o la falla.' },
+  { n: '02', t: 'Coordinamos la visita', d: 'Agendamos la visita técnica en Maracay o en cualquier estado del país.' },
+  { n: '03', t: 'Evaluación técnica', d: 'Inspección de tus instalaciones y diagnóstico de la red, la planta o el sistema HVAC.' },
+  { n: '04', t: 'Solución a tu medida', d: 'Dimensionamos la solución a la carga exacta de tu operación.' },
+];
 ---
 <Base title="Contacto" description={`Escríbenos por WhatsApp al ${contact.phoneDisplay} o a ${contact.email}. Oficina principal en Maracay, Aragua; atención en todo el territorio nacional.`}>
-  <section class="contact section">
-    <div class="contact__bg" aria-hidden="true">
-      <span class="streak streak--thick" style="top: 22%; --angle: -12deg"></span>
-      <span class="streak" style="top: 66%; --angle: -12deg; --streak-opacity: .45"></span>
-    </div>
+  <section id="contacto-directo" class="contact section" data-theme="dark" aria-labelledby="contacto-title" data-fab-hide>
+    <HeroFx tone="b" />
     <div class="container contact__grid">
       <div class="contact__copy">
-        <p class="eyebrow">Contacto</p>
-        <h1 data-split="words">Conecta con nuestro equipo técnico.</h1>
-        <p class="lead" data-reveal="up" data-delay=".15">Para cotizaciones, consultas o emergencias técnicas. Respondemos por WhatsApp y coordinamos la visita en Maracay o en cualquier estado del país.</p>
+        <nav class="contact__crumbs mono" aria-label="Ruta de navegación" data-reveal="up" data-start="top 100%">
+          <ol><li><a href={`${base}/`}>Inicio</a></li><li><span aria-current="page">Contacto</span></li></ol>
+        </nav>
+        <p class="eyebrow" data-reveal="up" data-delay=".05" data-start="top 100%">Contacto</p>
+        <h1 id="contacto-title" data-split="lines" data-delay=".1">Conecta con nuestro <span class="contact__accent">equipo técnico.</span></h1>
+        <p class="lead" data-reveal="up" data-delay=".3" data-start="top 100%">Para cotizaciones, consultas o emergencias técnicas. Respondemos por WhatsApp y coordinamos la visita en Maracay o en cualquier estado del país.</p>
 
-        <ul class="contact__channels" data-stagger="0.1">
-          <li>
-            <a href={wa()} target="_blank" rel="noopener" class="channel" data-glow>
-              <span class="channel__icon channel__icon--wa"><Icon name="whatsapp" size={22} /></span>
-              <span><strong>WhatsApp</strong><span class="channel__v">{contact.phoneDisplay}</span></span>
-              <Icon name="arrowUpRight" size={18} class="channel__arrow" />
-            </a>
-          </li>
-          <li>
-            <a href={`tel:${contact.phoneE164}`} class="channel" data-glow>
-              <span class="channel__icon"><Icon name="phone" size={22} /></span>
-              <span><strong>Llamada</strong><span class="channel__v">{contact.phoneDisplay}</span></span>
-              <Icon name="arrowUpRight" size={18} class="channel__arrow" />
-            </a>
-          </li>
-          <li>
-            <a href={`mailto:${contact.email}`} class="channel" data-glow>
-              <span class="channel__icon"><Icon name="mail" size={22} /></span>
-              <span><strong>Correo</strong><span class="channel__v">{contact.email}</span></span>
-              <Icon name="arrowUpRight" size={18} class="channel__arrow" />
-            </a>
-          </li>
-          <li>
-            <a href={social.instagram} target="_blank" rel="noopener" class="channel" data-glow>
-              <span class="channel__icon"><Icon name="instagram" size={22} /></span>
-              <span><strong>Instagram</strong><span class="channel__v">@{contact.instagram}</span></span>
-              <Icon name="arrowUpRight" size={18} class="channel__arrow" />
-            </a>
-          </li>
+        <ul class="contact__channels" data-stagger="0.08" data-start="top 100%">
+          {channels.map((c) => (
+            <li>
+              <a href={c.href} class:list={['channel', 'wa' in c && 'channel--wa']} data-glow target={'ext' in c ? '_blank' : undefined} rel={'ext' in c ? 'noopener' : undefined}>
+                <span class="channel__icon" aria-hidden="true"><Icon name={c.icon} size={22} /></span>
+                <span class="channel__txt"><strong>{c.t}</strong><span class="channel__v">{c.v}</span></span>
+                <Icon name="arrowUpRight" size={18} class="channel__arrow" />
+                <span class="channel__wire" aria-hidden="true"></span>
+              </a>
+            </li>
+          ))}
           <li>
             <div class="channel channel--static">
-              <span class="channel__icon"><Icon name="pin" size={22} /></span>
-              <span><strong>Oficina principal</strong><span class="channel__v">{contact.address}</span><span class="channel__note">Cuadrillas a todo el territorio nacional</span></span>
+              <span class="channel__icon" aria-hidden="true"><Icon name="pin" size={22} /></span>
+              <span class="channel__txt"><strong>Oficina principal</strong><span class="channel__v">{contact.address}</span><span class="channel__note">Cuadrillas a todo el territorio nacional</span></span>
             </div>
           </li>
         </ul>
       </div>
 
-      <form class="qform card" id="qform" data-reveal="right" data-delay=".2" novalidate>
+      <form class="qform" id="qform" data-reveal="up" data-delay=".2" data-start="top 100%" novalidate>
+        <span class="qform__wire" aria-hidden="true"><i></i></span>
+        <div class="qform__circuit" aria-hidden="true">
+          <span class="qform__led"></span>
+          <span class="qform__segs"><i></i><i></i><i></i></span>
+        </div>
         <p class="qform__eyebrow mono">Arma tu solicitud</p>
         <h2 class="qform__title">Cuéntanos qué necesitas y te lo enviamos por WhatsApp.</h2>
         <div class="qform__row">
-          <label class="field"><span>Nombre</span><input name="nombre" type="text" autocomplete="name" required placeholder="Tu nombre" /></label>
+          <label class="field"><span>Nombre <em aria-hidden="true">*</em></span><input name="nombre" type="text" autocomplete="name" required placeholder="Tu nombre" /></label>
           <label class="field"><span>Empresa</span><input name="empresa" type="text" autocomplete="organization" placeholder="Empresa o residencia" /></label>
         </div>
-        <label class="field"><span>Servicio</span>
+        <label class="field"><span>Servicio <em aria-hidden="true">*</em></span>
           <select name="servicio" required>
             <option value="">Selecciona un servicio</option>
             {services.map((s) => <option value={s.name}>{s.name}</option>)}
@@ -68,55 +76,125 @@ import { brand, contact, services, social, wa } from '../data/site.js';
           </select>
         </label>
         <label class="field"><span>Ubicación</span><input name="ubicacion" type="text" placeholder="Ciudad y estado" /></label>
-        <label class="field"><span>Mensaje</span><textarea name="mensaje" rows="4" required placeholder="Describe la instalación, el equipo o la falla"></textarea></label>
+        <label class="field"><span>Mensaje <em aria-hidden="true">*</em></span><textarea name="mensaje" rows="4" required placeholder="Describe la instalación, el equipo o la falla"></textarea></label>
         <p class="qform__error" role="alert" hidden>Completa nombre, servicio y mensaje.</p>
-        <div class="btn-row">
-          <button class="btn btn--primary" type="submit"><Icon name="whatsapp" size={20} />Enviar por WhatsApp</button>
+        <div class="btn-row qform__actions">
+          <button class="btn btn--primary qform__send" type="submit"><Icon name="whatsapp" size={20} />Enviar por WhatsApp</button>
           <button class="btn btn--ghost" type="button" data-mail><Icon name="mail" size={18} />Enviar por correo</button>
         </div>
+        <p class="qform__status mono" role="status" aria-live="polite" data-status>Campos obligatorios: 0 de 3</p>
         <p class="qform__hint">Se abre WhatsApp o tu correo con el mensaje ya redactado. Sin formularios en servidor: escribes directo al equipo de {brand.shortName}.</p>
       </form>
+    </div>
+  </section>
+
+  <section id="despues" class="section contact-next" data-theme="light" aria-labelledby="despues-title">
+    <div class="container">
+      <div class="contact-next__head">
+        <p class="eyebrow" data-reveal="up">Qué pasa después</p>
+        <h2 id="despues-title" data-split="lines">De tu mensaje a la visita técnica.</h2>
+      </div>
+      <Proceso steps={next} label="Qué pasa después de escribirnos" />
     </div>
   </section>
 </Base>
 
 <style>
-  .contact { overflow: hidden; padding-top: calc(var(--header-h) + clamp(48px, 8vw, 96px)); background: radial-gradient(90% 60% at 0% 0%, rgba(242, 106, 27, 0.22), transparent 60%), var(--navy-900); }
-  .contact__bg { position: absolute; inset: 0; pointer-events: none; }
-  .contact__grid { position: relative; display: grid; gap: clamp(36px, 6vw, 80px); align-items: start; }
-  @media (min-width: 960px) { .contact__grid { grid-template-columns: 1.05fr 1fr; } }
-  .contact__copy h1 { max-width: 14ch; }
-  .contact__copy .lead { margin: 22px 0 36px; max-width: 46ch; }
+  .contact { overflow: hidden; isolation: isolate; padding-top: calc(var(--header-h) + clamp(28px, 6vh, 80px)); background: var(--navy-900); }
+  .contact__grid { position: relative; display: grid; grid-template-columns: minmax(0, 1fr); gap: clamp(40px, 6vw, 80px); align-items: start; }
+  @media (min-width: 1000px) { .contact__grid { grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); } }
+  .contact__crumbs ol { list-style: none; display: flex; flex-wrap: wrap; align-items: center; gap: 0 4px; margin: 0 0 6px; padding: 0; font-size: 0.75rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
+  .contact__crumbs li { display: inline-flex; align-items: center; gap: 4px; }
+  .contact__crumbs li + li::before { content: ''; width: 14px; height: 1px; margin-inline: 4px; background: currentColor; opacity: 0.5; }
+  .contact__crumbs a { display: inline-flex; align-items: center; min-height: 44px; transition: color 0.3s; }
+  .contact__crumbs a:hover { color: var(--glow); }
+  .contact__crumbs [aria-current] { color: var(--fg); }
+  .contact__copy h1 { font-size: min(clamp(2.2rem, 0.9rem + 4.4vw, 5.2rem), 10vh); line-height: 0.98; letter-spacing: -0.04em; max-width: 13ch; }
+  .contact__accent { background: linear-gradient(90deg, #f26a1b 0%, #ff9c5c 45%, #ffd79a 100%); -webkit-background-clip: text; background-clip: text; color: transparent; -webkit-text-fill-color: transparent; padding-right: 0.06em; }
+  .contact__copy .lead { margin: 22px 0 32px; max-width: 46ch; color: rgba(244, 246, 251, 0.8); }
+
+  /* channels */
   .contact__channels { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
-  .channel { position: relative; display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 16px; padding: 14px 16px; border-radius: var(--radius); border: 1px solid var(--line); background: var(--card); transition: border-color 0.3s, transform 0.5s var(--ease-out); }
-  .channel:not(.channel--static):hover { border-color: color-mix(in srgb, var(--accent) 50%, var(--line)); transform: translateX(4px); }
-  .channel strong { display: block; font-family: var(--font-display); font-size: 0.95rem; }
-  .channel__v { display: block; color: var(--muted); font-size: 0.95rem; }
-  .channel__note { display: block; color: var(--amber-400); font-family: var(--font-mono); font-size: 0.72rem; letter-spacing: 0.08em; text-transform: uppercase; margin-top: 4px; }
-  .channel__icon { display: grid; place-items: center; width: 46px; height: 46px; border-radius: 12px; background: rgba(255, 255, 255, 0.06); color: var(--accent); }
-  .channel__icon--wa { color: #25d366; }
-  .channel__arrow { color: var(--muted); }
-  .qform { display: grid; gap: 16px; }
-  .qform__eyebrow { color: var(--accent); font-size: 0.75rem; text-transform: uppercase; }
-  .qform__title { font-size: var(--step-1); letter-spacing: -0.02em; margin-bottom: 6px; }
+  @media (min-width: 560px) and (max-width: 999px) { .contact__channels { grid-template-columns: 1fr 1fr; } .contact__channels > li:last-child { grid-column: 1 / -1; } }
+  .channel { position: relative; overflow: hidden; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 14px; min-height: 72px; padding: 12px 16px 12px 12px; border-radius: var(--radius); border: 1px solid var(--line); background: linear-gradient(160deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.02)); transition: border-color 0.4s, transform 0.5s var(--ease-out), box-shadow 0.5s var(--ease-out); }
+  .channel:not(.channel--static):hover { border-color: color-mix(in srgb, var(--accent) 55%, var(--line)); transform: translateX(4px); box-shadow: 0 18px 40px -24px rgba(242, 106, 27, 0.55); }
+  .channel--wa { border-color: rgba(37, 211, 102, 0.35); background: linear-gradient(160deg, rgba(37, 211, 102, 0.12), rgba(255, 255, 255, 0.02) 70%); }
+  .channel--wa:hover { border-color: rgba(37, 211, 102, 0.7) !important; box-shadow: 0 18px 40px -22px rgba(37, 211, 102, 0.5) !important; }
+  .channel__txt { display: grid; min-width: 0; }
+  .channel strong { font-family: var(--font-display); font-size: 1rem; line-height: 1.3; }
+  .channel__v { color: var(--muted); font-size: 0.95rem; overflow-wrap: anywhere; }
+  .channel__note { color: var(--amber-400); font-family: var(--font-mono); font-size: 0.75rem; letter-spacing: 0.06em; text-transform: uppercase; margin-top: 4px; }
+  .channel__icon { position: relative; display: grid; place-items: center; width: 48px; height: 48px; border-radius: 13px; background: rgba(255, 255, 255, 0.07); color: var(--orange-400); transition: background-color 0.4s, color 0.4s; }
+  .channel__icon::after { content: ''; position: absolute; inset: 0; border-radius: inherit; border: 1.5px solid currentColor; opacity: 0; }
+  .channel:not(.channel--static):hover .channel__icon { background: var(--orange-500); color: #fff; }
+  .channel:not(.channel--static):hover .channel__icon::after { animation: ch-ripple 1.3s var(--ease-out) infinite; }
+  .channel--wa .channel__icon { color: var(--wa); background: rgba(37, 211, 102, 0.14); }
+  .channel--wa:hover .channel__icon { background: var(--wa) !important; color: #062a16 !important; }
+  @keyframes ch-ripple { 0% { transform: scale(1); opacity: 0.8; } 100% { transform: scale(1.7); opacity: 0; } }
+  .channel :global(.channel__arrow) { color: var(--muted); transition: transform 0.5s var(--ease-out), color 0.3s; }
+  .channel:hover :global(.channel__arrow) { color: var(--glow); transform: translate(3px, -3px); }
+  .channel__wire { position: absolute; left: 0; bottom: 0; width: 100%; height: 2px; background: var(--grad-brand); transform: scaleX(0); transform-origin: 0 50%; transition: transform 0.8s var(--ease-out); }
+  .channel--wa .channel__wire { background: linear-gradient(90deg, #25d366, #b8f5cf); }
+  .channel:hover .channel__wire, .channel:focus-visible .channel__wire { transform: scaleX(1); }
+
+  /* form */
+  .qform {
+    position: relative; display: grid; gap: 16px; padding: clamp(20px, 3vw, 34px); border-radius: var(--radius-lg);
+    border: 1px solid rgba(255, 255, 255, 0.12); background: linear-gradient(160deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.02) 60%), rgba(8, 18, 42, 0.94);
+    box-shadow: 0 40px 90px -40px rgba(0, 0, 0, 0.85), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  }
+  /* the request circuit: a conductor along the top edge closes one third per required field */
+  .qform__wire { position: absolute; left: 24px; right: 24px; top: -1px; height: 2px; border-radius: 2px; background: rgba(255, 255, 255, 0.06); }
+  .qform__wire i { position: absolute; inset: 0; border-radius: inherit; background: var(--grad-brand); box-shadow: 0 0 12px rgba(255, 140, 60, 0.8); transform-origin: 0 50%; transform: scaleX(calc(var(--f, 0) / 3)); transition: transform 0.7s var(--ease-out), background 0.4s; }
+  .qform[data-filled='3'] .qform__wire i { background: linear-gradient(90deg, #f26a1b, #ffd79a 60%, #3ddc84); }
+  .qform__circuit { position: absolute; top: clamp(20px, 3vw, 34px); right: clamp(20px, 3vw, 34px); display: flex; align-items: center; gap: 8px; }
+  .qform__led { width: 10px; height: 10px; border-radius: 50%; background: #5a3b2a; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.15); transition: background-color 0.4s, box-shadow 0.5s; }
+  .qform__segs { display: flex; gap: 4px; }
+  .qform__segs i { width: 16px; height: 6px; border-radius: 3px; background: rgba(255, 255, 255, 0.12); transition: background-color 0.35s, box-shadow 0.35s; }
+  .qform[data-filled='1'] .qform__segs i:nth-child(-n + 1),
+  .qform[data-filled='2'] .qform__segs i:nth-child(-n + 2),
+  .qform[data-filled='3'] .qform__segs i { background: var(--orange-500); box-shadow: 0 0 8px rgba(255, 140, 60, 0.8); }
+  .qform[data-filled='3'] .qform__led { background: var(--ok); box-shadow: 0 0 0 3px rgba(61, 220, 132, 0.2), 0 0 14px rgba(61, 220, 132, 0.9); }
+  .qform__status { margin: -4px 0 0; font-size: 0.75rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+  .qform[data-filled='3'] .qform__status { color: var(--ok); }
+  .qform__eyebrow { margin: 0; padding-right: 96px; color: var(--accent-text); font-size: 0.75rem; letter-spacing: 0.14em; text-transform: uppercase; }
+  .qform__title { font-size: var(--step-1); letter-spacing: -0.02em; line-height: 1.2; margin-bottom: 4px; }
   .qform__row { display: grid; gap: 16px; }
-  @media (min-width: 560px) { .qform__row { grid-template-columns: 1fr 1fr; } }
-  .field { display: grid; gap: 6px; font-size: 0.85rem; color: var(--muted); }
-  .field input, .field select, .field textarea { width: 100%; font: inherit; font-size: 1rem; color: var(--fg); background: rgba(255, 255, 255, 0.05); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; transition: border-color 0.3s, background-color 0.3s; }
+  .qform { container-type: inline-size; }
+  @container (min-width: 460px) { .qform__row { grid-template-columns: 1fr 1fr; } }
+  .field { position: relative; display: grid; gap: 6px; font-size: 0.875rem; color: var(--muted); min-width: 0; }
+  .field em { font-style: normal; color: var(--accent-text); }
+  .field input, .field select, .field textarea { width: 100%; min-height: 50px; font: inherit; font-size: 1rem; color: var(--fg); background: rgba(255, 255, 255, 0.05); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; transition: border-color 0.3s, background-color 0.3s, box-shadow 0.4s; }
+  .field select { appearance: none; -webkit-appearance: none; padding-right: 42px; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='%23ffb454' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 14px center; text-overflow: ellipsis; }
   .field select option { color: #111; }
-  .field textarea { resize: vertical; min-height: 110px; }
-  .field input:focus, .field select:focus, .field textarea:focus { outline: none; border-color: var(--accent); background: rgba(255, 255, 255, 0.08); }
+  .field textarea { resize: vertical; min-height: 116px; }
+  .field input:focus, .field select:focus, .field textarea:focus { outline: none; border-color: var(--orange-400); background-color: rgba(255, 255, 255, 0.08); box-shadow: 0 0 0 4px rgba(242, 106, 27, 0.18), 0 0 24px -6px rgba(255, 140, 60, 0.6); }
   .field input:user-invalid, .field select:user-invalid, .field textarea:user-invalid { border-color: #ff6b6b; }
   .qform__error { color: #ffb4b4; font-size: 0.9rem; }
-  .qform__hint { color: var(--muted); font-size: 0.82rem; }
+  .qform__actions { margin-top: 4px; }
+  .qform__actions > .btn { flex: 1 1 auto; }
+  @media (max-width: 559px) { .qform__actions > .btn { flex: 1 1 100%; } }
+  @media (max-width: 380px) { .qform { padding: 20px 16px; } .qform__actions > .btn { padding-inline: 14px; font-size: 1rem; } .qform__circuit { top: 20px; right: 16px; } }
+  .qform[data-filled='3'] .qform__send { box-shadow: 0 0 0 4px rgba(242, 106, 27, 0.2), 0 16px 40px -10px rgba(242, 106, 27, 0.9); }
+  .qform[data-filled='3'] .qform__send::after { animation: qf-sheen 2.4s var(--ease-out) infinite; }
+  @keyframes qf-sheen { 0% { background-position: 120% 0; } 60%, 100% { background-position: -20% 0; } }
+  .qform__hint { color: var(--muted); font-size: 0.85rem; }
+
+  /* what happens next */
+  .contact-next__head { margin-bottom: clamp(36px, 5vw, 64px); }
+  .contact-next__head h2 { font-size: var(--step-3); max-width: 18ch; }
+
+  @media (prefers-reduced-motion: reduce) { .channel__icon::after, .qform[data-filled='3'] .qform__send::after { animation: none !important; } }
 </style>
 
 <script>
+  import { onPage } from '../scripts/engine.js';
   import { contact } from '../data/site.js';
-  function initForm() {
+  onPage(() => {
     const form = document.getElementById('qform') as HTMLFormElement | null;
     if (!form) return;
     const err = form.querySelector('.qform__error') as HTMLElement;
+    const status = form.querySelector('[data-status]') as HTMLElement;
     const compose = () => {
       const f = new FormData(form);
       const v = (k: string) => String(f.get(k) || '').trim();
@@ -129,16 +207,37 @@ import { brand, contact, services, social, wa } from '../data/site.js';
         `Mensaje: ${v('mensaje')}`,
       ].filter(Boolean).join('\n');
     };
-    form.addEventListener('submit', (e) => {
+    const onSubmit = (e: Event) => {
       e.preventDefault();
       const msg = compose();
       if (msg) window.open(`https://wa.me/${contact.whatsapp}?text=${encodeURIComponent(msg)}`, '_blank', 'noopener');
-    });
-    form.querySelector('[data-mail]')?.addEventListener('click', () => {
+    };
+    const onMail = () => {
       const msg = compose();
       if (msg) location.href = `mailto:${contact.email}?subject=${encodeURIComponent('Solicitud de servicio — sitio web')}&body=${encodeURIComponent(msg)}`;
-    });
-  }
-  initForm();
-  document.addEventListener('astro:after-swap', initForm);
+    };
+    // the request "circuit": one segment per required field filled
+    const required = [...form.querySelectorAll<HTMLInputElement>('[required]')];
+    let last = -1;
+    const onInput = () => {
+      const n = required.filter((el) => el.value.trim()).length;
+      if (n === last) return;
+      last = n;
+      form.dataset.filled = String(n);
+      form.style.setProperty('--f', String(n));
+      status.textContent = n === required.length ? 'Solicitud lista para enviar' : `Campos obligatorios: ${n} de ${required.length}`;
+      if (n === required.length) err.hidden = true;
+    };
+    form.addEventListener('submit', onSubmit);
+    form.querySelector('[data-mail]')?.addEventListener('click', onMail);
+    form.addEventListener('input', onInput);
+    form.addEventListener('change', onInput);
+    onInput();
+    return () => {
+      form.removeEventListener('submit', onSubmit);
+      form.querySelector('[data-mail]')?.removeEventListener('click', onMail);
+      form.removeEventListener('input', onInput);
+      form.removeEventListener('change', onInput);
+    };
+  });
 </script>

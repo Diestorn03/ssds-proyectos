@@ -1,0 +1,498 @@
+---
+/**
+ * #valores · "Por qué SSD&S" · dark.
+ * A giant bleed word POTENCIA in outline fills with the orange → gold ray (diagonal clip edge + a light ray riding it,
+ * a meter scale underneath lights up with it). Below, the heading sticks beside a cascading stack of the 4 values
+ * (engine .stack-card): each card rises tilted, stands up, "powers on" (outline number charges, icon + signal trace
+ * draw with DrawSVG) and its LED lights on the heading's index bus. Sparks run along the edge of the live card,
+ * an electric arc crackles on the top edge on hover. Closes with the quote (data-lit) and the CTA.
+ * Gates: desktop = scrubbed fill + drift, sticky stack, tilt, index nav. Touch / <768px = fill plays once, vertical
+ * cards (2 columns ≥700px) reveal once. Reduced = everything filled, drawn and lit, static. No JS = all visible.
+ */
+import { values, wa } from '../../data/site.js';
+
+// 48×48 stroke icons (drawn with DrawSVG): gauge, stopwatch + bolt, shield + bolt, pin + ground rings
+const icons = [
+  '<path d="M8 33a16 16 0 1 1 32 0"/><path d="M24 13v4M12.7 17.7l2.8 2.8M35.3 17.7l-2.8 2.8M8 33h4M36 33h4"/><path d="M24 33l7-9"/><circle cx="24" cy="33" r="2.6"/><path d="M11 39h26"/>',
+  '<circle cx="24" cy="27" r="15"/><path d="M20 6h8M24 6v6M35.5 14.5l3-3"/><path d="M26 17.5l-6.5 10.5h5.5l-1.5 8.5 6.5-10.5h-5.5l1.5-8.5Z"/>',
+  '<path d="M24 5 9.5 10.5v11c0 9.4 6.3 17.4 14.5 20.5 8.2-3.1 14.5-11.1 14.5-20.5v-11L24 5Z"/><path d="M26 14l-7 11.5h6l-2 9 7-11.5h-6l2-9Z"/>',
+  '<path d="M24 38s10.5-9.3 10.5-18.2a10.5 10.5 0 0 0-21 0C13.5 28.7 24 38 24 38Z"/><circle cx="24" cy="19.8" r="3.8"/><path d="M9 43.5c3.6-2.3 9-3.5 15-3.5s11.4 1.2 15 3.5"/>',
+];
+// 600×80 signal traces (xMinYMid slice: the key feature sits in the first 300 units so narrow cards keep it)
+const traces = [
+  { label: 'Medición', guides: 'M0 40H600M150 8V72M300 8V72', d: 'M0 40Q37.5 8 75 40T150 40T225 40T300 40T375 40T450 40T525 40T600 40' },
+  { label: 'Reacción', guides: 'M0 44H600M196 8V72M252 8V72', d: 'M0 44H170L182 44L192 10L204 74L214 26L224 56L234 38L243 48L252 44H600' },
+  { label: 'Protección', guides: 'M0 16H600M0 72H600', d: 'M0 44Q25 26 50 44T100 44L114 16H138L150 44L162 72H186L200 44Q225 26 250 44T300 44T350 44T400 44T450 44T500 44T550 44T600 44' },
+  { label: 'Alcance', guides: 'M0 64H600', d: 'M0 58L50 34L115 52L180 22L245 44L290 40H600', nodes: [[50, 34], [115, 52], [180, 22], [245, 44]] },
+];
+// hover arc: 3 irregular jitters (seeded, so builds are stable) that flicker in turn along the top edge
+const seeded = (seed) => () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+const arcs = [11, 29, 47].map((seed) => {
+  const r = seeded(seed);
+  const pts = [];
+  for (let x = 0; x < 400; x += 5 + r() * 11) pts.push(`${x.toFixed(1)},${(6 + (r() - 0.5) * (r() < 0.18 ? 11 : 5)).toFixed(1)}`);
+  return [...pts, '400,6'].join(' ');
+});
+const waInspeccion = wa('Hola SSD&S, quiero agendar una inspección de mis instalaciones eléctricas.');
+---
+<section id="valores" class="section val" data-theme="dark" aria-labelledby="valores-title">
+  <svg class="val__defs" width="0" height="0" aria-hidden="true" focusable="false">
+    <defs>
+      <linearGradient id="val-gi" gradientUnits="userSpaceOnUse" x1="6" y1="42" x2="42" y2="6"><stop offset="0" stop-color="#f26a1b" /><stop offset=".55" stop-color="#ff9c5c" /><stop offset="1" stop-color="#ffd79a" /></linearGradient>
+      <linearGradient id="val-gt" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="600" y2="0"><stop offset="0" stop-color="#f26a1b" /><stop offset=".5" stop-color="#ff9c5c" /><stop offset="1" stop-color="#ffd79a" /></linearGradient>
+    </defs>
+  </svg>
+
+  <!-- the bleed word: outline + gradient fill clipped on a diagonal edge driven by --p (0–100) -->
+  <div class="val__band" aria-hidden="true">
+    <div class="val__wordbox">
+      <span class="val__word">Potencia</span>
+      <span class="val__word val__word--fill">Potencia</span>
+      <span class="val__ray"><i></i></span>
+      <span class="val__scale"><span class="val__scale-on"></span></span>
+    </div>
+  </div>
+
+  <div class="container val__grid">
+    <header class="val__head">
+      <p class="eyebrow">Por qué SSD&amp;S</p>
+      <h2 id="valores-title" class="val__title" data-reveal="clip">Para que tu energía <span class="grad-text">nunca se detenga.</span></h2>
+      <p class="val__lead" data-reveal="up" data-delay=".12">Garantizamos rigor técnico, respuesta oportuna y máxima seguridad en cada proyecto.</p>
+      <nav class="val__nav" aria-label="Valores de SSD&S">
+        <ol class="val__index" role="list">
+          {values.map((v, i) => (
+            <li><a href={`#valor-${i + 1}`}><span class="val__led" aria-hidden="true"></span><span class="val__i mono" aria-hidden="true">0{i + 1}</span><span>{v.t}</span></a></li>
+          ))}
+        </ol>
+        <span class="val__bus" aria-hidden="true"><span></span></span>
+      </nav>
+    </header>
+
+    <ol class="val__deck" role="list">
+      {values.map((v, i) => (
+        <li id={`valor-${i + 1}`} class="val__card stack-card" style={`--k:${i}`} tabindex="-1" data-glow>
+          <div class="val__top">
+            <span class="val__num" data-n={`0${i + 1}`} aria-hidden="true">0{i + 1}</span>
+            <span class="val__icon" aria-hidden="true">
+              <svg viewBox="0 0 48 48" width="48" height="48" fill="none" stroke="url(#val-gi)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" focusable="false" set:html={icons[i]} />
+            </span>
+          </div>
+          <div class="val__scope" aria-hidden="true">
+            <svg class="val__trace" viewBox="0 0 600 80" preserveAspectRatio="xMinYMid slice" focusable="false">
+              <path class="tr-g" d={traces[i].guides} />
+              <path class="tr" d={traces[i].d} />
+              {traces[i].nodes?.map(([x, y]) => <circle class="tr tr-n" cx={x} cy={y} r="6" />)}
+              <path class="tr-p tr-p--halo" d={traces[i].d} pathLength="1" />
+              <path class="tr-p" d={traces[i].d} pathLength="1" />
+            </svg>
+            <span class="val__scope-tag mono">{traces[i].label}</span>
+          </div>
+          <div class="val__body">
+            <h3 class="val__h">{v.t}</h3>
+            <p class="val__text">{v.d}</p>
+          </div>
+          <span class="val__spark" aria-hidden="true"></span>
+          <span class="val__spark val__spark--b" aria-hidden="true"></span>
+          <svg class="val__arc" viewBox="0 0 400 12" preserveAspectRatio="none" aria-hidden="true" focusable="false">
+            {arcs.map((pts) => <g><polyline class="val__arc-halo" points={pts} /><polyline points={pts} /></g>)}
+          </svg>
+        </li>
+      ))}
+    </ol>
+  </div>
+
+  <div class="container val__close">
+    <div class="val__wire" aria-hidden="true"><span></span></div>
+    <figure class="val__quote">
+      <span class="val__qmark" aria-hidden="true"><i></i><i></i></span>
+      <blockquote>
+        <p data-lit>La ingeniería no es solo suministrar energía; es saber <em>distribuirla, automatizarla y protegerla.</em></p>
+      </blockquote>
+      <figcaption class="mono">SSD&amp;S · Potencia e Ingeniería Industrial</figcaption>
+    </figure>
+    <div class="val__cta" data-reveal="up">
+      <p class="val__warn">
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 3 2 20h20L12 3Z" /><path d="M12 10v4M12 17h.01" /></svg>
+        No esperes a la falla para actuar.
+      </p>
+      <a class="btn btn--primary" href={waInspeccion} target="_blank" rel="noopener" data-magnetic>
+        Agenda una inspección
+        <svg class="arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
+      </a>
+    </div>
+  </div>
+</section>
+
+<script>
+  import { onPage } from '../../scripts/engine.js';
+
+  onPage(({ gsap, ScrollTrigger, env, scrollTo, onRefresh }) => {
+    // scoped to this component: /nosotros/ has its own section#valores and this init runs on every page after home
+    const root = document.querySelector('#valores.val');
+    if (!root) return;
+    const q = (s, el = root) => [...el.querySelectorAll(s)];
+    const band = root.querySelector('.val__band');
+    const cards = q('.val__card');
+    const items = q('.val__index li');
+    const last = cards.length - 1;
+
+    // cumulative "power on": cards and LEDs up to i are on, i is the live one
+    let cur = -2;
+    const setCur = (i) => {
+      if (i === cur) return;
+      cur = i;
+      cards.forEach((c, k) => { c.classList.toggle('is-on', k <= i); c.classList.toggle('is-current', k === i); });
+      items.forEach((li, k) => { li.classList.toggle('is-on', k <= i); li.classList.toggle('is-cur', k === i); });
+      root.style.setProperty('--lvl', String(Math.max(0, i) / last));
+    };
+    if (env.reduced) { setCur(last); return; } // final state: filled word (CSS), drawn strokes, all LEDs on
+
+    const strokes = (c) => q('.val__icon :is(path, circle), .val__trace path.tr', c);
+    const nodes = (c) => q('.tr-n', c);
+    cards.forEach((c) => { gsap.set(strokes(c), { drawSVG: '0%' }); const n = nodes(c); if (n.length) gsap.set(n, { scale: 0, transformOrigin: '50% 50%' }); });
+    // draw(i) powers the strokes on; draw(i, false) discharges them (scroll back past a card on desktop)
+    const drawn = new Set();
+    const draw = (i, on = true) => {
+      if (drawn.has(i) === on) return;
+      if (on) drawn.add(i); else drawn.delete(i);
+      const n = nodes(cards[i]);
+      if (on) {
+        gsap.to(strokes(cards[i]), { drawSVG: '100%', duration: 1.3, ease: 'power2.inOut', stagger: 0.07, delay: 0.1, overwrite: true });
+        if (n.length) gsap.to(n, { scale: 1, duration: 0.5, ease: 'back.out(3)', stagger: 0.12, delay: 0.55, overwrite: true });
+      } else {
+        gsap.to(strokes(cards[i]), { drawSVG: '0%', duration: 0.45, ease: 'power2.in', stagger: { each: 0.03, from: 'end' }, overwrite: true });
+        if (n.length) gsap.to(n, { scale: 0, duration: 0.25, ease: 'power2.in', overwrite: true });
+      }
+    };
+
+    // idle loops (sparks, pulses, comets) only tick while the section / card is on screen
+    const io = new IntersectionObserver((entries) => entries.forEach((e) => e.target.classList.toggle(e.target === root ? 'is-live' : 'is-vis', e.isIntersecting)));
+    io.observe(root);
+
+    if (env.desktop) {
+      gsap.timeline({ scrollTrigger: { trigger: band, start: 'top 92%', end: 'bottom 22%', scrub: 0.5 } })
+        .fromTo(band, { '--p': 0 }, { '--p': 100, ease: 'none' }, 0)
+        .fromTo(root.querySelector('.val__wordbox'), { xPercent: 3 }, { xPercent: -5, ease: 'none' }, 0);
+
+      // each card rises tilted back and stands up as it reaches its sticky slot; engine .stack-card shrinks the one below
+      const stickTop = (card) => parseFloat(getComputedStyle(card).top) || 0;
+      const lead = () => innerHeight * 0.3;
+      const sts = cards.map((card, i) => {
+        gsap.fromTo(card, { rotationX: 9, transformPerspective: 1600 }, {
+          rotationX: 0, ease: 'none',
+          scrollTrigger: { trigger: card, start: 'top bottom', end: () => `top ${stickTop(card)}px`, scrub: true },
+        });
+        return ScrollTrigger.create({
+          trigger: card,
+          start: () => `top ${stickTop(card) + lead()}px`,
+          onEnter: () => { setCur(i); draw(i); },
+          onLeaveBack: () => { setCur(i - 1); draw(i, false); },
+        });
+      });
+
+      // the sticky head releases on the same frame as the stack (its margin-bottom = the height gap), measured once per refresh
+      const head = root.querySelector('.val__head');
+      const syncHead = () => {
+        head.style.marginBottom = '';
+        const c = cards[0];
+        const gap = stickTop(c) + c.offsetHeight + parseFloat(getComputedStyle(c).marginBottom) - stickTop(head) - head.offsetHeight;
+        head.style.marginBottom = `${Math.max(0, gap)}px`;
+      };
+      onRefresh(syncHead);
+      syncHead();
+
+      // index LEDs jump to the moment each card lands in its slot (sticky cards can't be anchor targets)
+      const nav = root.querySelector('.val__index');
+      const onNav = (e) => {
+        const a = e.target.closest('a');
+        if (!a) return;
+        const i = items.indexOf(a.parentElement);
+        if (i < 0) return;
+        e.preventDefault();
+        scrollTo(sts[i].start + lead() + 2, { offset: 0 });
+        cards[i].focus({ preventScroll: true });
+      };
+      nav.addEventListener('click', onNav);
+      return () => { io.disconnect(); nav.removeEventListener('click', onNav); head.style.marginBottom = ''; };
+    }
+
+    // touch / narrow: everything plays once on entry
+    gsap.to(band, { '--p': 100, duration: 2.2, ease: 'power2.inOut', scrollTrigger: { trigger: band, start: 'top 85%', once: true } });
+    cards.forEach((card, i) => {
+      io.observe(card);
+      gsap.fromTo(card, { y: 48, opacity: 0 }, {
+        y: 0, opacity: 1, duration: 1, ease: 'expo.out', clearProps: 'transform',
+        scrollTrigger: { trigger: card, start: 'top 88%', once: true, onEnter: () => { card.classList.add('is-on'); draw(i); } },
+      });
+    });
+    return () => io.disconnect();
+  });
+</script>
+
+<style>
+  .val { overflow: clip; padding-block: clamp(40px, 6vw, 96px) var(--section-y); }
+  .val::before {
+    content: ''; position: absolute; inset: 0; z-index: -1; pointer-events: none;
+    background:
+      radial-gradient(55% 30% at 100% 38%, rgba(37, 72, 138, 0.32), transparent 70%),
+      radial-gradient(45% 30% at 0% 70%, rgba(26, 52, 104, 0.4), transparent 70%);
+  }
+  .val__defs { position: absolute; width: 0; height: 0; overflow: hidden; }
+
+  /* ================= bleed word ================= */
+  .val__band { --p: 100; position: relative; display: flex; justify-content: center; margin-bottom: clamp(48px, 7vw, 104px); }
+  :global(.js) .val__band { --p: 0; }
+  .val__wordbox { position: relative; flex: none; font-size: 19.5vw; line-height: 0.8; will-change: transform; }
+  .val__word {
+    display: block; font-family: var(--font-display); font-weight: 800; letter-spacing: -0.045em; text-transform: uppercase;
+    white-space: nowrap; padding-inline: 0.02em; user-select: none;
+    /* variable fonts keep overlapping contours: paint the stroke first and cover its inner half with the bg */
+    color: var(--navy-900); -webkit-text-stroke: 3px rgba(255, 255, 255, 0.2); paint-order: stroke fill;
+  }
+  .val__word--fill {
+    /* box grown .12em up and down (line-height grown by the same .24em keeps the baseline) so background-clip:text
+       also paints the round glyph overshoot that pokes out of the .8 line box */
+    position: absolute; inset: -0.12em 0; line-height: 1.04; -webkit-text-stroke: 3px transparent; color: transparent;
+    background: linear-gradient(100deg, #e0560e 0%, #f26a1b 22%, #ff9c5c 55%, #ffd79a 100%);
+    -webkit-background-clip: text; background-clip: text;
+    /* diagonal edge leaning like the brand ray (20.5°): bottom at x, top at x + 1.04em·tan(20.5°) */
+    clip-path: polygon(-2% 0, calc(var(--p) * 1.12% - 12% + 0.39em) 0, calc(var(--p) * 1.12% - 12%) 100%, -2% 100%);
+  }
+  .val__ray {
+    position: absolute; inset: 0; pointer-events: none;
+    transform: translateX(calc(var(--p) * 1.12% - 12%));
+    opacity: clamp(0, min(var(--p), 100 - var(--p)) * 0.25, 1);
+    will-change: transform;
+  }
+  .val__ray i {
+    position: absolute; left: 0.195em; top: 50%; width: 3px; height: 1.2em; margin: -0.6em 0 0 -1.5px;
+    transform: rotate(20.5deg); border-radius: 3px;
+    background: linear-gradient(180deg, transparent, rgba(255, 215, 154, 0.9) 28%, #fff 50%, rgba(255, 156, 92, 0.9) 72%, transparent);
+    box-shadow: 0 0 14px 3px rgba(255, 140, 60, 0.55), 0 0 44px 10px rgba(255, 110, 30, 0.25);
+  }
+  /* meter scale under the word: dim ticks, lit ticks follow the fill edge, a comet runs along it while on screen */
+  .val__scale { position: absolute; left: 0; right: 0; top: 100%; margin-top: 0.07em; height: clamp(8px, 1.2vw, 16px); overflow: hidden; }
+  .val__scale, .val__scale-on {
+    background:
+      repeating-linear-gradient(90deg, var(--tick) 0 1px, transparent 1px 12.5%) 0 0 / 100% 100% no-repeat,
+      repeating-linear-gradient(90deg, var(--tick) 0 1px, transparent 1px 2.5%) 0 100% / 100% 45% no-repeat;
+  }
+  .val__scale { --tick: rgba(255, 255, 255, 0.18); }
+  .val__scale-on { --tick: #ffb454; position: absolute; inset: 0; clip-path: inset(0 calc(112% - var(--p) * 1.12%) 0 0); }
+  .val__scale::after {
+    content: ''; position: absolute; left: 0; bottom: 0; width: 100%; height: 2px;
+    background: linear-gradient(90deg, transparent 0 86%, rgba(255, 156, 92, 0.8) 95%, #fff 99.5%, transparent);
+    transform: translateX(-100%); animation: val-run 6.5s cubic-bezier(0.55, 0, 0.35, 1) infinite paused;
+  }
+  .val.is-live .val__scale::after { animation-play-state: running; }
+
+  /* ================= head ================= */
+  .val__grid { display: grid; gap: clamp(32px, 5vw, 56px); }
+  .val__head { max-width: 40rem; }
+  .val__title { font-size: clamp(2rem, 1.05rem + 3vw, 3.9rem); max-width: 13ch; }
+  .val__title .grad-text { padding-right: 0.06em; }
+  .val__lead { margin-top: clamp(16px, 2vw, 24px); font-size: var(--step-1); line-height: 1.45; color: var(--muted); max-width: 34ch; }
+  .val__nav { display: none; position: relative; margin-top: clamp(20px, 3.4vh, 36px); }
+  .val__index { list-style: none; display: grid; }
+  .val__index a {
+    display: flex; align-items: center; gap: 14px; min-height: 44px; padding-right: 8px;
+    color: var(--muted); font-weight: 500; font-size: 0.98rem; transition: color 0.4s;
+  }
+  .val__index a:hover, .val__index .is-cur a { color: var(--fg); }
+  .val__i { font-size: 0.75rem; color: color-mix(in srgb, var(--muted) 70%, transparent); transition: color 0.4s; }
+  .val__index .is-on .val__i { color: var(--accent-text); }
+  .val__led {
+    position: relative; z-index: 1; flex: none; width: 14px; height: 14px; border-radius: 50%;
+    background: var(--navy-900); border: 2px solid rgba(255, 255, 255, 0.24);
+    transition: background-color 0.4s, border-color 0.4s, box-shadow 0.5s;
+  }
+  .val__index .is-on .val__led { background: var(--orange-500); border-color: var(--glow); box-shadow: 0 0 12px 2px rgba(255, 140, 60, 0.65); }
+  .val__led::after { content: ''; position: absolute; inset: -6px; border-radius: 50%; border: 1px solid var(--orange-400); opacity: 0; }
+  .val__index .is-cur .val__led::after { animation: val-ping 1.8s var(--ease-out) infinite paused; }
+  .val.is-live .val__index .is-cur .val__led::after { animation-play-state: running; }
+  /* the bus: a conductor behind the LEDs that charges with the stack */
+  .val__bus { position: absolute; left: 6px; top: 22px; bottom: 22px; width: 2px; background: rgba(255, 255, 255, 0.1); border-radius: 2px; }
+  .val__bus span { position: absolute; inset: 0; background: var(--grad-brand-v); transform-origin: 50% 0; transform: scaleY(var(--lvl, 0)); transition: transform 0.7s var(--ease-out); box-shadow: 0 0 8px rgba(255, 140, 60, 0.6); }
+
+  /* ================= cards ================= */
+  .val__deck { list-style: none; display: grid; gap: 16px; }
+  .val__card {
+    position: relative; overflow: hidden; isolation: isolate;
+    display: grid; grid-template-rows: auto auto 1fr; gap: clamp(14px, 2vh, 22px); /* body takes the slack: titles align across a row */
+    padding: clamp(20px, 2.6vw, 36px);
+    border-radius: var(--radius-lg); border: 1px solid rgba(255, 255, 255, 0.09);
+    background:
+      radial-gradient(110% 80% at 100% 0%, rgba(242, 106, 27, 0.12), transparent 55%),
+      linear-gradient(165deg, #14295a 0%, #0f2149 55%, #0b1938 100%);
+    box-shadow: 0 30px 60px -34px rgba(0, 0, 0, 0.7), inset 0 1px 0 rgba(255, 255, 255, 0.07);
+    transition: border-color 0.4s;
+  }
+  .val__card:focus-visible { outline: 2px solid var(--focus); outline-offset: 4px; }
+  .val__top, .val__scope, .val__body { position: relative; z-index: 1; }
+  @media (hover: hover) { .val__card:hover { border-color: rgba(255, 140, 60, 0.4); } }
+
+  .val__top { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+  .val__num {
+    position: relative; font-family: var(--font-display); font-weight: 800; line-height: 0.8; letter-spacing: -0.06em;
+    font-size: clamp(3.6rem, 2.6rem + 3.8vw, 7rem); padding-right: 0.06em;
+    color: #14295a; -webkit-text-stroke: 3px rgba(255, 255, 255, 0.24); paint-order: stroke fill;
+  }
+  .val__num::after {
+    content: attr(data-n); position: absolute; inset: -0.12em 0; line-height: 1.04; -webkit-text-stroke: 3px transparent; paint-order: stroke fill;
+    background: var(--grad-brand-v); -webkit-background-clip: text; background-clip: text; color: transparent;
+    clip-path: inset(110% -10% -20% -10%); transition: clip-path 1.2s var(--ease-out) 0.15s;
+  }
+  .val__icon {
+    flex: none; display: grid; place-items: center; width: clamp(56px, 5vw, 72px); aspect-ratio: 1; border-radius: 50%;
+    border: 1px solid rgba(255, 255, 255, 0.12); background: radial-gradient(circle, rgba(242, 106, 27, 0.16), transparent 70%);
+    transition: border-color 0.6s, box-shadow 0.6s, transform 0.6s var(--ease-out);
+  }
+  .val__icon { position: relative; }
+  .val__icon svg { width: 58%; height: auto; }
+  .val__icon::before {
+    content: ''; position: absolute; inset: -7px; border-radius: 50%; border: 1px dashed rgba(255, 180, 84, 0.45);
+    opacity: 0; transition: opacity 0.6s; animation: val-spin 14s linear infinite paused;
+  }
+  .val__card.is-on .val__icon::before { opacity: 1; }
+  @media (hover: hover) { .val__card:hover .val__icon { transform: rotate(-8deg) scale(1.06); } }
+
+  /* signal trace: a small oscilloscope strip */
+  .val__scope {
+    position: relative; display: flex; align-items: center; min-height: 104px; padding: 26px 14px 12px;
+    border-radius: 14px; border: 1px solid rgba(255, 255, 255, 0.07);
+    background:
+      linear-gradient(rgba(255, 255, 255, 0.045) 1px, transparent 1px) 0 50% / 100% 25%,
+      linear-gradient(90deg, rgba(255, 255, 255, 0.045) 1px, transparent 1px) 0 0 / 10% 100%,
+      rgba(6, 13, 31, 0.45);
+    box-shadow: inset 0 0 30px rgba(0, 0, 0, 0.35);
+  }
+  .val__scope::after {
+    content: ''; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; opacity: 0;
+    background: radial-gradient(80% 90% at 50% 50%, rgba(255, 156, 92, 0.16), transparent 70%);
+    box-shadow: inset 0 0 0 1px rgba(255, 180, 84, 0.35);
+  }
+  .val__card.is-on .val__scope::after { animation: val-strike 0.9s steps(1, end) 0.05s; }
+  .val__trace { width: 100%; height: clamp(52px, 8vh, 76px); overflow: hidden; }
+  .val__trace path, .val__trace circle { fill: none; stroke-linecap: round; stroke-linejoin: round; }
+  .tr-g { stroke: rgba(255, 255, 255, 0.14); stroke-width: 1.2; stroke-dasharray: 3 7; }
+  .tr { stroke: url(#val-gt); stroke-width: 2.6; }
+  .tr-n { fill: var(--navy-800) !important; stroke-width: 2.2; }
+  .tr-p { stroke: #fff; stroke-width: 2.4; stroke-dasharray: 0.035 0.965; stroke-dashoffset: 1; opacity: 0; }
+  .tr-p--halo { stroke: #ff9c5c; stroke-opacity: 0.55; stroke-width: 7; }
+  .val__scope-tag { position: absolute; left: 14px; top: 8px; display: flex; align-items: center; gap: 8px; font-size: 0.75rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); }
+  .val__scope-tag::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: rgba(255, 255, 255, 0.25); transition: background-color 0.4s, box-shadow 0.4s; }
+  .val__card.is-on .val__scope-tag::before { background: var(--ok); box-shadow: 0 0 8px var(--ok); }
+
+  .val__h { font-size: clamp(1.4rem, 1.05rem + 1.1vw, 2.1rem); }
+  .val__text { margin-top: 10px; color: var(--muted); max-width: 44ch; line-height: 1.55; }
+
+  /* idle sparks along the top / bottom edge of the live card */
+  .val__spark {
+    position: absolute; left: 0; top: 0; width: 100%; height: 2px; pointer-events: none; z-index: 2;
+    background: linear-gradient(90deg, transparent 0 80%, rgba(255, 156, 92, 0.9) 94%, #fff 99%, transparent);
+    transform: translateX(-100%); animation: val-run 3.6s cubic-bezier(0.6, 0, 0.35, 1) infinite paused;
+  }
+  .val__spark--b { top: auto; bottom: 0; transform: translateX(100%) scaleX(-1); animation-name: val-run-b; animation-duration: 4.4s; animation-delay: -1.7s; }
+  /* hover: an electric arc crackles along the top edge (3 jittered paths, one visible at a time) */
+  .val__arc { position: absolute; z-index: 2; left: 18px; top: -5px; width: calc(100% - 36px); height: 12px; pointer-events: none; opacity: 0; transition: opacity 0.25s; overflow: visible; }
+  .val__arc g { opacity: 0; }
+  .val__arc polyline { fill: none; stroke: #fff4df; stroke-width: 1.3; vector-effect: non-scaling-stroke; stroke-linejoin: bevel; }
+  .val__arc .val__arc-halo { stroke: rgba(255, 140, 60, 0.5); stroke-width: 5; }
+  @media (hover: hover) {
+    .val__card:hover .val__arc { opacity: 1; }
+    .val__card:hover .val__arc g { animation: val-crackle 0.24s steps(1, end) infinite; }
+    .val__card:hover .val__arc g:nth-child(2) { animation-delay: -0.08s; }
+    .val__card:hover .val__arc g:nth-child(3) { animation-delay: -0.16s; }
+  }
+
+  /* ---------- powered state (JS adds .is-on; no JS / reduced = on) ---------- */
+  .val__card.is-on .val__num::after, :global(html:not(.js)) .val__num::after { clip-path: inset(-20% -10% -20% -10%); }
+  .val__card.is-on .val__icon { border-color: rgba(255, 180, 84, 0.45); box-shadow: 0 0 28px -6px rgba(242, 106, 27, 0.6); }
+  .val__card.is-on .tr-p { opacity: 1; }
+  .val.is-live .val__card.is-current :is(.val__spark, .tr-p), .val.is-live .val__card.is-current .val__icon::before,
+  .val__card.is-vis.is-on :is(.val__spark, .tr-p), .val__card.is-vis.is-on .val__icon::before { animation-play-state: running; }
+  .tr-p { animation: val-pulse 2.8s linear infinite paused; }
+
+  /* ================= quote + CTA ================= */
+  .val__close { margin-top: clamp(72px, 11vw, 160px); }
+  .val__wire { position: relative; height: 1px; background: var(--line); overflow: hidden; margin-bottom: clamp(40px, 6vw, 80px); }
+  .val__wire span { position: absolute; inset: 0; background: linear-gradient(90deg, transparent 0 82%, rgba(255, 156, 92, 0.9) 95%, #fff 99.5%, transparent); transform: translateX(-100%); animation: val-run 5.2s cubic-bezier(0.55, 0, 0.35, 1) infinite paused; }
+  .val.is-live .val__wire span { animation-play-state: running; }
+  .val__quote { position: relative; margin: 0; display: grid; gap: 22px; }
+  .val__qmark { display: flex; gap: 10px; height: clamp(40px, 5vw, 64px); }
+  .val__qmark i { position: relative; overflow: hidden; width: clamp(8px, 0.9vw, 12px); height: 100%; border-radius: 3px; background: var(--grad-brand-v); transform: skewX(-20deg); box-shadow: 0 0 20px rgba(255, 140, 60, 0.45); }
+  /* a current drops down the two bars, one after the other, while the section is on screen */
+  .val__qmark i::after {
+    content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, transparent 0 50%, rgba(255, 244, 223, 0.95) 88%, transparent);
+    transform: translateY(-100%); animation: val-fall 3.2s cubic-bezier(0.55, 0, 0.35, 1) infinite paused;
+  }
+  .val__qmark i + i::after { animation-delay: 0.28s; }
+  .val.is-live .val__qmark i::after { animation-play-state: running; }
+  .val__quote blockquote { margin: 0; }
+  .val__quote p {
+    font-family: var(--font-display); font-weight: 600; letter-spacing: -0.025em; line-height: 1.14;
+    font-size: clamp(1.55rem, 0.9rem + 2.9vw, 3.6rem); max-width: 24ch; text-wrap: balance;
+  }
+  .val__quote em { font-style: italic; font-weight: 800; }
+  /* gradient on the phrase: on each split word when the engine lights it, on the whole em otherwise */
+  .val__quote em, .val__quote em :global(.lit-word) { background: var(--grad-brand); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .val__quote em:has(:global(.lit-word)) { background: none; }
+  .val__quote em :global(.lit-word) { padding-right: 0.08em; margin-right: -0.08em; }
+  .val__quote figcaption { font-size: 0.78rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); }
+  .val__cta { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 18px 28px; margin-top: clamp(36px, 5vw, 64px); padding-top: clamp(24px, 3vw, 32px); border-top: 1px solid var(--line); }
+  .val__warn { display: flex; align-items: center; gap: 12px; font-family: var(--font-display); font-weight: 600; font-size: var(--step-1); letter-spacing: -0.01em; line-height: 1.3; }
+  .val__warn svg { flex: none; color: var(--accent-text); }
+  @media (max-width: 560px) { .val__cta .btn { flex: 1 1 100%; } }
+  /* wide: the warning + CTA stand beside the quote, on a vertical conductor */
+  @media (min-width: 1100px) {
+    .val__close { display: grid; grid-template-columns: minmax(0, 1fr) minmax(260px, 21rem); column-gap: clamp(48px, 5vw, 96px); align-items: end; }
+    .val__wire { grid-column: 1 / -1; }
+    .val__cta { flex-direction: column; align-items: flex-start; gap: 24px; margin: 0 0 0.4em; padding: 4px 0 4px clamp(24px, 2.4vw, 36px); border-top: 0; border-left: 1px solid var(--line); }
+  }
+
+  /* ================= layouts ================= */
+  @media (min-width: 700px) { .val__deck { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+  /* desktop gate: sticky heading beside a cascading sticky stack */
+  @media (min-width: 768px) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
+    .val__grid { grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: clamp(32px, 5.5vw, 96px); align-items: start; }
+    /* the sticky head must fit short laptop viewports (≈620px): type and gaps scale with the viewport height */
+    .val__head { position: sticky; top: calc(var(--header-h) + min(6vh, 28px)); }
+    .val__title { font-size: min(clamp(2rem, 1.05rem + 3vw, 3.9rem), 7.2svh); }
+    .val__lead { font-size: min(var(--step-1), 2.8svh); margin-top: min(clamp(16px, 2vw, 24px), 2.4svh); }
+    .val__nav { display: block; margin-top: min(3.4vh, 24px); }
+    .val__deck { display: block; }
+    .val__deck::after { content: ''; display: block; height: 16vh; } /* in-flow dwell: the full stack holds before it leaves */
+    .val__card {
+      position: sticky; top: calc(var(--header-h) + 4vh + var(--k) * 16px);
+      min-height: min(clamp(460px, 50vh, 600px), calc(100svh - var(--header-h) - 4vh - 76px));
+      /* sticky is bounded by the deck's content box: top + margin-bottom is the same for every card (last one too),
+         so all four release on the same frame with the 16px cascade intact */
+      margin-bottom: calc(min(28vh, 300px) - var(--k) * 16px); transform-origin: 50% 0;
+      grid-template-rows: auto 1fr auto;
+    }
+  }
+  @media (min-width: 768px) and (pointer: fine) and (prefers-reduced-motion: no-preference) and (max-height: 540px) {
+    .val__head { position: static; }
+  }
+  @media (min-width: 768px) and (pointer: fine) and (prefers-reduced-motion: no-preference) and (max-width: 1023px) {
+    .val__grid { grid-template-columns: minmax(0, 4fr) minmax(0, 6fr); }
+  }
+
+  /* reduced motion: final state, nothing ticks */
+  @media (prefers-reduced-motion: reduce) {
+    :global(.js) .val__band { --p: 100; }
+    .val__num::after { clip-path: inset(-20% -10% -20% -10%); transition: none; }
+    .val__scope::after, .val__icon::before, .val__led::after { animation: none !important; }
+    .val__spark, .val__arc, .tr-p, .val__scale::after, .val__wire span, .val__qmark i::after { display: none; }
+  }
+
+  @keyframes val-run { from { transform: translateX(-100%); } to { transform: translateX(100%); } }
+  @keyframes val-run-b { from { transform: translateX(100%) scaleX(-1); } to { transform: translateX(-100%) scaleX(-1); } }
+  @keyframes val-pulse { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
+  @keyframes val-ping { 0% { opacity: 0.9; transform: scale(0.6); } 80%, 100% { opacity: 0; transform: scale(1.5); } }
+  @keyframes val-spin { to { transform: rotate(360deg); } }
+  @keyframes val-strike { 0% { opacity: 0.9; } 12% { opacity: 0.1; } 22% { opacity: 1; } 34% { opacity: 0.25; } 48% { opacity: 0.8; } 100% { opacity: 0; } }
+  @keyframes val-fall { from { transform: translateY(-100%); } 45%, to { transform: translateY(100%); } }
+  @keyframes val-crackle { 0% { opacity: 1; } 33.34%, 100% { opacity: 0; } }
+</style>

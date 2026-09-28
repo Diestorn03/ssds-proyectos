@@ -1,80 +1,103 @@
 ---
+/**
+ * Header: fixed, glass once scrolled, hides on scroll down / shows on scroll up, takes the theme (dark|light) of the
+ * section under it (chrome.js). Persists across client-side navigations. Mobile menu = <dialog> that opens as a
+ * circle from the burger (--mx/--my), closes on Esc, backdrop click, link click or ≥900px.
+ */
 import Logo from './Logo.astro';
-import { nav, wa } from '../../data/site.js';
+import Icon from '../ui/Icon.astro';
+import { nav, wa, contact, social } from '../../data/site.js';
 const base = import.meta.env.BASE_URL.replace(/\/$/, '');
 const path = Astro.url.pathname.replace(base, '') || '/';
 const isActive = (href: string) => (href === '/' ? path === '/' : path.startsWith(href));
+const items = [{ href: '/', label: 'Inicio', nav: 'home' }, ...nav.map((n) => ({ ...n, nav: n.href.replace(/\//g, '') }))];
 ---
-<header class="header" data-header>
-  <div class="header__bar container">
-    <a class="header__brand" href={`${base}/`} aria-label="SSD&S C.A. — inicio" data-magnetic="0.2">
+<header class="hdr" data-header data-theme="dark" transition:persist transition:name="site-header">
+  <div class="hdr__bar container">
+    <a class="hdr__brand" href={`${base}/`} aria-label="SSD&S C.A. — inicio" data-magnetic="0.2">
       <Logo size={38} />
     </a>
 
-    <nav class="header__nav" id="nav" aria-label="Principal">
+    <nav class="hdr__nav" aria-label="Principal">
       <ul>
         {nav.map((item) => (
-          <li><a href={`${base}${item.href}`} aria-current={isActive(item.href) ? 'page' : undefined}>{item.label}</a></li>
+          <li><a href={`${base}${item.href}`} data-nav={item.href.replace(/\//g, '')} aria-current={isActive(item.href) ? 'page' : undefined}>{item.label}</a></li>
         ))}
       </ul>
-      <a class="btn btn--primary btn--sm header__cta" href={wa()} target="_blank" rel="noopener">
-        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5.1-1.3A10 10 0 1 0 12 2Zm0 18.2a8.2 8.2 0 0 1-4.2-1.2l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 1 1 12 20.2Zm4.5-6.1c-.2-.1-1.5-.7-1.7-.8-.2-.1-.4-.1-.6.1l-.8 1c-.1.2-.3.2-.5.1a6.7 6.7 0 0 1-3.3-2.9c-.3-.4.2-.4.7-1.3.1-.2 0-.3 0-.5l-.8-1.8c-.2-.5-.4-.4-.6-.4h-.5a1 1 0 0 0-.7.3 3 3 0 0 0-.9 2.2 5.2 5.2 0 0 0 1.1 2.8 12 12 0 0 0 4.6 4c1.7.7 2.3.8 3.2.7a2.7 2.7 0 0 0 1.8-1.3c.2-.6.2-1.1.2-1.2l-.5-.4Z"/></svg>
-        Cotizar por WhatsApp
-      </a>
     </nav>
 
-    <button class="header__toggle" type="button" aria-controls="nav" aria-expanded="false" aria-label="Abrir menú">
-      <span></span><span></span>
-    </button>
+    <div class="hdr__actions">
+      <a class="btn btn--primary btn--sm hdr__cta" href={wa()} target="_blank" rel="noopener"><Icon name="whatsapp" size={18} />Cotizar por WhatsApp</a>
+      <button class="hdr__burger" type="button" data-menu-open aria-controls="ssds-menu" aria-expanded="false" aria-label="Abrir menú">
+        <span></span><span></span>
+      </button>
+    </div>
   </div>
+
+  <dialog id="ssds-menu" class="menu" aria-label="Menú">
+    <div class="menu__panel">
+      <button class="menu__close" type="button" data-menu-close aria-label="Cerrar menú"><Icon name="close" size={22} /></button>
+      <ul class="menu__list">
+        {items.map((item, i) => (
+          <li style={`--i:${i}`}><a href={`${base}${item.href}`} data-nav={item.nav}><span class="mono">0{i + 1}</span>{item.label}</a></li>
+        ))}
+        <li style={`--i:${items.length}`}><a href={`${base}/diagnostico/`} data-nav="diagnostico"><span class="mono">0{items.length + 1}</span>Diagnóstico rápido</a></li>
+      </ul>
+      <div class="menu__foot">
+        <a class="btn btn--wa" href={wa()} target="_blank" rel="noopener"><Icon name="whatsapp" size={20} />Cotizar por WhatsApp</a>
+        <a class="menu__line" href={`tel:${contact.phoneE164}`}><Icon name="phone" size={16} />{contact.phoneDisplay}</a>
+        <a class="menu__line" href={social.instagram} target="_blank" rel="noopener"><Icon name="instagram" size={16} />@{contact.instagram}</a>
+      </div>
+      <span class="streak" style="top: 22%; --angle: -14deg; --streak-opacity: .6" aria-hidden="true"></span>
+    </div>
+  </dialog>
 </header>
 
-<style>
-  .header { position: fixed; inset: 0 0 auto 0; z-index: 100; height: var(--header-h); color: var(--white); transition: background-color 0.4s, box-shadow 0.4s, backdrop-filter 0.4s; }
-  .header::before { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(6, 13, 31, 0.85), rgba(6, 13, 31, 0)); opacity: 1; transition: opacity 0.4s; pointer-events: none; }
-  .header.is-scrolled { background: rgba(6, 13, 31, 0.72); backdrop-filter: blur(14px) saturate(140%); -webkit-backdrop-filter: blur(14px) saturate(140%); box-shadow: 0 1px 0 rgba(255, 255, 255, 0.06); }
-  .header.is-scrolled::before { opacity: 0; }
-  .header__bar { position: relative; display: flex; align-items: center; justify-content: space-between; height: 100%; }
-  .header__brand { display: inline-flex; }
-  .header__nav ul { display: flex; gap: 6px; list-style: none; margin: 0; padding: 0; }
-  .header__nav li a { position: relative; display: inline-block; padding: 10px 14px; font-family: var(--font-display); font-weight: 600; font-size: 0.95rem; letter-spacing: -0.01em; color: rgba(255, 255, 255, 0.82); transition: color 0.3s; }
-  .header__nav li a::after { content: ''; position: absolute; left: 14px; right: 14px; bottom: 6px; height: 2px; border-radius: 2px; background: linear-gradient(90deg, var(--orange-500), var(--glow)); transform: scaleX(0); transform-origin: left; transition: transform 0.5s var(--ease-out); }
-  .header__nav li a:hover, .header__nav li a[aria-current='page'] { color: #fff; }
-  .header__nav li a:hover::after, .header__nav li a[aria-current='page']::after { transform: scaleX(1); }
-  .header__toggle { display: none; }
-
-  @media (min-width: 900px) {
-    .header__nav { display: flex; align-items: center; gap: 18px; }
-  }
-  @media (max-width: 899px) {
-    .header__toggle { position: relative; z-index: 3; display: grid; place-items: center; gap: 6px; width: 46px; height: 46px; border-radius: 12px; border: 1px solid rgba(255, 255, 255, 0.14); background: rgba(255, 255, 255, 0.05); }
-    .header__toggle span { width: 20px; height: 2px; background: #fff; border-radius: 2px; transition: transform 0.4s var(--ease-out), opacity 0.3s; display: block; }
-    .header__toggle[aria-expanded='true'] span:first-child { transform: translateY(4px) rotate(45deg); }
-    .header__toggle[aria-expanded='true'] span:last-child { transform: translateY(-4px) rotate(-45deg); }
-    .header__nav { position: fixed; inset: 0; z-index: 2; display: flex; flex-direction: column; justify-content: center; gap: 28px; padding: calc(var(--header-h) + 24px) var(--gutter) 40px; background: linear-gradient(160deg, var(--navy-950), var(--navy-800)); opacity: 0; visibility: hidden; transform: translateY(-12px); transition: opacity 0.4s, visibility 0.4s, transform 0.5s var(--ease-out); }
-    .header__nav.is-open { opacity: 1; visibility: visible; transform: none; }
-    .header__nav ul { flex-direction: column; gap: 4px; }
-    .header__nav li a { font-size: var(--step-3); padding: 8px 0; color: #fff; }
-    .header__nav li a::after { display: none; }
-    .header__cta { align-self: flex-start; min-height: 52px; font-size: var(--step-0); padding: 0 24px; }
-  }
-</style>
-
 <script>
-  function initMenu() {
-    const btn = document.querySelector('.header__toggle') as HTMLButtonElement | null;
-    const nav = document.getElementById('nav');
-    if (!btn || !nav) return;
-    const set = (open: boolean) => {
-      btn.setAttribute('aria-expanded', String(open));
-      btn.setAttribute('aria-label', open ? 'Cerrar menú' : 'Abrir menú');
-      nav.classList.toggle('is-open', open);
-      document.documentElement.style.overflow = open ? 'hidden' : '';
-    };
-    btn.addEventListener('click', () => set(btn.getAttribute('aria-expanded') !== 'true'));
-    nav.addEventListener('click', (e) => { if ((e.target as HTMLElement).closest('a')) set(false); });
-    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') set(false); });
-  }
-  initMenu();
-  document.addEventListener('astro:after-swap', initMenu);
+  import '../../scripts/chrome.js';
 </script>
+
+<style>
+  .hdr { position: fixed; inset: 0 0 auto 0; z-index: var(--z-header); height: var(--header-h); color: #fff; transition: transform 0.55s var(--ease-out), background-color 0.4s, box-shadow 0.4s, color 0.3s; }
+  .hdr::before { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(6, 13, 31, 0.85), rgba(6, 13, 31, 0)); opacity: 1; transition: opacity 0.4s; pointer-events: none; }
+  .hdr.is-scrolled { background: rgba(6, 13, 31, 0.72); -webkit-backdrop-filter: blur(14px) saturate(140%); backdrop-filter: blur(14px) saturate(140%); box-shadow: 0 1px 0 rgba(255, 255, 255, 0.06); }
+  .hdr.is-scrolled::before { opacity: 0; }
+  .hdr.is-hidden { transform: translateY(-100%); }
+  :global(html.menu-open) .hdr { transform: none; }
+  /* over a light section the header turns to ink (tokens cascade into the logo) */
+  .hdr[data-theme='light'] { color: var(--ink); --fg: var(--ink); --muted: var(--ink-2); --logo-b: var(--ink); }
+  .hdr[data-theme='light']::before { opacity: 0; }
+  .hdr[data-theme='light'].is-scrolled { background: rgba(244, 246, 251, 0.82); box-shadow: 0 1px 0 rgba(11, 26, 58, 0.08); }
+
+  .hdr__bar { position: relative; display: flex; align-items: center; justify-content: space-between; gap: 16px; height: 100%; }
+  .hdr__brand { display: inline-flex; }
+  .hdr__nav ul { display: none; gap: 6px; list-style: none; }
+  .hdr__nav li a { position: relative; display: inline-block; padding: 10px 14px; font-family: var(--font-display); font-weight: 600; font-size: 0.95rem; letter-spacing: -0.01em; color: currentColor; opacity: 0.82; transition: opacity 0.3s; }
+  .hdr__nav li a::after { content: ''; position: absolute; left: 14px; right: 14px; bottom: 6px; height: 2px; border-radius: 2px; background: var(--grad-brand); transform: scaleX(0); transform-origin: left; transition: transform 0.5s var(--ease-out); }
+  .hdr__nav li a:hover, .hdr__nav li a[aria-current='page'] { opacity: 1; }
+  .hdr__nav li a:hover::after, .hdr__nav li a[aria-current='page']::after { transform: scaleX(1); }
+  .hdr__actions { display: flex; align-items: center; gap: 10px; }
+  .hdr__cta { display: none; }
+  .hdr__burger { position: relative; display: grid; place-items: center; gap: 6px; width: 46px; height: 46px; border-radius: 12px; border: 1px solid color-mix(in srgb, currentColor 22%, transparent); background: color-mix(in srgb, currentColor 6%, transparent); }
+  .hdr__burger span { width: 20px; height: 2px; background: currentColor; border-radius: 2px; display: block; }
+  @media (min-width: 600px) { .hdr__cta { display: inline-flex; } }
+  @media (min-width: 900px) {
+    .hdr__nav ul { display: flex; }
+    .hdr__burger { display: none; }
+  }
+
+  /* ---------- mobile menu: full-screen dialog opening as a circle from the burger ---------- */
+  .menu { position: fixed; inset: 0; width: 100%; height: 100%; max-width: none; max-height: none; margin: 0; padding: 0; border: 0; background: linear-gradient(160deg, var(--navy-950), var(--navy-800)); color: #fff; overflow: hidden; clip-path: circle(0 at var(--mx, 90%) var(--my, 32px)); transition: clip-path 0.6s var(--ease-in-out); }
+  .menu.is-open { clip-path: circle(150vmax at var(--mx, 90%) var(--my, 32px)); }
+  .menu::backdrop { background: transparent; }
+  .menu__panel { position: relative; display: grid; align-content: center; gap: clamp(28px, 6vh, 48px); min-height: 100%; padding: calc(var(--header-h) + 24px) var(--gutter) max(32px, env(safe-area-inset-bottom)); overflow: hidden; }
+  .menu__close { position: absolute; top: calc((var(--header-h) - 46px) / 2); right: var(--gutter); display: grid; place-items: center; width: 46px; height: 46px; border-radius: 12px; border: 1px solid rgba(255, 255, 255, 0.14); background: rgba(255, 255, 255, 0.05); }
+  .menu__list { list-style: none; display: grid; gap: 4px; }
+  .menu__list a { display: flex; align-items: baseline; gap: 14px; padding: 10px 0; font-family: var(--font-display); font-weight: 700; font-size: var(--step-3); letter-spacing: -0.03em; line-height: 1; opacity: 0; transform: translateY(14px); transition: opacity 0.5s var(--ease-out), transform 0.6s var(--ease-out); transition-delay: calc(0.18s + var(--i) * 0.06s); }
+  .menu.is-open .menu__list a { opacity: 1; transform: none; }
+  .menu__list a[aria-current='page'] { color: var(--glow); }
+  .menu__list .mono { font-size: 0.72rem; color: var(--accent); }
+  .menu__foot { display: grid; gap: 14px; justify-items: start; padding-top: 24px; border-top: 1px solid var(--line); }
+  .menu__line { display: inline-flex; align-items: center; gap: 10px; color: var(--muted); font-family: var(--font-mono); font-size: 0.85rem; }
+  .menu__line svg { color: var(--accent); }
+</style>

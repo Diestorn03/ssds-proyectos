@@ -1,0 +1,518 @@
+---
+/**
+ * #cobertura · "Red nacional" (docs/CONCEPTO.md, scene 5). Dark.
+ * Real Venezuela silhouette (Natural Earth via tools/venezuela-map.mjs → data/venezuela.js) drawn as an engineering
+ * display. Maracay is the origin: a diagonal ray scans the country in, the hub powers up, illustrative energy routes are
+ * drawn to 11 cities (DrawSVG) with a spark riding each one (MotionPath), every city pings when reached, the "reach"
+ * spreads over the dot matrix and every state capital lights up. The Guayana Esequiba is drawn hatched (Zona en Reclamación).
+ *   Desktop (env.desktop, ≥1024 px): sticky map, the copy column scrolls beside it and scrubs the timeline;
+ *     pointer tilt + coordinate probe; idle spark relays once the network is complete.
+ *   Touch / narrow: map above the copy, the same timeline plays once when the map is in view.
+ *   Reduced motion / no JS: the markup IS the final state (every route drawn, every label visible).
+ * The state picker (everywhere, JS only) writes the WhatsApp message for the chosen state and draws its own route.
+ * Logic: src/scripts/cobertura.js
+ */
+import Icon from '../ui/Icon.astro';
+import { sectors, services, process, wa, posts, postUrl } from '../../data/site.js';
+import { viewBox, width, height, path, cities, states, zone, graticule, projection } from '../../data/venezuela.js';
+
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+const origin = cities.find((c) => c.origin);
+const routes = cities.filter((c) => !c.origin);
+const pct = (v, total) => `${((v / total) * 100).toFixed(2)}%`;
+const at = (p) => `--x:${pct(p.x, width)};--y:${pct(p.y, height)}`;
+// short names for narrow maps; "minor" labels (clustered around the hub) only show on wide maps
+const short = { 'San Fernando de Apure': 'S. Fernando', 'Ciudad Guayana': 'C. Guayana', 'Puerto Ayacucho': 'Pto. Ayacucho' };
+const minor = new Set(['Valencia', 'Caracas', 'Barquisimeto', 'Barcelona']);
+// hexagon (the isotype's shape) around the hub
+const hex = (r) => Array.from({ length: 6 }, (_, i) => { const a = (Math.PI / 3) * i - Math.PI / 2; return `${(r * Math.cos(a)).toFixed(1)},${(r * Math.sin(a)).toFixed(1)}`; }).join(' ');
+const stateOptions = [...states].sort((a, b) => a.state.localeCompare(b.state, 'es'));
+const stateNodes = [...states].sort((a, b) => Math.hypot(a.x - origin.x, a.y - origin.y) - Math.hypot(b.x - origin.x, b.y - origin.y));
+const post = posts.find((p) => p.code === 'DdXQ8czuyU9');
+const postDate = new Date(`${post.date}T12:00:00`).toLocaleDateString('es-VE', { day: 'numeric', month: 'short', year: 'numeric' });
+const sectorIcon = { Industrial: 'factory', Comercial: 'building', Residencial: 'home' };
+const coord = (lat, lon) => `${Math.abs(lat).toFixed(2)}°N · ${Math.abs(lon).toFixed(2)}°W`;
+const ll = { lat: projection.lat0 - origin.y / projection.k, lon: projection.lon0 + origin.x / (projection.k * projection.cos) };
+---
+<section id="cobertura" class="section cob" data-theme="dark" aria-labelledby="cobertura-title">
+  <div class="cob__bg" aria-hidden="true">
+    <span class="streak cob__streak cob__streak--a"></span>
+    <span class="streak cob__streak cob__streak--b"></span>
+  </div>
+
+  <div class="cob__grid">
+    <header class="cob__head">
+      <p class="eyebrow">Cobertura nacional</p>
+      <h2 id="cobertura-title" class="cob__title" data-split="words">La potencia de nuestra ingeniería <span class="cob__hl">no tiene fronteras</span> dentro de Venezuela.</h2>
+      <p class="lead cob__lead" data-reveal="up" data-delay=".1">Operamos desde Maracay pero brindamos atención a todo el país: desplegamos cuadrillas especializadas en cualquier estado para redes, transformadores, plantas eléctricas y climatización.</p>
+    </header>
+
+    <div class="cob__stage">
+      <figure class="cob__map" data-proj={JSON.stringify(projection)} data-w={width} data-h={height} style={`--ar:${(width / height).toFixed(4)}`}>
+        <div class="cob__hud cob__hud--top" aria-hidden="true">
+          <span class="cob__hud-id"><span class="cob__hud-hex"></span>Red nacional · SSD&amp;S</span>
+          <span class="cob__dest" hidden>Destino · <b></b></span>
+          <span class="cob__hud-r">
+            <span class="cob__probe" data-home={coord(ll.lat, ll.lon)}>{coord(ll.lat, ll.lon)}</span>
+            <span class="cob__status"><i class="cob__led"></i><span>Rutas <b class="cob__count">{String(routes.length).padStart(2, '0')}</b>/{routes.length}</span></span>
+          </span>
+        </div>
+
+        <div class="cob__plane">
+          <svg class="cob__base" viewBox={viewBox} aria-hidden="true" focusable="false">
+            <defs>
+              <pattern id="cob-dots" width="11" height="11" patternUnits="userSpaceOnUse"><circle cx="5.5" cy="5.5" r="1.6" fill="#a9b6cf" /></pattern>
+              <pattern id="cob-dots-hot" width="11" height="11" patternUnits="userSpaceOnUse"><circle cx="5.5" cy="5.5" r="2" fill="#ffb454" /></pattern>
+              <pattern id="cob-hatch" width="9" height="9" patternUnits="userSpaceOnUse" patternTransform="rotate(-35)"><rect width="2.4" height="9" fill="#ff9c5c" /></pattern>
+              <clipPath id="cob-land"><path d={path} /></clipPath>
+              <clipPath id="cob-eseq"><path d={zone.clip} /></clipPath>
+              <clipPath id="cob-reach"><circle class="cob__reach" cx={origin.x} cy={origin.y} r="1100" /></clipPath>
+              <linearGradient id="cob-edge" x1="0" y1="0" x2="1" y2=".5">
+                <stop offset="0" stop-color="#f26a1b" /><stop offset=".5" stop-color="#ff9c5c" /><stop offset="1" stop-color="#ffd79a" />
+              </linearGradient>
+            </defs>
+            <g class="cob__grat">
+              {graticule.lats.map((l) => <line x1="0" x2={width} y1={l.y} y2={l.y} />)}
+              {graticule.lons.map((l) => <line y1="0" y2={height} x1={l.x} x2={l.x} />)}
+            </g>
+            <g class="cob__zone" clip-path="url(#cob-eseq)">
+              <path class="cob__zone-fill" d={zone.path} />
+              <path class="cob__zone-edge" d={zone.path} />
+            </g>
+            <path class="cob__zone-river" d={zone.river} />
+            <path class="cob__land" d={path} />
+            <g clip-path="url(#cob-land)">
+              <rect class="cob__dots" width={width} height={height} fill="url(#cob-dots)" />
+              <rect class="cob__dots-hot" width={width} height={height} fill="url(#cob-dots-hot)" clip-path="url(#cob-reach)" />
+            </g>
+            <path class="cob__edge-glow" d={path} />
+            <path class="cob__edge" d={path} />
+          </svg>
+
+          <div class="cob__raybox" aria-hidden="true"><div class="cob__ray">
+            <svg viewBox="0 0 100 100" preserveAspectRatio="none" focusable="false">
+              <defs>
+                <linearGradient id="cob-ray" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0" stop-color="#ffd79a" stop-opacity="0" /><stop offset=".3" stop-color="#ffd79a" /><stop offset=".7" stop-color="#ff7d33" /><stop offset="1" stop-color="#f26a1b" stop-opacity="0" />
+                </linearGradient>
+                <linearGradient id="cob-wash" x1="1" y1="0" x2="0" y2="0">
+                  <stop offset="0" stop-color="#ff9c5c" stop-opacity=".22" /><stop offset="1" stop-color="#ff9c5c" stop-opacity="0" />
+                </linearGradient>
+              </defs>
+              <polygon points="25,0 0,100 -22,100 3,0" fill="url(#cob-wash)" />
+              <line x1="25" y1="0" x2="0" y2="100" stroke="url(#cob-ray)" stroke-width="7" opacity=".35" vector-effect="non-scaling-stroke" />
+              <line x1="25" y1="0" x2="0" y2="100" stroke="url(#cob-ray)" stroke-width="2" vector-effect="non-scaling-stroke" />
+            </svg>
+          </div></div>
+
+          <svg class="cob__fx" viewBox={viewBox} aria-hidden="true" focusable="false">
+            <defs>
+              <radialGradient id="cob-spark">
+                <stop offset="0" stop-color="#fff" /><stop offset=".3" stop-color="#ffd79a" stop-opacity=".9" /><stop offset="1" stop-color="#ff7d33" stop-opacity="0" />
+              </radialGradient>
+              {routes.map((c, i) => (
+                <linearGradient id={`cob-r${i}`} gradientUnits="userSpaceOnUse" x1={origin.x} y1={origin.y} x2={c.x} y2={c.y}>
+                  <stop offset="0" stop-color="#f26a1b" /><stop offset="1" stop-color="#ffd79a" />
+                </linearGradient>
+              ))}
+            </defs>
+            <g class="cob__states">
+              {stateNodes.map((s) => <circle class="cob__state" cx={s.x} cy={s.y} r="4.5" data-state={s.state} />)}
+            </g>
+            <g class="cob__routes">
+              {routes.map((c, i) => (
+                <g class="cob__route">
+                  <path class="cob__route-glow" d={c.d} stroke={`url(#cob-r${i})`} />
+                  <path class="cob__route-line" d={c.d} stroke={`url(#cob-r${i})`} />
+                  <path class="cob__route-flow" d={c.d} />
+                </g>
+              ))}
+              <g class="cob__route cob__route--pick">
+                <path class="cob__route-glow" d="M0 0" />
+                <path class="cob__route-line" d="M0 0" />
+                <path class="cob__route-flow" d="M0 0" />
+              </g>
+            </g>
+            <g class="cob__nodes">
+              {routes.map((c) => (
+                <g class="cob__node" transform={`translate(${c.x} ${c.y})`} data-x={c.x} data-y={c.y}>
+                  <circle class="cob__ping" r="9" />
+                  <circle class="cob__dot" r="7" />
+                </g>
+              ))}
+            </g>
+            <circle class="cob__ping cob__ping--free" r="9" cx="0" cy="0" />
+            <g class="cob__target" transform="translate(0 0)">
+              <circle class="cob__target-halo" r="16" />
+              <circle class="cob__target-ring" r="16" />
+              <circle class="cob__target-ring cob__target-ring--late" r="16" />
+              <circle class="cob__target-dot" r="8" />
+            </g>
+            <g class="cob__hub" transform={`translate(${origin.x} ${origin.y})`}>
+              <circle class="cob__ring" r="18" />
+              <circle class="cob__ring cob__ring--late" r="18" />
+              <polygon class="cob__hex" points={hex(17)} />
+              <circle class="cob__core" r="6" />
+            </g>
+            <g class="cob__sparks">
+              {routes.map(() => <g class="cob__spark"><circle r="18" fill="url(#cob-spark)" /><circle r="4.5" fill="#fff" /></g>)}
+              <g class="cob__spark cob__spark--free"><circle r="18" fill="url(#cob-spark)" /><circle r="4.5" fill="#fff" /></g>
+            </g>
+          </svg>
+
+          <div class="cob__labels" aria-hidden="true">
+            <div class="cob__callout" style={at(origin)}>
+              <span class="cob__callout-box"><span class="cob__callout-k">Oficina principal</span><span class="cob__callout-v">Maracay, Aragua</span></span>
+            </div>
+            {routes.map((c) => (
+              <span class:list={['cob__label', { 'is-minor': minor.has(c.name) }]} data-side={c.label} data-state={c.state} style={at(c)}>
+                <span><span class="cob__label-full">{c.name}</span><span class="cob__label-short">{short[c.name] ?? c.name}</span></span>
+              </span>
+            ))}
+            <span class="cob__label cob__label--pick" data-side="r" hidden><span></span></span>
+            <span class="cob__zone-label" style={at(zone.label)}>Zona en<br />Reclamación</span>
+            {/* 10°N crosses the coast; 68°/66°W sit under the Maracay callout */}
+            {graticule.lats.filter((l) => l.v <= 8).map((l) => <span class="cob__tick cob__tick--lat" style={`--y:${pct(l.y, height)}`}>{l.v}°N</span>)}
+            {graticule.lons.filter((l) => l.v !== -68 && l.v !== -66).map((l) => <span class="cob__tick cob__tick--lon" style={`--x:${pct(l.x, width)}`}>{Math.abs(l.v)}°W</span>)}
+            <span class="cob__cross"><i class="cob__cross-x"></i><i class="cob__cross-y"></i></span>
+          </div>
+        </div>
+
+        <figcaption class="cob__hud cob__hud--bottom">
+          <span class="cob__caption">Rutas ilustrativas de cobertura</span>
+          <span class="cob__legend" aria-hidden="true"><span class="cob__lg cob__lg--hub">Oficina</span><span class="cob__lg cob__lg--city">Ruta</span><span class="cob__lg cob__lg--state">Capital de estado</span><span class="cob__lg cob__lg--zone">Zona en Reclamación</span></span>
+          <span class="sr-only">Mapa de Venezuela, con la Guayana Esequiba rayada como Zona en Reclamación. Desde la oficina principal en Maracay, estado Aragua, salen rutas ilustrativas hacia {routes.map((c) => `${c.name} (${c.state})`).join(', ')}. Atendemos todo el territorio nacional.</span>
+        </figcaption>
+      </figure>
+    </div>
+
+    <ul class="cob__stats" role="list">
+      <li class="cob__stat cob__stat--wide" data-reveal="up">
+        <span class="cob__num cob__num--word">Todo el país</span>
+        <span class="cob__unit">Cuadrillas especializadas en cualquier estado, desde Maracay</span>
+      </li>
+      <li class="cob__stat" data-reveal="up" data-delay=".08">
+        <span class="cob__num num" data-count={services.length}>{services.length}</span>
+        <span class="cob__unit">líneas de servicio</span>
+        <span class="cob__note">{services.map((s) => s.short).join(' · ')}</span>
+      </li>
+      <li class="cob__stat" data-reveal="up" data-delay=".16">
+        <span class="cob__num num" data-count={process.length}>{process.length}</span>
+        <span class="cob__unit">etapas del proceso</span>
+        <span class="cob__note">{process[0].t} → {process[process.length - 1].t}</span>
+      </li>
+    </ul>
+
+    <div class="cob__sectors">
+      <p class="cob__kicker">Sectores que atendemos</p>
+      <ul role="list" data-stagger="0.1">
+        {sectors.map((s) => (
+          <li class="cob__sector" data-glow>
+            <span class="cob__sector-ic" aria-hidden="true">
+              <svg viewBox="0 0 48 48" focusable="false"><polygon points={hex(21).split(' ').map((p) => p.split(',').map((v) => (+v + 24).toFixed(1)).join(',')).join(' ')} /></svg>
+              <Icon name={sectorIcon[s.t] ?? 'bolt'} size={22} />
+            </span>
+            <span class="cob__sector-t">{s.t}</span>
+            <span class="cob__sector-d">{s.d}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+
+    <div class="cob__cta">
+      <div class="cob__pick">
+        <label class="cob__q" for="cob-state">¿En qué estado está tu proyecto?</label>
+        <div class="cob__select">
+          <select id="cob-state" aria-describedby="cob-live">
+            <option value="">Elige tu estado</option>
+            {stateOptions.map((s) => <option value={s.state} data-capital={s.capital} data-x={s.x} data-y={s.y} data-d={s.d}>{s.state}</option>)}
+          </select>
+          <Icon name="chevron" size={18} />
+        </div>
+        <p class="cob__live" id="cob-live" aria-live="polite">Elige un estado y trazamos la ruta desde Maracay.</p>
+      </div>
+      <a class="btn btn--primary cob__wa" href={wa('Hola SSD&S, quiero cotizar un proyecto en mi estado.')} target="_blank" rel="noopener" data-magnetic>
+        <Icon name="whatsapp" size={20} />
+        <span class="cob__wa-t">Cotiza tu proyecto a nivel nacional</span>
+        <Icon name="arrow" size={18} class="arrow" />
+      </a>
+    </div>
+
+    <a class="cob__post" href={postUrl(post.code)} target="_blank" rel="noopener">
+      <span class="cob__post-media" data-reveal="iris">
+        <img src={`${base}/ig/${post.code}.webp`} width="640" height="811" loading="lazy" decoding="async"
+          alt="Pieza de SSD&S en Instagram: el monumento «Aragua» en Maracay con el texto «La potencia de nuestra ingeniería no tiene fronteras dentro de Venezuela. Para todo el territorio nacional»." />
+      </span>
+      <span class="cob__post-body">
+        <span class="cob__post-meta"><Icon name="instagram" size={16} />Instagram · {postDate}</span>
+        <span class="cob__post-t">{post.title}</span>
+        <span class="cob__post-d">{post.text}</span>
+        <span class="cob__post-link">Ver publicación <Icon name="arrowUpRight" size={16} /></span>
+      </span>
+    </a>
+  </div>
+</section>
+
+<script>
+  import '../../scripts/cobertura.js';
+</script>
+
+<style>
+  /* ================= section ================= */
+  .cob { overflow: clip; }
+  .cob__bg { position: absolute; inset: 0; z-index: -1; pointer-events: none; overflow: hidden;
+    background:
+      radial-gradient(60% 50% at 78% 38%, rgba(37, 72, 138, 0.45), transparent 70%),
+      linear-gradient(180deg, var(--navy-900), var(--navy-950) 120%);
+  }
+  .cob__streak { --streak-opacity: 0.35; }
+  .cob__streak--a { top: 5%; --angle: -7deg; }
+  .cob__streak--b { top: 94%; --angle: -5deg; --streak-opacity: 0.2; }
+
+  .cob__grid { display: grid; gap: clamp(28px, 5vw, 48px); width: min(100% - 2 * var(--gutter), 1680px); margin-inline: auto; }
+  .cob__head { order: 1; }
+  .cob__stage { order: 2; }
+  .cob__cta { order: 3; }
+  .cob__stats { order: 4; }
+  .cob__sectors { order: 5; }
+  .cob__post { order: 6; }
+
+  .cob__title { font-size: clamp(2.05rem, 1.25rem + 2.5vw, 3.7rem); line-height: 1.02; max-width: 15ch; }
+  .cob__hl, .cob__hl :global(.split-word) { background: var(--grad-brand); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .cob__lead { margin-top: 1.1rem; max-width: 46ch; font-size: var(--step-0); }
+  @media (min-width: 600px) { .cob__lead { font-size: var(--step-1); } }
+
+  /* ================= map figure ================= */
+  .cob__map { --c: rgba(255, 156, 92, 0.75); position: relative; margin: 0; padding: 10px; border: 1px solid var(--line); border-radius: 6px;
+    background: radial-gradient(70% 60% at 45% 30%, rgba(26, 52, 104, 0.55), transparent 75%), rgba(6, 13, 31, 0.35); }
+  /* corner brackets */
+  .cob__map::before { content: ''; position: absolute; inset: -1px; pointer-events: none;
+    background:
+      linear-gradient(var(--c), var(--c)) 0 0 / 18px 2px, linear-gradient(var(--c), var(--c)) 0 0 / 2px 18px,
+      linear-gradient(var(--c), var(--c)) 100% 0 / 18px 2px, linear-gradient(var(--c), var(--c)) 100% 0 / 2px 18px,
+      linear-gradient(var(--c), var(--c)) 0 100% / 18px 2px, linear-gradient(var(--c), var(--c)) 0 100% / 2px 18px,
+      linear-gradient(var(--c), var(--c)) 100% 100% / 18px 2px, linear-gradient(var(--c), var(--c)) 100% 100% / 2px 18px;
+    background-repeat: no-repeat; }
+
+  .cob__hud { display: flex; align-items: center; justify-content: space-between; gap: 8px 16px; flex-wrap: wrap;
+    font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); line-height: 1.3; }
+  .cob__hud--top { padding: 2px 4px 10px; border-bottom: 1px dashed rgba(255, 255, 255, 0.08); margin-bottom: 6px; }
+  .cob__hud--bottom { justify-content: flex-start; column-gap: 28px; padding: 10px 4px 2px; border-top: 1px dashed rgba(255, 255, 255, 0.08); margin-top: 6px; }
+  .cob__hud-id { display: inline-flex; align-items: center; gap: 8px; }
+  .cob__dest { color: var(--orange-300); }
+  .cob__dest b { color: #fff; font-weight: 600; }
+  .cob__dest[hidden], .cob.is-picked .cob__hud-id { display: none; }
+  .cob__hud-hex { width: 10px; height: 11px; background: var(--grad-brand); clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%); }
+  .cob__status { display: inline-flex; align-items: center; gap: 8px; color: var(--fg); }
+  .cob__status b { color: var(--glow); font-weight: 600; font-variant-numeric: tabular-nums; }
+  .cob__led { width: 8px; height: 8px; border-radius: 50%; background: var(--ok); box-shadow: 0 0 0 3px rgba(61, 220, 132, 0.18), 0 0 10px rgba(61, 220, 132, 0.8); transition: background-color 0.3s, box-shadow 0.3s; }
+  .cob.is-charging .cob__led { background: var(--orange-400); box-shadow: 0 0 0 3px rgba(255, 125, 51, 0.2), 0 0 10px rgba(255, 125, 51, 0.9); }
+  .cob__caption { color: var(--fg); }
+  .cob__caption::before { content: ''; display: inline-block; width: 18px; height: 2px; margin-right: 10px; vertical-align: middle; background: var(--grad-brand); border-radius: 2px; }
+  .cob__hud-r { display: inline-flex; align-items: center; gap: 18px; }
+  .cob__probe { font-variant-numeric: tabular-nums; color: var(--muted); min-width: 17ch; text-align: right; }
+  .cob__legend { display: inline-flex; flex-wrap: wrap; gap: 6px 16px; }
+  .cob__lg { display: inline-flex; align-items: center; gap: 7px; }
+  .cob__lg::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: #ffd79a; }
+  .cob__lg--hub::before { width: 10px; height: 11px; border-radius: 0; background: #ff9c5c; clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%); }
+  .cob__lg--state::before { width: 6px; height: 6px; background: #6f86b3; }
+
+  .cob__plane { position: relative; aspect-ratio: var(--ar); }
+  .cob__plane > svg, .cob__labels, .cob__raybox, .cob__ray { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .cob__plane > svg { overflow: visible; }
+
+  /* base map */
+  .cob__base { --sweep: 130; clip-path: polygon(0 0, calc(var(--sweep) * 1% + 25%) 0, calc(var(--sweep) * 1%) 100%, 0 100%); }
+  .cob__grat line { stroke: rgba(255, 255, 255, 0.07); stroke-width: 1; stroke-dasharray: 2 6; vector-effect: non-scaling-stroke; }
+  .cob__land { fill: rgba(37, 72, 138, 0.28); }
+  .cob__dots { opacity: 0.32; }
+  .cob__dots-hot { opacity: 0.5; }
+  .cob__edge { fill: none; stroke: url(#cob-edge); stroke-width: 1.6; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
+  .cob__edge-glow { fill: none; stroke: url(#cob-edge); stroke-width: 7; stroke-linejoin: round; opacity: 0.14; vector-effect: non-scaling-stroke; }
+  /* Zona en Reclamación: hatched, dashed outline, the Esequibo as its boundary */
+  .cob__zone-fill { fill: url(#cob-hatch); opacity: 0.3; }
+  .cob__zone-edge, .cob__zone-river { fill: none; stroke: #ff9c5c; stroke-width: 1.3; stroke-dasharray: 5 4; stroke-linejoin: round; opacity: 0.75; vector-effect: non-scaling-stroke; }
+  .cob__zone-label { position: absolute; left: var(--x); top: var(--y); transform: translate(-50%, -50%); font-family: var(--font-mono); font-size: 12px; line-height: 1.25; letter-spacing: 0.06em; text-transform: uppercase; text-align: center; color: #ffcf99;
+    text-shadow: 0 0 3px var(--navy-950), 0 0 8px var(--navy-950); }
+
+  /* ray (scan sweep), hidden at rest */
+  .cob__raybox { overflow: hidden; pointer-events: none; }
+  .cob__ray { opacity: 0; }
+  .cob__ray svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+
+  /* fx layer */
+  .cob__fx { pointer-events: none; will-change: transform; }
+  .cob__ray { will-change: transform; }
+  .cob__state { fill: #6f86b3; opacity: 0.85; transition: fill 0.4s; }
+  .cob__state.is-picked { fill: #fff; opacity: 1; }
+  .cob__route-line, .cob__route-glow, .cob__route-flow { fill: none; stroke-linecap: round; }
+  .cob__route-line { stroke-width: 3.2; }
+  .cob__route-glow { stroke-width: 13; opacity: 0.2; }
+  .cob__route-flow { stroke: #fff4dc; stroke-width: 2.6; stroke-dasharray: 3 24; opacity: 0.75; animation: cob-flow 1.4s linear infinite paused; }
+  .cob.is-live .cob__route-flow { animation-play-state: running; }
+  :global(.is-lite) .cob__route-flow { animation: none; }
+  @keyframes cob-flow { to { stroke-dashoffset: var(--dash-shift, -27); } }
+  .cob__route--pick .cob__route-line { stroke: #fff1d6; stroke-width: 5; }
+  .cob__route--pick .cob__route-glow { stroke: #ffd79a; stroke-width: 20; opacity: 0.32; }
+  .cob__route--pick { display: none; }
+  .cob__route--pick.is-on { display: inline; }
+  .cob__target { display: none; }
+  .cob__target.is-on { display: inline; }
+  .cob__target-dot { fill: #fff; stroke: var(--orange-500); stroke-width: 3.5; }
+  .cob__target-halo { fill: rgba(255, 215, 154, 0.16); stroke: rgba(255, 241, 214, 0.5); stroke-width: 1.5; }
+  .cob__routes > .cob__route, .cob__nodes, .cob__states, .cob__label { transition: opacity 0.4s; }
+  .cob.is-picked .cob__route:not(.cob__route--pick), .cob.is-picked .cob__nodes, .cob.is-picked .cob__states { opacity: 0.25; }
+  .cob.is-picked .cob__label:not(.is-dest, .cob__label--pick) { opacity: 0.35; }
+  .cob__label--pick { color: #fff; }
+  .cob__label--pick > span { box-shadow: inset 0 0 0 1px rgba(255, 156, 92, 0.65); }
+  .cob__target-ring { fill: none; stroke: #fff1d6; stroke-width: 2.5; transform-box: fill-box; transform-origin: center; animation: cob-ring 1.8s var(--ease-out) infinite; }
+  .cob__target-ring--late { animation-delay: 0.9s; }
+  .cob__dot { fill: #ffd79a; stroke: var(--navy-950); stroke-width: 2.5; }
+  .cob__ping { fill: none; stroke: #ffd79a; stroke-width: 2.5; opacity: 0; }
+  .cob__hex { fill: var(--navy-950); stroke: #ff9c5c; stroke-width: 3.5; stroke-linejoin: round; }
+  .cob__core { fill: #ffd79a; }
+  .cob__ring { fill: none; stroke: #ff9c5c; stroke-width: 2; opacity: 0.5; transform-box: fill-box; transform-origin: center; animation: cob-ring 2.6s var(--ease-out) infinite paused; }
+  .cob__ring--late { animation-delay: 1.3s; }
+  .cob.is-live .cob__ring { animation-play-state: running; }
+  @keyframes cob-ring { from { transform: scale(1); opacity: 0.75; } to { transform: scale(3.4); opacity: 0; } }
+  .cob__spark { opacity: 0; }
+
+  /* HTML labels over the map (fixed px type: readable at every map size) */
+  .cob__labels { pointer-events: none; }
+  .cob__label, .cob__callout, .cob__tick { position: absolute; left: var(--x, 0); top: var(--y, 0); }
+  .cob__label { white-space: nowrap; font-family: var(--font-display); font-weight: 600; font-size: clamp(13px, 0.55vw + 6px, 16px); line-height: 1.1; letter-spacing: -0.01em; color: #f4f6fb;
+    text-shadow: 0 0 3px var(--navy-950); }
+  .cob__label > span { display: block; padding: 2px 6px 3px; border-radius: 5px; background: rgba(6, 13, 31, 0.6); }
+  .cob__label[data-side='r'] { transform: translate(9px, -50%); }
+  .cob__label[data-side='l'] { transform: translate(calc(-100% - 9px), -50%); }
+  .cob__label[data-side='t'] { transform: translate(-50%, calc(-100% - 8px)); }
+  .cob__label[data-side='b'] { transform: translate(-50%, 8px); }
+  .cob__label-short { display: none; }
+
+  .cob__callout { z-index: 1; }
+  .cob__callout::before { content: ''; position: absolute; left: 0; bottom: 14px; width: 1px; height: 30px; background: linear-gradient(0deg, rgba(255, 156, 92, 0.1), #ff9c5c); }
+  .cob__callout-box { position: absolute; left: -26px; bottom: 44px; display: grid; gap: 2px; padding: 7px 11px 8px; white-space: nowrap;
+    border: 1px solid rgba(255, 156, 92, 0.5); border-radius: 8px; background: rgba(6, 13, 31, 0.82); box-shadow: 0 10px 30px -12px rgba(0, 0, 0, 0.8); }
+  .cob__callout-k { font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--orange-300); }
+  .cob__callout-v { font-family: var(--font-display); font-weight: 700; font-size: 15px; letter-spacing: -0.01em; color: #fff; }
+
+  .cob__tick { font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.06em; color: rgba(169, 182, 207, 0.6); }
+  .cob__tick--lat { left: 2px; transform: translateY(-50%); }
+  .cob__tick--lon { top: 2px; transform: translateX(6px); }
+
+  .cob__cross { position: absolute; inset: 0; opacity: 0; transition: opacity 0.3s; overflow: hidden; }
+  .cob__cross i { position: absolute; left: 0; top: 0; background: rgba(255, 215, 154, 0.35); will-change: transform; }
+  .cob__cross-x { width: 1px; height: 100%; }
+  .cob__cross-y { height: 1px; width: 100%; }
+  .cob.is-probing .cob__cross { opacity: 1; }
+
+  /* ================= copy column ================= */
+  .cob__stats { list-style: none; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+  .cob__stat { display: grid; align-content: start; gap: 4px; padding: 18px 12px 18px 0; }
+  .cob__stat + .cob__stat { padding-left: clamp(12px, 2vw, 22px); border-left: 1px solid var(--line); }
+  .cob__stat--wide { grid-column: 1 / -1; padding-right: 0; border-bottom: 1px solid var(--line); }
+  .cob__stat.cob__stat--wide + .cob__stat { padding-left: 0; border-left: 0; }
+  .cob__num { font-size: clamp(2.4rem, 1.6rem + 3vw, 4rem); font-weight: 800; line-height: 0.95; letter-spacing: -0.04em; width: fit-content; background: var(--grad-brand); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .cob__num--word { font-size: clamp(2rem, 1.4rem + 2vw, 3rem); letter-spacing: -0.035em; line-height: 1.05; padding-bottom: 0.06em; }
+  .cob__unit { font-family: var(--font-display); font-weight: 600; font-size: clamp(0.9rem, 0.85rem + 0.3vw, 1.05rem); line-height: 1.2; }
+  .cob__note { font-size: 12px; line-height: 1.4; color: var(--muted); }
+  @media (max-width: 479px) {
+    .cob__stats { grid-template-columns: 1fr; }
+    .cob__stat { grid-template-columns: 4.2rem 1fr; column-gap: 14px; align-items: center; padding: 14px 0; }
+    .cob__stat + .cob__stat { padding-left: 0; border-left: 0; border-top: 1px solid var(--line); }
+    .cob__num { grid-row: span 2; font-size: 2.6rem; }
+    .cob__stat--wide { grid-template-columns: 1fr; }
+    .cob__stat--wide .cob__num { grid-row: auto; font-size: 2.1rem; }
+  }
+
+  .cob__kicker { font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); margin-bottom: 14px; }
+  .cob__sectors ul { list-style: none; display: grid; gap: 10px; }
+  .cob__sector { position: relative; display: grid; grid-template-columns: 52px 1fr; column-gap: 16px; align-items: center; padding: 14px 16px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--card); overflow: hidden;
+    transition: border-color 0.4s, translate 0.5s var(--ease-out), background-color 0.4s; }
+  .cob__sector:hover { border-color: color-mix(in srgb, var(--accent) 50%, var(--line)); translate: 4px 0; }
+  .cob__sector-ic { grid-row: span 2; position: relative; display: grid; place-items: center; width: 52px; height: 52px; color: var(--glow); }
+  .cob__sector-ic svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .cob__sector-ic polygon { fill: rgba(242, 106, 27, 0.1); stroke: var(--orange-400); stroke-width: 1.5; }
+  .cob__sector-ic :global(.icon) { position: relative; }
+  .cob__sector-t { font-family: var(--font-display); font-weight: 700; font-size: var(--step-1); letter-spacing: -0.02em; line-height: 1.15; }
+  .cob__sector-d { font-size: 0.92rem; line-height: 1.45; color: var(--muted); }
+
+  .cob__cta { display: grid; gap: 16px; padding: clamp(18px, 3vw, 28px); border-radius: var(--radius-lg); border: 1px solid rgba(255, 156, 92, 0.3);
+    background: linear-gradient(135deg, rgba(242, 106, 27, 0.12), rgba(16, 36, 79, 0.5) 60%); }
+  .cob__pick { display: grid; gap: 10px; }
+  html:not(.js) .cob__pick { display: none; }
+  .cob__q { font-family: var(--font-display); font-weight: 600; font-size: var(--step-1); letter-spacing: -0.02em; line-height: 1.2; }
+  .cob__select { position: relative; }
+  .cob__select select { appearance: none; -webkit-appearance: none; width: 100%; min-height: 52px; padding: 0 48px 0 18px; border-radius: 12px; cursor: pointer;
+    border: 1px solid color-mix(in srgb, var(--fg) 22%, transparent); background: rgba(6, 13, 31, 0.6); color: var(--fg); font-size: 1rem; transition: border-color 0.3s, box-shadow 0.3s; }
+  .cob__select select:hover { border-color: var(--orange-300); }
+  .cob__select select:focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; }
+  .cob__select option { background: var(--navy-900); color: var(--fg); }
+  .cob__select :global(.icon) { position: absolute; right: 16px; top: 50%; transform: translateY(-50%); pointer-events: none; color: var(--orange-300); }
+  .cob__live { font-size: 0.92rem; line-height: 1.45; color: var(--muted); min-height: 2.9em; }
+  .cob__live b { color: var(--fg); font-weight: 600; }
+  .cob__wa { white-space: normal; justify-self: stretch; text-align: center; text-wrap: balance; }
+  @media (max-width: 559px) { .cob__wa { padding-inline: 20px; } }
+  @media (max-width: 399px) { .cob__wa { font-size: 0.95rem; } .cob__wa :global(.arrow) { display: none; } .cob__post-d { display: none; } }
+
+  .cob__post { display: grid; grid-template-columns: minmax(96px, 34%) 1fr; gap: clamp(14px, 2.4vw, 24px); align-items: center; padding: 12px; border-radius: var(--radius-lg); border: 1px solid var(--line); background: var(--card);
+    transition: border-color 0.4s, translate 0.6s var(--ease-out); }
+  .cob__post:hover { border-color: color-mix(in srgb, var(--accent) 45%, var(--line)); translate: 0 -3px; }
+  .cob__post-media { display: block; overflow: hidden; border-radius: 12px; aspect-ratio: 640 / 811; background: var(--navy-800); }
+  .cob__post-media img { width: 100%; height: 100%; object-fit: cover; transition: transform 1.2s var(--ease-out); }
+  .cob__post:hover .cob__post-media img { transform: scale(1.05); }
+  .cob__post-body { display: grid; gap: 6px; min-width: 0; padding-right: 6px; }
+  .cob__post-meta { display: inline-flex; align-items: center; gap: 8px; font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--accent-text); }
+  .cob__post-t { font-family: var(--font-display); font-weight: 700; font-size: var(--step-1); line-height: 1.15; letter-spacing: -0.02em; }
+  .cob__post-d { font-size: 0.92rem; line-height: 1.45; color: var(--muted); }
+  .cob__post-link { display: inline-flex; align-items: center; gap: 6px; min-height: 32px; font-weight: 600; color: var(--accent-text); }
+
+  /* ================= narrow maps ================= */
+  @media (max-width: 599px) {
+    .cob__stage { margin-inline: calc(var(--gutter) * -1 + 6px); }
+    .cob__map { padding: 8px 6px; }
+    .cob__label.is-minor, .cob__tick, .cob__zone-label { display: none; }
+    .cob__label > span { padding: 1px 4px 2px; }
+    .cob__label-full { display: none; }
+    .cob__label-short { display: inline; }
+    .cob__label { font-size: 12px; }
+    .cob__callout-box { left: -14px; bottom: 26px; padding: 4px 8px; }
+    .cob__callout-k { display: none; }
+    .cob__callout::before { height: 14px; bottom: 12px; }
+    .cob__callout-v { font-size: 13px; }
+    .cob__route-line { stroke-width: 5; }
+    .cob__route-glow { stroke-width: 18; }
+    .cob__route-flow { stroke-width: 4; stroke-dasharray: 4 30; --dash-shift: -34; }
+    .cob__edge-glow { stroke-width: 5; }
+    .cob__state { r: 7px; }
+    .cob__dot { r: 10px; }
+    .cob__hud { font-size: 12px; letter-spacing: 0.06em; }
+    .cob__hud-id, .cob__probe { display: none; }
+    .cob__hud--top { justify-content: flex-end; }
+    .cob.is-picked .cob__hud--top { justify-content: space-between; }
+    .cob__target-dot { r: 11px; }
+  }
+
+  /* ================= two columns + sticky map (≥1024) ================= */
+  @media (min-width: 1024px) {
+    .cob__grid { grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr); column-gap: clamp(40px, 4.5vw, 88px); row-gap: clamp(56px, 13vh, 150px); align-items: start; }
+    .cob__head, .cob__stats, .cob__sectors, .cob__post, .cob__cta { grid-column: 1; }
+    .cob__head { order: 1; padding-top: clamp(0px, 6vh, 64px); }
+    .cob__stats { order: 2; }
+    .cob__sectors { order: 3; }
+    .cob__post { order: 4; }
+    .cob__cta { order: 5; margin-bottom: clamp(24px, 12vh, 140px); }
+    .cob__stage { grid-column: 2; grid-row: 1 / span 5; position: sticky; top: 0; height: 100vh; height: 100svh; display: flex; align-items: center; justify-content: center; padding: calc(var(--header-h) + 6px) 0 16px; }
+    .cob__map { width: min(100%, calc((100svh - var(--header-h) - 132px) * var(--ar) + 22px)); }
+    .cob__post { grid-template-columns: minmax(120px, 38%) 1fr; }
+  }
+  @media (min-width: 1024px) and (max-height: 760px) {
+    .cob__title { font-size: clamp(2rem, 1.2rem + 2.1vw, 3.2rem); }
+  }
+
+  /* reduced motion: no loops (the markup is already the final state) */
+  @media (prefers-reduced-motion: reduce) {
+    .cob__ring, .cob__route-flow { animation: none; }
+    .cob__sector:hover, .cob__post:hover { translate: none; }
+  }
+</style>

@@ -1,128 +1,29 @@
 ---
+// Home — "Corriente Viva" (docs/CONCEPTO.md). Section order and theme rhythm are owned by the lead;
+// each scene is owned by its component. Themes: dark / light alternate so the header flips with the page.
 import Base from '../layouts/Base.astro';
 import Hero from '../components/home/Hero.astro';
+import Tablero from '../components/home/Tablero.astro';
+import Transferencia from '../components/home/Transferencia.astro';
+import Diagnostico from '../components/home/Diagnostico.astro';
+import Cobertura from '../components/home/Cobertura.astro';
+import Recorrido from '../components/home/Recorrido.astro';
+import Valores from '../components/home/Valores.astro';
 import Instagram from '../components/home/Instagram.astro';
 import Cta from '../components/ui/Cta.astro';
 import Icon from '../components/ui/Icon.astro';
-import { brand, services, values, process, sectors, faqs, wa } from '../data/site.js';
-const base = import.meta.env.BASE_URL.replace(/\/$/, '');
-const serviceIcons = { 'potencia-electrica': 'transformer', 'respaldo-energetico': 'generator', climatizacion: 'snowflake' } as const;
-const valueIcons = ['gauge', 'clock', 'shield', 'pin'] as const;
-const sectorIcons = ['factory', 'building', 'home'] as const;
+import { faqs, wa } from '../data/site.js';
 ---
 <Base title="Inicio" home>
   <Hero />
+  <Tablero />
+  <Transferencia />
+  <Diagnostico />
+  <Cobertura />
+  <Recorrido />
+  <Valores />
 
-  <!-- ============ Servicios ============ -->
-  <section class="section sv" id="servicios" aria-labelledby="sv-title">
-    <div class="container">
-      <div class="sv__head">
-        <div>
-          <p class="eyebrow">Portafolio de servicios</p>
-          <h2 id="sv-title" data-split="words">Distribuir, automatizar y proteger la energía.</h2>
-        </div>
-        <p class="lead" data-reveal="up" data-delay=".2">Tres líneas de servicio para el sector residencial, comercial e industrial. Desde la evaluación inicial hasta el montaje y el mantenimiento.</p>
-      </div>
-
-      <ol class="sv__grid" data-stagger="0.14">
-        {services.map((s) => (
-          <li>
-            <a class="sv__card" href={`${base}/servicios/${s.slug}/`} data-glow data-tilt="3">
-              <span class="sv__top">
-                <span class="sv__code mono">{s.code}</span>
-                <span class="sv__icon"><Icon name={serviceIcons[s.slug as keyof typeof serviceIcons]} size={30} stroke={1.5} /></span>
-              </span>
-              <span class="sv__kicker mono">{s.kicker}</span>
-              <h3>{s.name}</h3>
-              <p class="sv__summary">{s.summary}</p>
-              <ul class="sv__items">
-                {s.items.slice(0, 3).map((it) => <li><Icon name="check" size={14} />{it.t}</li>)}
-              </ul>
-              <span class="sv__more">Ver servicio <Icon name="arrow" size={18} /></span>
-            </a>
-          </li>
-        ))}
-      </ol>
-    </div>
-  </section>
-
-  <!-- ============ Por qué SSD&S ============ -->
-  <section class="section on-light why" id="por-que" aria-labelledby="why-title">
-    <div class="container">
-      <div class="why__grid">
-        <div class="why__copy">
-          <p class="eyebrow">Por qué {brand.shortName}</p>
-          <h2 id="why-title" data-split="words">Rigor técnico, respuesta oportuna y máxima seguridad.</h2>
-          <p class="lead" data-lit>Detrás de cada gran proceso industrial hay una infraestructura eléctrica sólida y un equipo técnico calificado respaldándola. Combinamos el rigor técnico con la ejecución segura para garantizar que la energía de tu planta nunca se detenga.</p>
-          <a class="btn btn--primary" href={`${base}/nosotros/`} data-reveal="up" data-delay=".2">Conoce al equipo<Icon name="arrow" size={18} /></a>
-        </div>
-        <ul class="why__values" data-stagger="0.1">
-          {values.map((v, i) => (
-            <li class="card" data-glow>
-              <span class="why__icon"><Icon name={valueIcons[i]} size={26} /></span>
-              <h3>{v.t}</h3>
-              <p class="muted">{v.d}</p>
-            </li>
-          ))}
-        </ul>
-      </div>
-    </div>
-  </section>
-
-  <!-- ============ Cobertura ============ -->
-  <section class="section cov" id="cobertura" aria-labelledby="cov-title">
-    <div class="cov__bg" aria-hidden="true">
-      <span class="streak streak--thick" style="top: 24%; --angle: -11deg"></span>
-      <span class="streak" style="top: 78%; --angle: -11deg; --streak-opacity: .45"></span>
-    </div>
-    <div class="container cov__grid">
-      <figure class="cov__media" data-reveal="iris">
-        <img src={`${base}/ig/DdXQ8czuyU9.webp`} width="640" height="811" alt="Monumento de Aragua en Maracay con un técnico de SSD&S midiendo con multímetro" loading="lazy" decoding="async" data-parallax="0.15" />
-        <figcaption class="mono"><Icon name="pin" size={14} />Oficina principal · {brand.city}, {brand.region}</figcaption>
-      </figure>
-      <div class="cov__copy">
-        <p class="eyebrow">Cobertura nacional</p>
-        <h2 id="cov-title" data-split="words">La potencia de nuestra ingeniería no tiene fronteras dentro de Venezuela.</h2>
-        <p class="lead" data-reveal="up" data-delay=".15">Operamos desde Maracay y desplegamos cuadrillas especializadas para instalación, mantenimiento y diagnóstico en cualquier estado del país. No importa dónde esté tu planta o comercio: nuestro equipo llega a ti.</p>
-        <dl class="cov__stats" data-stagger="0.12">
-          <div><dt>Estados del país</dt><dd><span class="num" data-count="23">0</span></dd></div>
-          <div><dt>Líneas de servicio</dt><dd><span class="num" data-count="3">0</span></dd></div>
-          <div><dt>Etapas del proceso</dt><dd><span class="num" data-count="4">0</span></dd></div>
-        </dl>
-        <ul class="cov__sectors" data-stagger="0.1">
-          {sectors.map((s, i) => (
-            <li><span class="cov__sector-icon"><Icon name={sectorIcons[i]} size={20} /></span><span><strong>{s.t}</strong><span class="muted">{s.d}</span></span></li>
-          ))}
-        </ul>
-      </div>
-    </div>
-  </section>
-
-  <!-- ============ Proceso ============ -->
-  <section class="section on-light proc" id="proceso" aria-labelledby="proc-title">
-    <div class="container">
-      <div class="section__head">
-        <p class="eyebrow">Cómo trabajamos</p>
-        <h2 id="proc-title" data-split="words">De la evaluación inicial al mantenimiento, con un solo equipo.</h2>
-      </div>
-      <div class="proc__wrap">
-        <svg class="proc__line" viewBox="0 0 1200 4" preserveAspectRatio="none" data-draw="scrub" aria-hidden="true" focusable="false"><defs><linearGradient id="proc-g" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="1200" y2="0"><stop offset="0" stop-color="#f26a1b" /><stop offset="1" stop-color="#ffb454" /></linearGradient></defs><line x1="0" y1="2" x2="1200" y2="2" stroke="url(#proc-g)" stroke-width="3" stroke-linecap="round" /></svg>
-        <ol class="proc__steps" data-stagger="0.14">
-          {process.map((p) => (
-            <li class="proc__step">
-              <span class="proc__n num">{p.n}</span>
-              <h3>{p.t}</h3>
-              <p class="muted">{p.d}</p>
-            </li>
-          ))}
-        </ol>
-      </div>
-      <p class="proc__note" data-reveal="up"><Icon name="bolt" size={16} />No esperes a la falla para actuar. <a href={wa('Hola SSD&S, quiero agendar una evaluación técnica.')} target="_blank" rel="noopener">Agenda una evaluación técnica</a>.</p>
-    </div>
-  </section>
-
-  <!-- ============ FAQ ============ -->
-  <section class="section faq" id="faq" aria-labelledby="faq-title">
+  <section class="section faq" id="faq" data-theme="light" aria-labelledby="faq-title">
     <div class="container faq__grid">
       <div class="faq__head">
         <p class="eyebrow">Preguntas frecuentes</p>
@@ -150,91 +51,21 @@ const sectorIcons = ['factory', 'building', 'home'] as const;
 </Base>
 
 <style>
-  /* Servicios */
-  .sv { background: var(--navy-950); }
-  .sv__head { display: grid; gap: 20px; align-items: end; margin-bottom: clamp(32px, 5vw, 56px); }
-  @media (min-width: 900px) { .sv__head { grid-template-columns: 1.2fr 0.8fr; gap: 48px; } }
-  .sv__head h2 { max-width: 16ch; }
-  .sv__head .lead { max-width: 44ch; }
-  .sv__grid { list-style: none; margin: 0; padding: 0; display: grid; gap: clamp(14px, 2vw, 22px); }
-  @media (min-width: 800px) { .sv__grid { grid-template-columns: repeat(3, 1fr); } }
-  .sv__card { position: relative; display: flex; flex-direction: column; height: 100%; padding: clamp(24px, 3vw, 34px); border-radius: var(--radius-lg); border: 1px solid var(--line); background: linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.02)); transition: border-color 0.4s, box-shadow 0.6s var(--ease-out); isolation: isolate; }
-  .sv__card:hover { border-color: color-mix(in srgb, var(--accent) 55%, var(--line)); box-shadow: 0 30px 60px -30px rgba(242, 106, 27, 0.45); }
-  .sv__top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 28px; }
-  .sv__code { color: var(--accent); font-size: 0.85rem; }
-  .sv__icon { display: grid; place-items: center; width: 60px; height: 60px; border-radius: 16px; background: rgba(242, 106, 27, 0.12); color: var(--amber-400); transition: background-color 0.4s, color 0.4s, transform 0.6s var(--ease-out); }
-  .sv__card:hover .sv__icon { background: var(--accent); color: #fff; transform: rotate(-8deg) scale(1.06); }
-  .sv__kicker { display: block; font-size: 0.7rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); margin-bottom: 10px; }
-  .sv__card h3 { font-size: var(--step-2); max-width: 14ch; }
-  .sv__summary { margin: 14px 0 22px; color: var(--muted); }
-  .sv__items { list-style: none; margin: 0 0 28px; padding: 0; display: grid; gap: 10px; font-size: 0.92rem; }
-  .sv__items li { display: flex; gap: 10px; align-items: center; color: rgba(255, 255, 255, 0.85); }
-  .sv__items svg { color: var(--accent); flex: none; }
-  .sv__more { display: inline-flex; align-items: center; gap: 8px; margin-top: auto; font-family: var(--font-display); font-weight: 600; color: var(--amber-400); }
-  .sv__more svg { transition: transform 0.4s var(--ease-out); }
-  .sv__card:hover .sv__more svg { transform: translateX(6px); }
-
-  /* Por qué */
-  .why__grid { display: grid; gap: clamp(36px, 6vw, 80px); align-items: start; }
-  @media (min-width: 960px) { .why__grid { grid-template-columns: 0.9fr 1.1fr; } }
-  .why__copy { position: sticky; top: calc(var(--header-h) + 32px); }
-  .why__copy h2 { max-width: 16ch; }
-  .why__copy .lead { margin: 22px 0 30px; max-width: 46ch; }
-  .why__values { list-style: none; margin: 0; padding: 0; display: grid; gap: 16px; }
-  @media (min-width: 600px) { .why__values { grid-template-columns: 1fr 1fr; } .why__values li:nth-child(even) { transform: translateY(32px); } }
-  .why__icon { display: grid; place-items: center; width: 50px; height: 50px; border-radius: 14px; background: rgba(242, 106, 27, 0.12); color: var(--accent); margin-bottom: 18px; }
-  .why__values h3 { margin-bottom: 10px; }
-
-  /* Cobertura */
-  .cov { overflow: hidden; background: radial-gradient(70% 60% at 100% 100%, rgba(242, 106, 27, 0.2), transparent 60%), var(--navy-900); }
-  .cov__bg { position: absolute; inset: 0; pointer-events: none; }
-  .cov__grid { position: relative; display: grid; gap: clamp(32px, 5vw, 72px); align-items: center; }
-  @media (min-width: 900px) { .cov__grid { grid-template-columns: 0.8fr 1.2fr; } }
-  .cov__media { position: relative; margin: 0; border-radius: var(--radius-lg); overflow: hidden; aspect-ratio: 4 / 5; max-width: 480px; box-shadow: 0 40px 80px -40px rgba(0, 0, 0, 0.9); }
-  .cov__media img { width: 100%; height: 115%; object-fit: cover; }
-  .cov__media figcaption { position: absolute; left: 16px; bottom: 16px; display: inline-flex; align-items: center; gap: 8px; padding: 8px 12px; border-radius: 999px; background: rgba(6, 13, 31, 0.75); backdrop-filter: blur(8px); font-size: 0.7rem; letter-spacing: 0.1em; text-transform: uppercase; color: #fff; }
-  .cov__media figcaption svg { color: var(--accent); }
-  .cov__copy h2 { max-width: 20ch; font-size: var(--step-3); }
-  .cov__copy .lead { margin: 22px 0 32px; max-width: 52ch; }
-  .cov__stats { display: flex; flex-wrap: wrap; gap: 16px 40px; margin: 0 0 32px; padding-bottom: 28px; border-bottom: 1px solid var(--line); }
-  .cov__stats dt { font-family: var(--font-mono); font-size: 0.72rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); margin-bottom: 4px; }
-  .cov__stats dd { margin: 0; font-size: var(--step-3); font-weight: 800; letter-spacing: -0.03em; color: var(--glow); }
-  .cov__sectors { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
-  @media (min-width: 600px) { .cov__sectors { grid-template-columns: repeat(3, 1fr); } }
-  .cov__sectors li { display: flex; gap: 12px; align-items: flex-start; }
-  .cov__sectors strong { display: block; font-family: var(--font-display); margin-bottom: 2px; }
-  .cov__sectors .muted { display: block; font-size: 0.85rem; }
-  .cov__sector-icon { display: grid; place-items: center; flex: none; width: 40px; height: 40px; border-radius: 10px; background: rgba(255, 255, 255, 0.06); color: var(--amber-400); }
-
-  /* Proceso */
-  .proc__wrap { position: relative; }
-  .proc__line { display: none; position: absolute; left: 0; right: 0; top: 30px; width: 100%; height: 4px; }
-  @media (min-width: 800px) { .proc__line { display: block; } }
-  .proc__steps { list-style: none; margin: 0; padding: 0; display: grid; gap: 28px; }
-  @media (min-width: 800px) { .proc__steps { grid-template-columns: repeat(4, 1fr); gap: 24px; } }
-  .proc__step { position: relative; padding-top: 12px; }
-  .proc__n { display: grid; place-items: center; width: 60px; height: 60px; margin-bottom: 22px; border-radius: 50%; background: var(--bg); border: 2px solid var(--accent); color: var(--accent); font-size: 1.05rem; font-weight: 800; box-shadow: 0 0 0 8px var(--bg); }
-  .proc__step h3 { margin-bottom: 10px; }
-  .proc__note { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: clamp(36px, 5vw, 56px); padding: 18px 22px; border-radius: var(--radius); background: rgba(242, 106, 27, 0.08); border: 1px solid rgba(242, 106, 27, 0.25); color: var(--ink); }
-  .proc__note svg { color: var(--accent); }
-  .proc__note a { font-weight: 600; color: var(--orange-600); text-decoration: underline; text-underline-offset: 3px; }
-
-  /* FAQ */
-  .faq { background: var(--navy-950); }
   .faq__grid { display: grid; gap: clamp(32px, 5vw, 72px); align-items: start; }
   @media (min-width: 900px) { .faq__grid { grid-template-columns: 0.85fr 1.15fr; } }
-  .faq__head { position: sticky; top: calc(var(--header-h) + 32px); }
+  @media (min-width: 900px) { .faq__head { position: sticky; top: calc(var(--header-h) + 32px); } }
   .faq__head h2 { max-width: 14ch; }
   .faq__head .lead { margin: 22px 0 28px; max-width: 40ch; }
   .faq__list { display: grid; gap: 10px; }
-  .faq__item { border-radius: var(--radius); border: 1px solid var(--line); background: var(--card); overflow: hidden; transition: border-color 0.3s; interpolate-size: allow-keywords; }
-  .faq__item[open] { border-color: color-mix(in srgb, var(--accent) 45%, var(--line)); }
-  .faq__item summary { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 16px; padding: 20px 22px; cursor: pointer; list-style: none; font-family: var(--font-display); font-weight: 600; font-size: var(--step-1); letter-spacing: -0.02em; }
+  .faq__item { border-radius: var(--radius); border: 1px solid var(--line); background: var(--card); overflow: hidden; transition: border-color 0.3s, box-shadow 0.4s; interpolate-size: allow-keywords; }
+  .faq__item[open] { border-color: color-mix(in srgb, var(--accent) 45%, var(--line)); box-shadow: 0 20px 40px -28px rgba(11, 26, 58, 0.35); }
+  .faq__item summary { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 16px; min-height: 64px; padding: 16px 22px; cursor: pointer; list-style: none; font-family: var(--font-display); font-weight: 600; font-size: var(--step-1); letter-spacing: -0.02em; line-height: 1.25; }
   .faq__item summary::-webkit-details-marker { display: none; }
-  .faq__n { color: var(--accent); font-size: 0.8rem; }
-  .faq__chev { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 50%; border: 1px solid var(--line); color: var(--muted); transition: transform 0.5s var(--ease-out), background-color 0.3s, color 0.3s; }
+  .faq__n { color: var(--accent-text); font-size: 0.8rem; }
+  .faq__chev { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 50%; border: 1px solid var(--line); color: var(--muted); transition: transform 0.5s var(--ease-out), background-color 0.3s, color 0.3s; }
   .faq__item[open] .faq__chev { transform: rotate(180deg); background: var(--accent); border-color: var(--accent); color: #fff; }
   .faq__a { padding: 0 22px 22px 58px; max-width: 62ch; }
+  @media (max-width: 599px) { .faq__item summary { padding: 14px 16px; gap: 12px; } .faq__a { padding: 0 16px 18px; } }
   .faq__item::details-content { block-size: 0; overflow: hidden; transition: block-size 0.5s var(--ease-out), content-visibility 0.5s allow-discrete; }
   .faq__item[open]::details-content { block-size: auto; }
 </style>

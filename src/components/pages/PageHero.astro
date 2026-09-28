@@ -1,0 +1,57 @@
+---
+/*
+  Interior page hero (dark): HeroFx background, breadcrumb, eyebrow, h1 (optional gradient accent), lead, and slots:
+  "actions" (CTAs under the lead), "aside" (right column ≥ 960px, stacks below on smaller screens),
+  "bottom" (full-width band at the foot of the hero, e.g. a marquee or quick links).
+*/
+import HeroFx from './HeroFx.astro';
+interface Crumb { href?: string; label: string }
+interface Props { id: string; kicker: string; title: string; accent?: string; lead?: string; crumbs?: Crumb[]; bleed?: string; tone?: 'a' | 'b'; size?: 'xl' | 'lg' }
+const { id, kicker, title, accent, lead, crumbs = [], bleed, tone, size = 'xl' } = Astro.props;
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+const at = accent ? title.lastIndexOf(accent) : -1;
+const [pre, post] = at < 0 ? [title, ''] : [title.slice(0, at), title.slice(at + accent!.length)];
+const aside = Astro.slots.has('aside');
+---
+<section id={id} class="phero section" data-theme="dark" aria-labelledby={`${id}-title`}>
+  <HeroFx bleed={bleed} tone={tone} />
+  <div class:list={['container phero__inner', aside && 'phero__inner--aside']}>
+    <div class="phero__copy" data-hfx-exit>
+      {crumbs.length > 0 && (
+        <nav class="phero__crumbs mono" aria-label="Ruta de navegación" data-reveal="up" data-start="top 100%">
+          <ol>
+            <li><a href={`${base}/`}>Inicio</a></li>
+            {crumbs.map((c) => <li>{c.href ? <a href={`${base}${c.href}`}>{c.label}</a> : <span aria-current="page">{c.label}</span>}</li>)}
+          </ol>
+        </nav>
+      )}
+      <p class="eyebrow" data-reveal="up" data-delay=".05" data-start="top 100%">{kicker}</p>
+      <h1 id={`${id}-title`} class:list={['phero__title', size === 'lg' && 'phero__title--lg']} data-split="lines" data-delay=".1">{pre}{at >= 0 && <span class="phero__accent">{accent}</span>}{post}</h1>
+      {lead && <p class="lead phero__lead" data-reveal="up" data-delay=".35" data-start="top 100%">{lead}</p>}
+      <slot name="actions" />
+    </div>
+    {aside && <div class="phero__aside" data-hfx-exit><slot name="aside" /></div>}
+  </div>
+  <slot name="bottom" />
+</section>
+
+<style>
+  .phero { position: relative; overflow: hidden; isolation: isolate; padding-top: calc(var(--header-h) + clamp(28px, 6vh, 88px)); padding-bottom: clamp(48px, 8vh, 110px); background: var(--navy-900); }
+  .phero__inner { position: relative; display: grid; grid-template-columns: minmax(0, 1fr); gap: clamp(36px, 5vw, 72px); align-items: center; }
+  @media (min-width: 960px) { .phero__inner--aside { grid-template-columns: minmax(0, 1.25fr) minmax(0, 0.75fr); } }
+  .phero__crumbs ol { list-style: none; display: flex; flex-wrap: wrap; align-items: center; gap: 0 4px; margin: 0 0 6px; padding: 0; font-size: 0.75rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
+  .phero__crumbs li { display: inline-flex; align-items: center; gap: 4px; }
+  .phero__crumbs li + li::before { content: ''; width: 14px; height: 1px; margin-inline: 4px; background: currentColor; opacity: 0.5; }
+  .phero__crumbs a { display: inline-flex; align-items: center; min-height: 44px; transition: color 0.3s; }
+  .phero__crumbs a:hover { color: var(--glow); }
+  .phero__crumbs [aria-current] { color: var(--fg); }
+  .phero__title { font-size: min(clamp(2.2rem, 0.9rem + 5.6vw, 6.2rem), 11.5vh); line-height: 0.98; letter-spacing: -0.04em; max-width: 15ch; hyphens: manual; }
+  .phero__inner--aside .phero__title { font-size: min(clamp(2.2rem, 0.9rem + 4.4vw, 5.4rem), 9.5vh); }
+  .phero__inner .phero__title--lg { font-size: min(clamp(2rem, 0.8rem + 3.7vw, 4.5rem), 8.2vh); max-width: 17ch; }
+  .phero__accent { background: linear-gradient(90deg, #f26a1b 0%, #ff9c5c 25%, #ffd79a 50%, #ff9c5c 75%, #f26a1b 100%); background-size: 200% 100%; -webkit-background-clip: text; background-clip: text; color: transparent; -webkit-text-fill-color: transparent; padding-right: 0.06em; animation: phero-shine 2.6s ease-in-out 1.2s both; }
+  @keyframes phero-shine { from { background-position: 100% 0; } to { background-position: 0% 0; } }
+  .phero__lead { margin-top: clamp(18px, 2.4vw, 28px); max-width: 54ch; color: rgba(244, 246, 251, 0.8); }
+  .phero :global(.phero__actions) { margin-top: clamp(24px, 3vw, 36px); }
+  @media (max-width: 560px) { .phero :global(.phero__actions > .btn) { flex: 1 1 100%; white-space: normal; } }
+  @media (prefers-reduced-motion: reduce) { .phero__accent { animation: none; } }
+</style>

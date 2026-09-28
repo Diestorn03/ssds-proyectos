@@ -1,0 +1,168 @@
+---
+/*
+  Post lightbox (native <dialog>). Markup + styles only; the logic lives in src/scripts/lightbox.js and is started
+  from the owning scene's onPage() init: initLightbox(dialog, links, api). Links carry the post data:
+    <a href="https://instagram…" data-lightbox data-title data-date data-datetime data-text [data-reel]><img …></a>
+  Desktop: photo left, info right, prev/next at the sides, counter top-left. < 900px: photo on top, info below
+  (the stage scrolls), prev · counter · next in a bottom bar. Without JS the links simply open Instagram.
+*/
+import Icon from './Icon.astro';
+interface Props { id?: string; handle?: string }
+const { id = 'lightbox', handle = '' } = Astro.props;
+---
+<dialog class="lb" id={id} aria-labelledby={`${id}-title`} data-theme="dark" data-lenis-prevent>
+  <div class="lb__scrim" data-lb-close aria-hidden="true"></div>
+
+  <div class="lb__stage">
+    <figure class="lb__figure">
+      <div class="lb__frame">
+        <img class="lb__img" width="640" height="811" alt="" decoding="async" draggable="false" />
+        <span class="lb__glint" aria-hidden="true"></span>
+      </div>
+    </figure>
+
+    <div class="lb__panel" data-lb-fade>
+      <p class="lb__kicker mono">
+        {handle && <span>@{handle}</span>}
+        <span class="lb__reel" hidden><Icon name="play" size={11} />Reel</span>
+      </p>
+      <h2 class="lb__title" id={`${id}-title`}>Publicación</h2>
+      <p class="lb__date mono"><time></time></p>
+      <p class="lb__text"></p>
+      <a class="btn btn--primary lb__cta" href={handle ? `https://www.instagram.com/${handle}/` : '#'} target="_blank" rel="noopener">
+        <Icon name="instagram" size={20} /><span class="lb__cta-label">Ver en Instagram</span><Icon name="arrowUpRight" size={18} class="arrow" />
+      </a>
+      <p class="lb__hint mono" aria-hidden="true"><kbd>←</kbd><kbd>→</kbd> navegar · <kbd>Esc</kbd> cerrar</p>
+      <p class="sr-only" aria-live="polite" data-lb-live></p>
+    </div>
+  </div>
+
+  <div class="lb__bar">
+    <button class="lb__btn lb__prev" type="button" data-lb-prev data-lb-fade aria-label="Publicación anterior">
+      <Icon name="arrow" size={22} />
+    </button>
+    <p class="lb__count" data-lb-fade aria-hidden="true">
+      <span class="lb__num mono"><b data-lb-index>01</b> / <span data-lb-total>01</span></span>
+      <span class="lb__meter"></span>
+    </p>
+    <button class="lb__btn lb__next" type="button" data-lb-next data-lb-fade aria-label="Publicación siguiente">
+      <Icon name="arrow" size={22} />
+    </button>
+  </div>
+
+  <button class="lb__btn lb__close" type="button" data-lb-close data-lb-fade aria-label="Cerrar" autofocus>
+    <Icon name="close" size={22} />
+  </button>
+</dialog>
+
+<style>
+  .lb {
+    position: fixed; inset: 0; width: 100vw; height: 100%; max-width: none; max-height: none;
+    margin: 0; padding: 0; border: 0; background: transparent; color: var(--fg); overflow: hidden;
+    overscroll-behavior: contain;
+  }
+  .lb[open] { display: block; }
+  .lb::backdrop { background: transparent; }
+  .lb__scrim {
+    position: absolute; inset: 0;
+    background:
+      radial-gradient(70% 60% at 22% 18%, rgba(242, 106, 27, 0.16), transparent 70%),
+      radial-gradient(60% 60% at 90% 100%, rgba(37, 72, 138, 0.35), transparent 70%),
+      rgba(4, 9, 22, 0.975);
+  }
+
+  /* ---------- stage: photo + panel ---------- */
+  .lb__stage {
+    position: relative; height: 100%; overflow-y: auto; overscroll-behavior: contain;
+    display: grid; grid-template-columns: auto minmax(260px, 380px); align-items: center; align-content: safe center; justify-content: center;
+    gap: clamp(28px, 4vw, 64px);
+    padding: 76px clamp(72px, 9vw, 140px) 44px;
+  }
+  .lb__figure { margin: 0; touch-action: pan-y pinch-zoom; }
+  .lb__frame {
+    position: relative; overflow: hidden; isolation: isolate;
+    height: min(calc(100svh - 150px), 811px, calc((100vw - 500px) * 811 / 640)); aspect-ratio: 640 / 811;
+    border-radius: var(--radius); background: var(--navy-800);
+    box-shadow: 0 50px 90px -40px rgba(0, 0, 0, 0.9), 0 0 0 1px rgba(255, 255, 255, 0.08);
+  }
+  .lb__img { width: 100%; height: 100%; object-fit: contain; user-select: none; -webkit-user-drag: none; }
+  .lb__frame :global(.lb__ghost) { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; pointer-events: none; }
+  /* hairline of the brand ray along the frame's top edge */
+  .lb__glint { position: absolute; left: 0; right: 0; top: 0; height: 2px; background: var(--grad-streak); opacity: 0.9; pointer-events: none; }
+
+  .lb__panel { display: grid; justify-items: start; gap: 14px; max-width: 380px; }
+  .lb__kicker { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 0; font-size: 0.75rem; text-transform: uppercase; color: var(--accent-text); }
+  .lb__reel { display: inline-flex; align-items: center; gap: 5px; padding: 4px 9px; border-radius: var(--r-pill); background: var(--orange-500); color: var(--white); font-size: 0.75rem; }
+  .lb__reel[hidden] { display: none; }
+  .lb__title { font-size: clamp(1.6rem, 1.1rem + 1.4vw, 2.4rem); line-height: 1.08; letter-spacing: -0.03em; text-wrap: balance; overflow-wrap: break-word; }
+  .lb__date { margin: 0; font-size: 0.78rem; text-transform: uppercase; color: var(--muted); }
+  .lb__text { color: color-mix(in srgb, var(--fg) 82%, transparent); font-size: var(--step-0); line-height: 1.6; }
+  .lb__cta { margin-top: 8px; white-space: normal; text-align: left; }
+  .lb__hint { margin: 4px 0 0; font-size: 0.75rem; color: var(--muted); display: none; align-items: center; gap: 6px; }
+  .lb__hint kbd { display: inline-grid; place-items: center; min-width: 24px; height: 22px; padding: 0 5px; border-radius: 5px; border: 1px solid var(--line); font: inherit; color: var(--fg); }
+  @media (pointer: fine) { .lb__hint { display: flex; } }
+
+  /* ---------- controls ---------- */
+  .lb__btn {
+    position: absolute; z-index: 2; display: grid; place-items: center;
+    width: 54px; height: 54px; border-radius: 50%;
+    border: 1px solid rgba(255, 255, 255, 0.16); background: rgba(16, 36, 79, 0.72); color: var(--white);
+    transition: background-color 0.3s, border-color 0.3s, box-shadow 0.4s var(--ease-out), scale 0.3s var(--ease-out);
+  }
+  .lb__btn:hover { background: var(--orange-500); border-color: var(--orange-400); box-shadow: 0 0 0 6px rgba(242, 106, 27, 0.18), 0 12px 30px -8px rgba(242, 106, 27, 0.7); }
+  .lb__btn:active { scale: 0.94; }
+  .lb__btn:focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; }
+  .lb__prev :global(svg) { transform: scaleX(-1); }
+  .lb__close { top: max(14px, env(safe-area-inset-top)); right: max(14px, env(safe-area-inset-right)); }
+  .lb__bar { display: contents; }
+  .lb__prev, .lb__next { top: 50%; margin-top: -27px; }
+  .lb__prev { left: clamp(14px, 2.4vw, 40px); }
+  .lb__next { right: clamp(14px, 2.4vw, 40px); }
+  .lb__count { position: absolute; z-index: 2; top: 26px; left: clamp(20px, 2.8vw, 44px); margin: 0; display: grid; gap: 8px; }
+  .lb__num { font-size: 0.8rem; color: var(--muted); letter-spacing: 0.14em; }
+  .lb__num b { color: var(--fg); font-weight: 600; }
+  /* 14-cell "charge" meter: cells up to the current post are lit, the current one glows */
+  .lb__meter { display: flex; gap: 3px; }
+  .lb__meter :global(i) { width: 9px; height: 4px; border-radius: 2px; background: rgba(255, 255, 255, 0.14); transition: background-color 0.35s, box-shadow 0.35s; }
+  .lb__meter :global(i.is-on) { background: var(--orange-500); }
+  .lb__meter :global(i.is-cur) { background: var(--glow); box-shadow: 0 0 8px 1px rgba(255, 180, 84, 0.8); }
+  .lb--single .lb__bar { display: none; }
+
+  /* ---------- portrait < 900px (landscape phones keep the side-by-side layout): stacked, bottom bar ---------- */
+  @media (max-width: 899px) and (max-aspect-ratio: 5/4), (max-width: 599px) {
+    .lb__stage {
+      grid-template-columns: minmax(0, 1fr); justify-items: center; align-content: start;
+      gap: 20px; padding: calc(76px + env(safe-area-inset-top)) 16px calc(112px + env(safe-area-inset-bottom));
+    }
+    .lb__figure { width: 100%; display: grid; justify-items: center; }
+    .lb__frame { height: auto; width: min(100%, calc(46svh * 640 / 811), 420px); }
+    .lb__panel { width: min(100%, 520px); max-width: none; gap: 10px; }
+    .lb__title { font-size: clamp(1.35rem, 1rem + 2.4vw, 1.9rem); }
+    .lb__text { font-size: 0.95rem; }
+    .lb__cta { width: 100%; }
+    .lb__bar {
+      position: absolute; z-index: 2; left: 0; right: 0; bottom: 0;
+      display: flex; align-items: center; justify-content: space-between; gap: 12px;
+      padding: 26px max(16px, env(safe-area-inset-right)) max(14px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+      background: linear-gradient(180deg, rgba(4, 9, 22, 0), rgba(4, 9, 22, 0.97) 38%);
+    }
+    .lb__prev, .lb__next, .lb__count { position: static; margin: 0; }
+    .lb__count { justify-items: center; }
+    .lb__meter :global(i) { width: 7px; }
+  }
+  /* short landscape screens (phones on their side, small laptops zoomed in) */
+  @media (max-height: 520px) and (min-aspect-ratio: 5/4) {
+    .lb__stage { padding-block: 20px; }
+    .lb__frame { height: min(calc(100svh - 40px), calc((100vw - 500px) * 811 / 640)); }
+    .lb__panel { gap: 8px; }
+    .lb__title { font-size: 1.4rem; }
+    .lb__text { font-size: 0.9rem; line-height: 1.5; }
+    .lb__count { top: auto; bottom: 16px; left: auto; right: 24px; justify-items: end; }
+  }
+  @media (max-width: 359px) { .lb__meter :global(i) { width: 5px; } .lb__btn { width: 48px; height: 48px; } }
+</style>
+
+<style is:global>
+  /* page under the open lightbox must not scroll; the gutter keeps the layout from shifting */
+  html.lb-lock { overflow: hidden; scrollbar-gutter: stable; }
+</style>

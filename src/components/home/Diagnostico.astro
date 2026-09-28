@@ -1,0 +1,561 @@
+---
+// Escena #diagnostico "Diagnóstico rápido" (light). Cuestionario de 4 pasos + medidor analógico → mensaje de WhatsApp.
+// Reglas puras: src/data/diagnostico.js · lógica: src/scripts/diagnostico.js · landing: /diagnostico/ usa head={false}.
+import Icon from '../ui/Icon.astro';
+import { services, wa } from '../../data/site.js';
+import { questions } from '../../data/diagnostico.js';
+
+interface Props { head?: boolean }
+const { head = true } = Astro.props;
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+const svcIcon: Record<string, any> = { 'potencia-electrica': 'transformer', 'respaldo-energetico': 'generator', climatizacion: 'snowflake' };
+const ledLabel: Record<string, string> = { 'potencia-electrica': 'Potencia', 'respaldo-energetico': 'Respaldo', climatizacion: 'Clima' };
+// glyphs Icon.astro does not have
+const glyph: Record<string, string> = {
+  switch: '<circle cx="5" cy="17" r="1.8"/><circle cx="19" cy="17" r="1.8"/><path d="M6.6 16 16.5 7.5"/><path d="M2 17h1.2M20.8 17H22"/>',
+  question: '<circle cx="12" cy="12" r="9"/><path d="M9.6 9.6a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.4"/><path d="M12 16.8h.01"/>',
+};
+
+// Gauge geometry (viewBox 0 0 400 232). Value v ∈ 0..100 maps to −50°..+50° around the pivot (CX, CY).
+// Keep CX/CY in sync with PIVOT in scripts/diagnostico.js.
+const CX = 200, CY = 206, R = 168;
+const pt = (v: number, r: number) => { const a = ((v - 50) * Math.PI) / 180; return [+(CX + r * Math.sin(a)).toFixed(1), +(CY - r * Math.cos(a)).toFixed(1)]; };
+const arc = (v0: number, v1: number, r: number) => { const [x0, y0] = pt(v0, r); const [x1, y1] = pt(v1, r); return `M${x0} ${y0}A${r} ${r} 0 0 1 ${x1} ${y1}`; };
+const ticks = Array.from({ length: 51 }, (_, i) => {
+  const v = i * 2, major = v % 10 === 0;
+  const [x1, y1] = pt(v, R - (major ? 20 : 10)); const [x2, y2] = pt(v, R);
+  return { major, x1, y1, x2, y2 };
+});
+const nums = [0, 20, 40, 60, 80, 100].map((v) => { const [x, y] = pt(v, R - 38); return { v, x, y }; });
+const zoneArcs = [{ k: 'lo', d: arc(0, 39.3, R + 17) }, { k: 'mid', d: arc(40.7, 69.3, R + 17) }, { k: 'hi', d: arc(70.7, 100, R + 17) }];
+const valArc = arc(0, 100, R + 7);
+// spark rays around each option's breaker
+const rays = Array.from({ length: 7 }, (_, i) => {
+  const a = (i / 7) * Math.PI * 2 - Math.PI / 2;
+  return { x1: +(Math.cos(a) * 7).toFixed(1), y1: +(Math.sin(a) * 7).toFixed(1), x2: +(Math.cos(a) * 19).toFixed(1), y2: +(Math.sin(a) * 19).toFixed(1) };
+});
+---
+<section id="diagnostico" class:list={['section dg', { 'dg--bare': !head }]} data-theme="light" data-fab-hide aria-labelledby="diagnostico-title">
+  <div class="dg__bg" aria-hidden="true">
+    <span class="dg__grid"></span>
+    <span class="streak streak--thick dg__ray"></span>
+    <span class="streak dg__ray dg__ray--2"></span>
+  </div>
+
+  <div class="container">
+    {head ? (
+      <div class="dg-head">
+        <div>
+          <p class="eyebrow">Diagnóstico rápido</p>
+          <h2 id="diagnostico-title" data-split="words">Mide lo que necesita tu <span class="accent">instalación.</span></h2>
+        </div>
+        <p class="lead" data-reveal="up" data-delay=".1">Responde cuatro preguntas y el medidor te orienta: qué servicio necesitas, si te conviene un tablero de transferencia automática (ATS) y qué esquema de tensión evaluar. Al final te dejamos el mensaje de WhatsApp listo para enviar.</p>
+      </div>
+    ) : (
+      <h2 id="diagnostico-title" class="sr-only">Diagnóstico rápido</h2>
+    )}
+
+    <div class="dg-grid" data-dg-grid>
+      <div class="dg-main" data-dg-main>
+        <div class="dg-card" data-dg-card data-glow data-reveal="up" data-delay=".05">
+          <div class="dg-track" data-dg-track aria-hidden="true">
+            <span class="dg-bus"><span class="dg-bus__fill"><span class="dg-bus__flow"></span></span><span class="dg-bus__head"></span></span>
+            <ol>
+              {questions.map((q, i) => (
+                <li class:list={['dg-node', { 'is-current': i === 0 }]} data-dg-node>
+                  <span class="dg-node__dot"><span class="dg-node__n">{i + 1}</span><Icon name="check" size={16} stroke={2.6} class="dg-node__ok" /></span>
+                  <span class="dg-node__lbl">{q.step}</span>
+                </li>
+              ))}
+            </ol>
+          </div>
+          <p class="dg-count mono">Paso <b data-dg-n>1</b> de {questions.length} · <span data-dg-steplbl>{questions[0].step}</span></p>
+
+          <form class="dg-form" data-dg-form novalidate aria-label="Diagnóstico rápido en 4 pasos">
+            <div class="dg-steps">
+              {questions.map((q, qi) => (
+                <fieldset class:list={['dg-step', `dg-step--${q.id}`, { 'is-active': qi === 0 }]} data-dg-step aria-describedby={`dg-help-${qi}`}>
+                  <legend class="dg-legend"><span class="dg-legend__n mono" aria-hidden="true">0{qi + 1}</span><span>{q.legend}</span></legend>
+                  <p class="dg-help" id={`dg-help-${qi}`}>{q.help}</p>
+                  <div class="dg-opts">
+                    {q.options.map((o) => (
+                      <label class="chip dg-opt">
+                        <input type={q.type} name={q.id} value={o.v} />
+                        <span class="dg-opt__ic" aria-hidden="true">
+                          {glyph[o.icon]
+                            ? <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" set:html={glyph[o.icon]} />
+                            : <Icon name={o.icon as any} size={22} />}
+                        </span>
+                        <span class="dg-opt__txt"><span class="dg-opt__t">{o.t}</span>{o.d && <span class="dg-opt__d">{o.d}</span>}</span>
+                        <span class="dg-brk" aria-hidden="true">
+                          <span class="dg-brk__lever"></span>
+                          <svg class="dg-spark" viewBox="-22 -22 44 44">{rays.map((r) => <line x1={r.x1} y1={r.y1} x2={r.x2} y2={r.y2} />)}</svg>
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                </fieldset>
+              ))}
+            </div>
+
+            <div class="dg-nav">
+              <button type="button" class="btn btn--ghost dg-back" data-dg-back disabled>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5M11 6l-6 6 6 6" /></svg>
+                Atrás
+              </button>
+              <button type="submit" class="btn btn--primary dg-next" data-dg-next disabled data-magnetic="0.2">
+                <span data-dg-next-lbl>Siguiente</span><Icon name="arrow" size={20} class="arrow" />
+              </button>
+            </div>
+            <p class="dg-nojs">
+              <a class="btn btn--wa" href={wa('Hola SSD&S, quiero un diagnóstico de mi instalación eléctrica.')} target="_blank" rel="noopener"><Icon name="whatsapp" size={20} />Pedir diagnóstico por WhatsApp</a>
+            </p>
+          </form>
+        </div>
+
+        <article class="dg-res" data-dg-res hidden tabindex="-1" aria-labelledby="dg-res-title">
+          <header class="dg-res__top" data-dg-anim>
+            <span class="dg-res__label mono"><Icon name="gauge" size={16} />Reporte orientativo</span>
+            <span class="dg-res__zone" data-dg-rzone></span>
+          </header>
+          <div data-dg-anim>
+            <h3 id="dg-res-title" class="dg-res__title">Te sugerimos</h3>
+            <p class="dg-res__sum" data-dg-sum></p>
+          </div>
+          <ul class="dg-res__svcs" role="list" data-dg-svcs>
+            {services.map((s) => (
+              <li class="dg-svc" data-dg-svc={s.slug} hidden>
+                <span class="dg-svc__ic"><Icon name={svcIcon[s.slug]} size={24} /></span>
+                <div class="dg-svc__body">
+                  <p class="dg-svc__name"><span class="dg-svc__code mono">{s.code}</span>{s.name}</p>
+                  <p class="dg-svc__why" data-dg-why></p>
+                  <a class="btn btn--text dg-svc__more" href={`${base}/servicios/${s.slug}/`}>Ver el servicio<span class="sr-only">: {s.name}</span><Icon name="arrow" size={16} class="arrow" /></a>
+                </div>
+              </li>
+            ))}
+          </ul>
+          <div class="dg-res__hints" data-dg-anim data-dg-hintsbox>
+            <p class="dg-res__h mono">Pistas para tu caso</p>
+            <ul role="list" data-dg-hints></ul>
+          </div>
+          <details class="dg-res__msg" data-dg-anim>
+            <summary><Icon name="chevron" size={18} class="dg-res__chev" />Ver el mensaje que se enviará</summary>
+            <p data-dg-msg></p>
+          </details>
+          <div class="dg-res__actions" data-dg-anim>
+            <a class="btn btn--wa" data-dg-wa data-magnetic="0.2" href={wa('Hola SSD&S, quiero un diagnóstico de mi instalación eléctrica.')} target="_blank" rel="noopener"><Icon name="whatsapp" size={20} />Enviar diagnóstico por WhatsApp</a>
+            <button type="button" class="btn btn--ghost" data-dg-restart><Icon name="replay" size={18} />Volver a empezar</button>
+          </div>
+          <p class="dg-res__note" data-dg-anim>Operamos desde Maracay y desplegamos cuadrillas a cualquier estado del país.</p>
+        </article>
+        <span class="dg-scan" data-dg-scan aria-hidden="true"></span>
+      </div>
+
+      <div class="dg-meter" data-theme="dark" data-dg-meter data-zone="" data-tilt="3" data-reveal="up">
+        <div class="dg-meter__plate">
+          <span class="dg-meter__title" data-dg-plate>Prioridad sugerida</span>
+          <span class="dg-meter__sim"><span class="dg-rec" aria-hidden="true"></span>Simulación ilustrativa</span>
+        </div>
+        <div class="dg-face" data-dg-face>
+          <svg class="dg-gauge" viewBox="0 0 400 232" aria-hidden="true" focusable="false">
+            <defs>
+              <linearGradient id="dg-val-grad" x1="30" y1="0" x2="370" y2="0" gradientUnits="userSpaceOnUse">
+                <stop offset="0" stop-color="#f26a1b" /><stop offset=".55" stop-color="#ff9c5c" /><stop offset="1" stop-color="#ffd79a" />
+              </linearGradient>
+              <linearGradient id="dg-needle-grad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0" stop-color="#ffd79a" /><stop offset=".3" stop-color="#ff7d33" /><stop offset=".31" stop-color="#f4f6fb" /><stop offset="1" stop-color="#c9d3e6" />
+              </linearGradient>
+              <radialGradient id="dg-cap-grad" cx=".4" cy=".35" r=".7">
+                <stop offset="0" stop-color="#3a5896" /><stop offset="1" stop-color="#060d1f" />
+              </radialGradient>
+            </defs>
+            <g class="dg-g-zones">
+              {zoneArcs.map((z) => <path class={`dg-g-zone dg-g-zone--${z.k}`} data-dg-z={z.k} d={z.d} />)}
+            </g>
+            <path class="dg-g-track" d={valArc} />
+            <path class="dg-g-glow" d={valArc} pathLength="100" data-dg-arc />
+            <path class="dg-g-val" d={valArc} pathLength="100" data-dg-arc />
+            <g class="dg-g-ticks">
+              {ticks.map((t) => <line class:list={['dg-g-tick', { 'dg-g-tick--major': t.major }]} x1={t.x1} y1={t.y1} x2={t.x2} y2={t.y2} />)}
+            </g>
+            <g class="dg-g-nums">
+              {nums.map((n) => <text class="dg-g-num" x={n.x} y={n.y}>{n.v}</text>)}
+            </g>
+            <g data-dg-needle transform={`rotate(-50 ${CX} ${CY})`}>
+              <g class="dg-needle__j">
+                <line class="dg-needle__glow" x1={CX} y1={CY} x2={CX} y2={CY - R + 6} />
+                <path class="dg-needle" d={`M${CX - 3.4} ${CY} L${CX - 0.9} ${CY - R - 2} L${CX + 0.9} ${CY - R - 2} L${CX + 3.4} ${CY} L${CX + 5} ${CY + 24} L${CX - 5} ${CY + 24} Z`} />
+              </g>
+            </g>
+            <circle class="dg-cap" cx={CX} cy={CY} r="14" />
+            <circle class="dg-cap__dot" cx={CX} cy={CY} r="4" />
+          </svg>
+          <span class="dg-face__flash" data-dg-flash aria-hidden="true"></span>
+        </div>
+        <div class="dg-read">
+          <p class="dg-read__num"><span class="dg-lcd" data-dg-val>0</span><span class="dg-read__of mono">/100</span></p>
+          <p class="dg-read__zone"><span class="sr-only">Prioridad sugerida: </span><span data-dg-zone>En espera</span></p>
+        </div>
+        <div class="dg-leds">
+          <span class="dg-leds__lbl mono">Circuitos sugeridos</span>
+          <ul role="list">
+            {services.map((s, i) => <li data-dg-led={s.slug} style={`--i:${i}`}><span class="dg-led" aria-hidden="true"></span><span class="dg-led__t">{ledLabel[s.slug]}</span></li>)}
+          </ul>
+        </div>
+      </div>
+    </div>
+    <p class="sr-only" aria-live="polite" data-dg-live></p>
+  </div>
+</section>
+
+<script>
+  import { onPage } from '../../scripts/engine.js';
+  import { initDiagnostico } from '../../scripts/diagnostico.js';
+  onPage(initDiagnostico);
+</script>
+
+<style>
+  .dg { overflow: clip; --ink-accent: #b8440a; }   /* orange for small text on light surfaces: ≥ 5:1 on white / paper */
+  .dg--bare { padding-top: clamp(40px, 6vw, 72px); }
+  @media (max-width: 959px) { .dg--bare { padding-top: calc(var(--header-h) + 28px); } }   /* room for the strip's backdrop */
+  .dg__bg { position: absolute; inset: 0; z-index: -1; pointer-events: none; overflow: hidden; }
+  .dg__grid {
+    position: absolute; inset: 0;
+    background-image: linear-gradient(rgba(11, 26, 58, 0.06) 1px, transparent 1px), linear-gradient(90deg, rgba(11, 26, 58, 0.06) 1px, transparent 1px);
+    background-size: 36px 36px; background-position: -1px -1px;
+    -webkit-mask-image: radial-gradient(75% 65% at 65% 60%, #000 25%, transparent 78%); mask-image: radial-gradient(75% 65% at 65% 60%, #000 25%, transparent 78%);
+  }
+  .dg__ray { top: 62%; --angle: -9deg; --streak-opacity: calc(0.16 + var(--charge, 0) * 0.64); transition: opacity 0.9s var(--ease-out); }
+  .dg__ray--2 { top: 88%; --angle: -9deg; --streak-opacity: calc(0.08 + var(--charge, 0) * 0.3); }
+
+  /* ---------- head ---------- */
+  .dg-head { display: grid; gap: 18px 56px; margin-bottom: clamp(32px, 5vw, 56px); }
+  .dg-head h2 { font-size: clamp(2.1rem, 1.25rem + 3.4vw, 4.2rem); max-width: 13ch; }
+  .dg-head .lead { max-width: 48ch; }
+  @media (min-width: 960px) { .dg-head { grid-template-columns: 1.05fr 0.95fr; align-items: end; } }
+
+  /* ---------- layout ---------- */
+  .dg-grid { display: grid; gap: 14px; align-items: start; }
+  .dg-main { position: relative; min-width: 0; }
+  @media (min-width: 960px) {
+    .dg-grid { grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: clamp(24px, 3vw, 44px); }
+  }
+
+  /* ---------- questionnaire card ---------- */
+  .dg-card {
+    position: relative; border-radius: var(--radius-lg); background: var(--white); border: 1px solid var(--line);
+    box-shadow: 0 34px 70px -44px rgba(11, 26, 58, 0.45), 0 1px 0 rgba(11, 26, 58, 0.04);
+    padding: clamp(18px, 3vw, 32px); display: grid; gap: 18px; transform-origin: 50% 50%;
+  }
+  .dg-card[hidden] { display: none; }
+  .dg-card::after {
+    content: ''; position: absolute; top: -1px; left: var(--radius-lg); right: var(--radius-lg); height: 2px; border-radius: 2px;
+    background: var(--grad-brand); opacity: calc(0.35 + var(--charge, 0) * 0.65); box-shadow: 0 0 12px rgba(255, 140, 60, 0.6);
+  }
+
+  /* progress: 4 terminals on a bus; the current fills with a glowing head */
+  .dg-track { position: relative; --p: 0; }
+  .dg-track ol { list-style: none; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); position: relative; z-index: 1; }
+  .dg-node { display: grid; justify-items: center; gap: 8px; text-align: center; font-size: 0.8rem; font-weight: 500; color: var(--muted); line-height: 1.2; }
+  .dg-node__dot {
+    position: relative; width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center;
+    font-family: var(--font-mono); font-size: 0.8rem; font-weight: 600; background: var(--white); border: 1.5px solid var(--line); color: var(--muted);
+    transition: background-color 0.4s, border-color 0.4s, color 0.4s, box-shadow 0.5s var(--ease-out), transform 0.5s var(--ease-spring);
+  }
+  .dg-node__dot > * { grid-area: 1 / 1; }
+  .dg-node__dot :global(.dg-node__ok) { opacity: 0; transform: scale(0.4); transition: opacity 0.3s, transform 0.45s var(--ease-spring); }
+  .dg-node.is-current { color: var(--ink); }
+  .dg-node.is-current .dg-node__dot { border-color: var(--orange-500); color: var(--ink); box-shadow: 0 0 0 5px rgba(242, 106, 27, 0.14); transform: scale(1.08); }
+  .dg-node.is-current .dg-node__dot::after {
+    content: ''; position: absolute; inset: -6px; border-radius: 50%; border: 1.5px solid rgba(242, 106, 27, 0.55);
+    animation: dg-ring 2.2s var(--ease-out) infinite; pointer-events: none;
+  }
+  .dg-node.is-done .dg-node__dot { background: var(--navy-900); border-color: var(--navy-900); color: var(--glow); box-shadow: 0 6px 16px -6px rgba(242, 106, 27, 0.8); }
+  .dg-node.is-done .dg-node__n { opacity: 0; }
+  .dg-node.is-done .dg-node__dot :global(.dg-node__ok) { opacity: 1; transform: none; }
+  .dg-bus { position: absolute; left: 12.5%; right: 12.5%; top: 16px; height: 2px; background: var(--line); overflow-x: clip; overflow-y: visible; }
+  .dg-bus__fill, .dg-bus__head { position: absolute; inset: 0; transform: translateX(calc((var(--p) - 1) * 100%)); transition: transform 0.9s var(--ease-out); }
+  .dg-bus__fill { overflow: hidden; background: var(--grad-brand); box-shadow: 0 0 10px rgba(255, 140, 60, 0.7); }
+  .dg-bus__flow { position: absolute; top: 0; bottom: 0; left: 0; width: 40%; background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.95), transparent); animation: dg-flow 1.6s linear infinite; }
+  .dg-bus__head::after {
+    content: ''; position: absolute; right: -5px; top: -4px; width: 10px; height: 10px; border-radius: 50%;
+    background: radial-gradient(circle, #fff 0 30%, var(--glow) 55%, rgba(255, 140, 60, 0) 72%);
+    box-shadow: 0 0 14px 4px rgba(255, 150, 70, 0.75); opacity: min(1, calc(var(--p) * 8));
+  }
+  .dg-count { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; font-size: 0.8rem; color: var(--muted); margin-top: -6px; }
+  .dg-count b { color: var(--ink-accent); font-weight: 600; }
+  @media (max-width: 479px) {
+    .dg-node__lbl { display: none; }
+    .dg-count { position: static; width: auto; height: auto; overflow: visible; clip: auto; text-align: center; }
+  }
+
+  /* steps: stacked in one cell so the card never changes height between questions */
+  .dg-form { display: grid; gap: 22px; }
+  .dg-steps { display: grid; }
+  :global(.js) .dg.is-ready .dg-step:not(.is-active):not(.is-leaving) { display: none; }
+  @media (min-width: 560px) {
+    :global(.js) .dg.is-ready .dg-step { grid-area: 1 / 1; }
+    :global(.js) .dg.is-ready .dg-step:not(.is-active):not(.is-leaving) { display: grid; visibility: hidden; }
+  }
+  :global(html:not(.js)) .dg-steps { gap: 32px; }
+  .dg-step { border: 0; margin: 0; padding: 0; min-width: 0; align-content: start; display: grid; }
+  .dg-legend { display: flex; gap: 12px; align-items: baseline; padding: 0; font-family: var(--font-display); font-weight: 700; font-size: clamp(1.3rem, 1.05rem + 0.9vw, 1.75rem); letter-spacing: -0.025em; line-height: 1.15; color: var(--ink); }
+  .dg-legend__n { font-size: 0.8rem; font-weight: 600; color: var(--ink-accent); letter-spacing: 0.1em; flex: none; }
+  .dg-help { color: var(--muted); font-size: 0.9rem; margin: 6px 0 16px; }
+  .dg-opts { display: grid; gap: 10px; }
+
+  .dg-opt {
+    display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 12px;
+    min-height: 62px; padding: 10px 14px 10px 10px; border-radius: 14px; text-align: left;
+    background: var(--paper); border: 1px solid var(--line); font-size: 0.98rem; font-weight: 500; color: var(--ink);
+    transition: border-color 0.35s, background-color 0.35s, box-shadow 0.5s var(--ease-out), transform 0.5s var(--ease-out);
+  }
+  .dg-opt > input { z-index: 1; }
+  .dg-opt__ic {
+    width: 42px; height: 42px; border-radius: 11px; display: grid; place-items: center; flex: none;
+    background: var(--white); color: var(--ink-2); border: 1px solid var(--line);
+    transition: background-color 0.35s, color 0.35s, border-color 0.35s, transform 0.5s var(--ease-spring), box-shadow 0.4s;
+  }
+  .dg-opt__txt { display: grid; gap: 1px; line-height: 1.25; }
+  .dg-opt__d { font-family: var(--font-mono); font-size: 0.75rem; letter-spacing: 0.04em; color: var(--muted); font-weight: 400; }
+  .dg-opt:has(input:checked) { border-color: var(--orange-500); background: color-mix(in srgb, var(--orange-500) 7%, var(--white)); box-shadow: 0 14px 30px -20px rgba(242, 106, 27, 0.9); }
+  .dg-opt:has(input:checked) .dg-opt__ic { background: var(--navy-900); border-color: var(--navy-900); color: var(--glow); box-shadow: 0 0 0 3px rgba(242, 106, 27, 0.18), 0 6px 14px -6px rgba(11, 26, 58, 0.7); }
+  .dg-opt:has(input:checked) .dg-opt__t { font-weight: 600; }
+  @media (hover: hover) and (pointer: fine) {
+    .dg-opt:hover { border-color: var(--accent-text); background: var(--white); transform: translateY(-2px); box-shadow: 0 16px 30px -22px rgba(11, 26, 58, 0.5); }
+    .dg-opt:hover .dg-opt__ic { transform: rotate(-6deg) scale(1.06); }
+  }
+
+  /* each option switches a small breaker ON */
+  .dg-brk {
+    position: relative; width: 20px; height: 32px; border-radius: 6px; flex: none; pointer-events: none;
+    background: linear-gradient(180deg, #dfe5f0, #c9d2e3); box-shadow: inset 0 1px 2px rgba(11, 26, 58, 0.25), 0 1px 0 #fff;
+    transition: background 0.35s;
+  }
+  .dg-brk__lever {
+    position: absolute; left: 4px; right: 4px; top: 16px; height: 12px; border-radius: 3px;
+    background: linear-gradient(180deg, #8d99b3, #6b7894); box-shadow: 0 1px 2px rgba(11, 26, 58, 0.4);
+    transition: transform 0.45s var(--ease-spring), background 0.3s, box-shadow 0.3s;
+  }
+  .dg-opt:has(input:checked) .dg-brk { background: linear-gradient(180deg, var(--navy-800), var(--navy-950)); }
+  .dg-opt:has(input:checked) .dg-brk__lever { transform: translateY(-12px); background: linear-gradient(180deg, var(--glow), var(--orange-500)); box-shadow: 0 0 10px rgba(255, 150, 60, 0.95); }
+  .dg-spark { position: absolute; left: 50%; top: 50%; width: 44px; height: 44px; margin: -22px 0 0 -22px; overflow: visible; }
+  .dg-spark line { stroke: var(--orange-500); stroke-width: 2.2; stroke-linecap: round; opacity: 0; }
+  .dg-spark line:nth-child(odd) { stroke: var(--amber-400); }
+
+  @media (min-width: 560px) {
+    .dg-step--necesidad .dg-opts, .dg-step--planta .dg-opts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .dg-step--necesidad .dg-opt:last-child { grid-column: 1 / -1; }
+    .dg-step--planta .dg-opt { min-height: 84px; }
+    .dg-step--lugar .dg-opts, .dg-step--tamano .dg-opts { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .dg-step--lugar .dg-opt, .dg-step--tamano .dg-opt {
+      grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: 'ic brk' 'txt txt'; align-items: start; row-gap: 14px; min-height: 168px; padding: 16px;
+    }
+    .dg-step--lugar .dg-opt__ic, .dg-step--tamano .dg-opt__ic { grid-area: ic; width: 46px; height: 46px; }
+    .dg-step--lugar .dg-brk, .dg-step--tamano .dg-brk { grid-area: brk; }
+    .dg-step--lugar .dg-opt__txt, .dg-step--tamano .dg-opt__txt { grid-area: txt; align-self: end; }
+    .dg-step--lugar .dg-opt__t { font-family: var(--font-display); font-weight: 600; font-size: 1.1rem; letter-spacing: -0.01em; }
+  }
+
+  /* nav */
+  .dg-nav { display: flex; justify-content: space-between; gap: 12px; padding-top: 18px; border-top: 1px solid var(--line); }
+  .dg-nav .btn { min-width: 0; }
+  .dg-next { min-width: 11.5rem; }
+  .dg-back:disabled { opacity: 0.4; cursor: default; }
+  .dg-back:disabled:hover { transform: none; border-color: color-mix(in srgb, var(--fg) 25%, transparent); }
+  .dg-next:disabled { opacity: 0.45; cursor: not-allowed; box-shadow: none; }
+  .dg-next:disabled:hover { transform: none; }
+  .dg-next:disabled:hover::after { background-position: 120% 0; }
+  .dg-nojs { display: none; }
+  :global(html:not(.js)) .dg-nojs { display: block; }
+  :global(html:not(.js)) :is(.dg-nav, .dg-track, .dg-count) { display: none; }
+  @media (max-width: 400px) { .dg-nav .btn { padding: 0 18px; } .dg-next { min-width: 0; flex: 1; } }
+
+  /* ---------- result ---------- */
+  .dg-res {
+    position: relative; border-radius: var(--radius-lg); background: var(--white); border: 1px solid var(--line);
+    box-shadow: 0 40px 80px -46px rgba(11, 26, 58, 0.55); padding: clamp(18px, 3vw, 32px); display: grid; gap: 18px;
+  }
+  .dg-res[hidden] { display: none; }
+  .dg-res:focus { outline: none; }
+  .dg-res:focus-visible { outline: 2px solid var(--focus); outline-offset: 4px; }
+  .dg-res::before { content: ''; position: absolute; top: -1px; left: var(--radius-lg); right: var(--radius-lg); height: 2px; background: var(--grad-brand); box-shadow: 0 0 14px rgba(255, 140, 60, 0.8); }
+  .dg-res__top { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px 12px; padding-bottom: 14px; border-bottom: 1px dashed var(--line); }
+  .dg-res__label { display: inline-flex; align-items: center; gap: 8px; font-size: 0.75rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-accent); }
+  .dg-res__zone { display: inline-flex; align-items: center; gap: 8px; font-family: var(--font-mono); font-size: 0.75rem; letter-spacing: 0.08em; text-transform: uppercase; padding: 6px 12px 6px 10px; border-radius: var(--r-pill); background: var(--navy-900); color: var(--glow); }
+  .dg-res__zone::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: currentColor; box-shadow: 0 0 8px currentColor; }
+  .dg-res[data-zone='lo'] .dg-res__zone { color: #b9ccf3; }
+  .dg-res[data-zone='mid'] .dg-res__zone { color: var(--amber-400); }
+  .dg-res[data-zone='hi'] .dg-res__zone { color: var(--orange-300); }
+  .dg-res__title { font-size: clamp(1.6rem, 1.2rem + 1.4vw, 2.3rem); }
+  .dg-res__sum { color: var(--muted); margin-top: 6px; font-size: 0.95rem; }
+  .dg-res__svcs { list-style: none; display: grid; gap: 10px; }
+  .dg-svc { display: grid; grid-template-columns: 48px minmax(0, 1fr); gap: 14px; padding: 16px; border-radius: 16px; background: var(--paper); border: 1px solid var(--line); }
+  .dg-svc[hidden] { display: none; }
+  .dg-svc__ic { width: 48px; height: 48px; border-radius: 13px; display: grid; place-items: center; background: var(--navy-900); color: var(--glow); box-shadow: 0 0 0 3px rgba(242, 106, 27, 0.16), 0 10px 20px -10px rgba(11, 26, 58, 0.8); }
+  .dg-svc__name { font-family: var(--font-display); font-weight: 700; font-size: 1.1rem; letter-spacing: -0.015em; line-height: 1.25; }
+  .dg-svc__code { font-size: 0.75rem; color: var(--ink-accent); margin-right: 8px; letter-spacing: 0.08em; }
+  .dg-svc__why { color: var(--ink-2); font-size: 0.95rem; line-height: 1.5; margin-top: 4px; }
+  .dg-svc .dg-svc__more { --btn-fg: var(--ink-accent); font-size: 0.9rem; margin-top: 2px; }
+  .dg-res__hints { padding: 14px 16px; border-radius: 14px; border: 1px dashed color-mix(in srgb, var(--orange-500) 45%, var(--line)); background: color-mix(in srgb, var(--orange-500) 4%, var(--white)); }
+  .dg-res__hints[hidden] { display: none; }
+  .dg-res__h { font-size: 0.75rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-accent); margin-bottom: 8px; }
+  .dg-res__hints ul { list-style: none; display: grid; gap: 8px; font-size: 0.95rem; color: var(--ink-2); }
+  .dg-res__hints :global(li) { position: relative; padding-left: 22px; }
+  .dg-res__hints :global(li)::before {
+    content: ''; position: absolute; left: 2px; top: 0.3em; width: 12px; height: 14px; background: var(--orange-500);
+    clip-path: polygon(55% 0, 0 58%, 45% 58%, 35% 100%, 100% 38%, 55% 38%);
+  }
+  .dg-res__msg { border-radius: 14px; border: 1px solid var(--line); }
+  .dg-res__msg summary { display: flex; align-items: center; gap: 10px; min-height: 48px; padding: 0 14px; cursor: pointer; list-style: none; font-weight: 600; font-size: 0.95rem; }
+  .dg-res__msg summary::-webkit-details-marker { display: none; }
+  .dg-res__msg :global(.dg-res__chev) { color: var(--accent-text); transition: transform 0.4s var(--ease-out); }
+  .dg-res__msg[open] :global(.dg-res__chev) { transform: rotate(180deg); }
+  .dg-res__msg p { white-space: pre-line; margin: 0 14px 14px; padding: 12px 14px; border-radius: 12px 12px 12px 4px; background: var(--paper); font-size: 0.9rem; line-height: 1.55; color: var(--ink-2); }
+  .dg-res__actions { display: flex; flex-wrap: wrap; gap: 12px; }
+  .dg-res__actions .btn { white-space: normal; }
+  .dg-res__actions .btn--wa { flex: 1 1 auto; }
+  .dg-res__note { font-size: 0.85rem; color: var(--muted); }
+  @media (max-width: 520px) {
+    .dg-res__actions > .btn { flex: 1 1 100%; }
+    .dg-svc { grid-template-columns: 40px minmax(0, 1fr); gap: 12px; padding: 14px 14px 10px 12px; }
+    .dg-svc__ic { width: 40px; height: 40px; border-radius: 11px; }
+  }
+  .dg-scan {
+    position: absolute; left: 4%; right: 4%; top: 50%; height: 2px; margin-top: -1px; pointer-events: none; opacity: 0; z-index: 2;
+    background: var(--grad-streak); box-shadow: 0 0 18px 2px rgba(255, 150, 70, 0.8);
+  }
+
+  /* ---------- the meter (dark instrument panel) ---------- */
+  .dg-meter {
+    position: sticky; top: calc(var(--header-h) + 24px); z-index: 3; border-radius: var(--radius-lg); padding: clamp(14px, 1.8vw, 22px); color: var(--fg);
+    background: radial-gradient(120% 70% at 50% 0%, #1d3a74 0%, var(--navy-900) 55%, var(--navy-950) 100%);
+    box-shadow: 0 44px 80px -44px rgba(11, 26, 58, 0.9), inset 0 1px 0 rgba(255, 255, 255, 0.1), inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+    display: grid; gap: 14px;
+  }
+  .dg-meter::before {   /* four panel screws */
+    --s: radial-gradient(circle at 5px 5px, #8fa0c4 0 1.6px, #4a5f8c 2px 3.6px, #1a2c55 4px 4.6px, transparent 5px);
+    content: ''; position: absolute; inset: 9px; pointer-events: none;
+    background: var(--s) 0 0 / 10px 10px no-repeat, var(--s) 100% 0 / 10px 10px no-repeat, var(--s) 0 100% / 10px 10px no-repeat, var(--s) 100% 100% / 10px 10px no-repeat;
+  }
+  .dg-meter__plate { display: flex; justify-content: space-between; align-items: center; gap: 8px 12px; flex-wrap: wrap; padding-inline: 14px; font-family: var(--font-mono); font-size: 0.75rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
+  .dg-meter__title { color: var(--fg); }
+  .dg-meter__sim { display: inline-flex; align-items: center; gap: 8px; }
+  .dg-rec { width: 7px; height: 7px; border-radius: 50%; background: var(--orange-500); box-shadow: 0 0 0 3px rgba(242, 106, 27, 0.25), 0 0 10px var(--orange-500); animation: dg-blink 1.8s steps(1) infinite; }
+
+  .dg-face {
+    position: relative; overflow: hidden; border-radius: 16px; aspect-ratio: 400 / 232;
+    background: radial-gradient(70% 90% at 50% 100%, rgba(242, 106, 27, calc(0.1 + var(--charge, 0) * 0.14)), transparent 70%), linear-gradient(180deg, #0f2352 0%, #071230 100%);
+    box-shadow: inset 0 2px 14px rgba(0, 0, 0, 0.55), inset 0 0 0 1px rgba(255, 255, 255, 0.07);
+  }
+  .dg-face::before { content: ''; position: absolute; inset: 0; pointer-events: none; background: linear-gradient(155deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.02) 38%, transparent 40%); z-index: 1; }
+  .dg-face::after {   /* glass glint, sweeps now and then */
+    content: ''; position: absolute; top: -20%; bottom: -20%; left: 0; width: 18%; pointer-events: none; z-index: 1;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.12), transparent); transform: translateX(-150%) skewX(-18deg);
+    animation: dg-glint 7s var(--ease-in-out) 2s infinite;
+  }
+  .dg-gauge { width: 100%; height: 100%; overflow: visible; }
+  .dg-g-zone { fill: none; stroke-width: 6; opacity: 0.3; transition: opacity 0.5s, stroke-width 0.5s var(--ease-out); }
+  .dg-g-zone--lo { stroke: #86a2dc; }
+  .dg-g-zone--mid { stroke: var(--amber-400); }
+  .dg-g-zone--hi { stroke: var(--orange-500); }
+  .dg-g-zone.is-on { opacity: 1; stroke-width: 8; }
+  .dg-g-track { fill: none; stroke: rgba(255, 255, 255, 0.08); stroke-width: 4; }
+  .dg-g-val, .dg-g-glow { fill: none; stroke: url(#dg-val-grad); stroke-dasharray: 100 100; stroke-dashoffset: 100; }
+  .dg-g-val { stroke-width: 4; }
+  .dg-g-glow { stroke-width: 14; opacity: 0.2; }
+  .dg-g-tick { stroke: rgba(244, 246, 251, 0.45); stroke-width: 1.2; }
+  .dg-g-tick--major { stroke: rgba(244, 246, 251, 0.95); stroke-width: 2.6; }
+  .dg-g-num { fill: #b7c3da; font-family: var(--font-mono); font-size: 15px; font-weight: 500; text-anchor: middle; dominant-baseline: middle; }
+  .dg-needle { fill: url(#dg-needle-grad); }
+  .dg-needle__glow { stroke: #ff8a3d; stroke-width: 10; stroke-linecap: round; opacity: 0.22; }
+  .dg-needle__j { --amp: calc(0.2 + var(--charge, 0) * 0.9); transform-box: view-box; transform-origin: 200px 206px; animation: dg-jitter 2.4s ease-in-out infinite; }
+  .dg-cap { fill: url(#dg-cap-grad); stroke: rgba(255, 170, 90, 0.7); stroke-width: 1.5; }
+  .dg-cap__dot { fill: var(--glow); }
+  .dg-face__flash {
+    position: absolute; left: 50%; top: 88.8%; width: 60%; aspect-ratio: 1; translate: -50% -50%; border-radius: 50%; pointer-events: none; opacity: 0; z-index: 1;
+    background: radial-gradient(circle, rgba(255, 215, 154, 0.55), rgba(242, 106, 27, 0.18) 40%, transparent 68%);
+  }
+
+  .dg-read { display: flex; justify-content: space-between; align-items: flex-end; gap: 12px; padding-inline: 4px; }
+  .dg-read__num { display: flex; align-items: baseline; gap: 6px; }
+  .dg-lcd { display: inline-block; min-width: 3ch; text-align: right; font-family: var(--font-mono); font-weight: 600; font-size: clamp(2.2rem, 1.6rem + 1.4vw, 3rem); line-height: 1; font-variant-numeric: tabular-nums; color: var(--glow); text-shadow: 0 0 18px rgba(255, 170, 80, 0.55); }
+  .dg-read__of { color: var(--muted); font-size: 0.8rem; }
+  .dg-read__zone { font-family: var(--font-display); font-weight: 700; font-size: var(--step-1); letter-spacing: -0.02em; text-align: right; color: var(--muted); transition: color 0.4s; }
+  .dg-meter[data-zone='lo'] .dg-read__zone { color: #a9c0ef; }
+  .dg-meter[data-zone='mid'] .dg-read__zone { color: var(--amber-400); }
+  .dg-meter[data-zone='hi'] .dg-read__zone { color: var(--orange-300); }
+
+  .dg-leds { display: flex; align-items: center; flex-wrap: wrap; gap: 10px 18px; padding: 14px 4px 0; border-top: 1px solid rgba(255, 255, 255, 0.08); }
+  .dg-leds__lbl { font-size: 0.75rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
+  .dg-leds ul { list-style: none; display: flex; flex-wrap: wrap; gap: 8px 16px; }
+  .dg-leds li { display: inline-flex; align-items: center; gap: 8px; font-size: 0.875rem; color: var(--muted); transition: color 0.4s; }
+  .dg-led { width: 10px; height: 10px; border-radius: 50%; background: #243658; box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.6); transition: background 0.3s, box-shadow 0.4s; }
+  .dg-leds li.is-on { color: var(--fg); }
+  .dg-meter.is-test .dg-led { animation: dg-led-test 0.8s steps(1) calc(var(--i) * 0.14s) both; }
+  .dg-leds li.is-on .dg-led { background: radial-gradient(circle at 40% 35%, #fff6e0 0 20%, var(--amber-400) 50%, var(--orange-500)); box-shadow: 0 0 0 3px rgba(242, 106, 27, 0.22), 0 0 14px rgba(255, 160, 70, 0.95); }
+
+  /* ---------- touch / < 960px: the meter is a compact sticky strip above the questions ---------- */
+  @media (max-width: 959px) {
+    .dg-head { margin-bottom: calc(var(--header-h) + 20px); }
+    .dg-meter {
+      order: -1; position: sticky; top: calc(var(--header-h) + 8px);
+      grid-template-columns: minmax(0, 0.85fr) minmax(0, 1fr) auto; grid-template-areas: 'face cap leds' 'face read leds' 'sim sim sim';
+      gap: 2px 14px; padding: 12px 16px 10px 12px; align-items: center;
+    }
+    .dg-meter::after {   /* covers the gap between the header and the strip */
+      content: ''; position: absolute; left: calc(-1 * var(--gutter)); right: calc(-1 * var(--gutter)); bottom: 100%; height: calc(var(--header-h) + 8px); background: var(--paper);
+    }
+    .dg-meter__plate { display: contents; }
+    .dg-meter__title { grid-area: cap; align-self: end; color: var(--muted); letter-spacing: 0.05em; }
+    .dg-meter__sim { grid-area: sim; margin-top: 8px; padding-left: 4px; }
+    .dg-face { grid-area: face; border-radius: 12px; }
+    .dg-read { grid-area: read; flex-direction: column; align-items: flex-start; gap: 2px; padding: 0; align-self: start; }
+    .dg-read__zone { text-align: left; font-size: 1.05rem; }
+    .dg-lcd { font-size: 2.1rem; text-align: left; min-width: 0; }
+    .dg-leds { grid-area: leds; padding: 0 2px 0 0; border: 0; }
+    .dg-leds__lbl { display: none; }
+    .dg-leds ul { flex-direction: column; gap: 12px; }
+    .dg-led__t { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  }
+  @media (min-width: 640px) and (max-width: 959px) {
+    .dg-meter { grid-template-columns: minmax(0, 0.8fr) minmax(0, 1fr) auto; }
+    .dg-led__t { position: static; width: auto; height: auto; overflow: visible; clip: auto; }
+    .dg-leds ul { gap: 10px; }
+    .dg-lcd { font-size: 2.6rem; }
+    .dg-read__zone { font-size: 1.3rem; }
+  }
+  @media (max-width: 959px) {
+    .dg-g-nums { display: none; }   /* the strip's dial is too small for legible numerals */
+  }
+  @media (max-width: 379px) {
+    .dg-meter { padding: 10px 12px 8px 10px; gap: 2px 10px; grid-template-columns: minmax(0, 0.72fr) minmax(0, 1fr) auto; }
+    .dg-meter__plate { letter-spacing: 0.04em; }
+    .dg-meter__title { letter-spacing: 0; }
+    .dg-lcd { font-size: 1.8rem; }
+    .dg-read__zone { font-size: 0.95rem; }
+  }
+
+  /* the charge that flies from a chip to the meter (created by scripts/diagnostico.js, appended to <body>) */
+  :global(.dg-fly) {
+    --d: calc(12px * var(--s, 1));
+    position: fixed; left: calc(var(--d) / -2); top: calc(var(--d) / -2); width: var(--d); height: var(--d); border-radius: 50%;
+    z-index: 95; pointer-events: none; will-change: transform;
+    background: radial-gradient(circle, #fff 0 25%, #ffd79a 48%, #f26a1b 78%);
+    box-shadow: 0 0 12px 3px rgba(255, 150, 70, 0.85);
+  }
+  :global(.dg-fly--tail) { opacity: 0.55; box-shadow: 0 0 10px 2px rgba(255, 150, 70, 0.5); }
+
+  /* ---------- motion ---------- */
+  @keyframes dg-led-test { 0% { background: #243658; } 15%, 55% { background: var(--amber-400); box-shadow: 0 0 12px rgba(255, 160, 70, 0.9); } 56%, 100% { background: #243658; } }
+  @keyframes dg-ring { 0% { transform: scale(0.85); opacity: 1; } 80%, 100% { transform: scale(1.35); opacity: 0; } }
+  @keyframes dg-flow { from { transform: translateX(-100%); } to { transform: translateX(260%); } }
+  @keyframes dg-blink { 0%, 70% { opacity: 1; } 71%, 100% { opacity: 0.25; } }
+  @keyframes dg-glint { 0%, 78% { transform: translateX(-150%) skewX(-18deg); } 100% { transform: translateX(650%) skewX(-18deg); } }
+  /* the needle hums a little more the higher it reads */
+  @keyframes dg-jitter { 0%, 100% { rotate: 0deg; } 18% { rotate: calc(var(--amp) * 1deg); } 40% { rotate: calc(var(--amp) * -0.7deg); } 62% { rotate: calc(var(--amp) * 0.5deg); } 84% { rotate: calc(var(--amp) * -0.9deg); } }
+  :global(html.is-lite) .dg-face::after, :global(html.is-lite) .dg-needle__j { animation: none; }
+  @media (prefers-reduced-motion: reduce) {
+    .dg-face::after, .dg-needle__j, .dg-bus__flow, .dg-node.is-current .dg-node__dot::after, .dg-rec { animation: none; }
+  }
+</style>

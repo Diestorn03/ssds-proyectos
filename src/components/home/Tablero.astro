@@ -1,0 +1,639 @@
+---
+/**
+ * #tablero · "El Tablero" — the services as a distribution board (docs/CONCEPTO.md, scene 2).
+ *   <Tablero />               home. Desktop gate: pin +220 %, scrub. The door swings open, each breaker flips ON,
+ *                             its circuit is drawn (DrawSVG) to the card deck with a spark riding it (MotionPath),
+ *                             the card lands on the stack, the load meter rises; last stage "Sistema energizado".
+ *                             Touch / <768: compact board sticky on top, the 3 cards scroll under it and an
+ *                             IntersectionObserver flips each breaker as its card crosses the middle.
+ *   <Tablero mode="static" /> /servicios/: every breaker ON, cards in a grid, a breaker scrolls to its card.
+ * Reduced motion and no JS render the static final state. The cards are always in the DOM (text equivalent of the board).
+ * Logic: src/scripts/tablero.js. Copy: src/data/site.js (services).
+ */
+import Icon from '../ui/Icon.astro';
+import { services, wa } from '../../data/site.js';
+
+interface Props { mode?: 'pin' | 'static' }
+const { mode = 'pin' } = Astro.props;
+const pin = mode === 'pin';
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+// plates are narrow: give the one long word a soft hyphen (Cli-ma-ti-za-ción) so it never overflows at 12px
+const SHY = String.fromCharCode(173);
+const plate = (t: string) => t.replace('Climatización', `Climati${SHY}zación`);
+// analog meter: pivot (50,72), scale -45°..45°; the needle rests at the last (illustrative) load
+const pt = (deg: number, r: number) => { const a = (deg * Math.PI) / 180; return [+(50 + r * Math.sin(a)).toFixed(2), +(72 - r * Math.cos(a)).toFixed(2)]; };
+const ticks = Array.from({ length: 11 }, (_, i) => { const d = -45 + i * 9; const [x1, y1] = pt(d, i % 5 ? 34 : 30); const [x2, y2] = pt(d, 38); return { x1, y1, x2, y2 }; });
+const arc = (a: number, b: number) => { const [x1, y1] = pt(a, 40); const [x2, y2] = pt(b, 40); return `M${x1} ${y1}A40 40 0 0 1 ${x2} ${y2}`; };
+---
+<section id="tablero" class:list={['tb section', `tb--${mode}`]} data-theme="light" data-mode={mode} data-step="3" data-fab-hide aria-labelledby="tablero-title">
+  <div class="tb__grid" aria-hidden="true"></div>
+  <div class="tb__stage">
+    <span class="tb__ray" aria-hidden="true"></span>
+    <header class="tb__head">
+      <div class="tb__titles" data-reveal="up">
+        <p class="eyebrow">Portafolio de servicios</p>
+        <h2 id="tablero-title" class="tb__title">Distribuir, automatizar y <span class="tb__accent">proteger la energía.</span></h2>
+      </div>
+      <div class="tb__intro">
+        <p class="lead tb__lead">Desde la evaluación inicial hasta el montaje, entregamos soluciones dinámicas para el sector residencial, comercial e industrial.</p>
+        {pin && (
+          <p class="tb__hint mono" aria-hidden="true">
+            <span class="tb__hint-ico"><svg viewBox="0 0 24 24"><path d="M12 4v14M6 12l6 6 6-6" /></svg></span>
+            Desplázate para energizar los circuitos
+          </p>
+        )}
+        {pin && <a class="tb__skip btn btn--text" href="#transferencia">Saltar el tablero</a>}
+      </div>
+    </header>
+
+    <div class="tb__panelcol" data-reveal={pin ? undefined : 'scale'}>
+      <div class="tb-panel" role="group" aria-label="Tablero de distribución: un circuito por servicio">
+        <div class="tb-cab">
+          <span class="tb-cab__glow" aria-hidden="true"></span>
+          <div class="tb-cab__inner">
+            <span class="tb-cab__light" aria-hidden="true"></span>
+            <div class="tb-cab__top">
+              <span class="tb-np" aria-hidden="true">
+                <b>SSD<i>&amp;</i>S</b>
+                <span class="tb-sys"><i class="tb-sys__led"></i><span class="tb-sys__off">En espera</span><span class="tb-sys__mid">Energizando</span><span class="tb-sys__on">Energizado</span></span>
+              </span>
+              <p class="tb-load">
+                <span class="tb-load__label">Carga del sistema</span>
+                <span class="tb-load__sim">Simulación ilustrativa</span>
+                <span class="tb-load__bar" aria-hidden="true"><i></i></span>
+              </p>
+              <svg class="tb-meter" viewBox="0 0 100 100" aria-hidden="true">
+                <rect x="1" y="1" width="98" height="98" rx="9" class="tb-meter__bezel" />
+                <rect x="8" y="8" width="84" height="84" rx="4" class="tb-meter__face" />
+                <path d={arc(-45, 9)} class="tb-meter__zone tb-meter__zone--ok" />
+                <path d={arc(9, 31.5)} class="tb-meter__zone tb-meter__zone--hi" />
+                <path d={arc(31.5, 45)} class="tb-meter__zone tb-meter__zone--max" />
+                {ticks.map((t) => <line x1={t.x1} y1={t.y1} x2={t.x2} y2={t.y2} class="tb-meter__tick" />)}
+                <g class="tb-meter__jit"><g class="tb-meter__needle" transform="rotate(30.6 50 72)"><path d="M50 74V36" /></g></g>
+                <circle cx="50" cy="72" r="4.2" class="tb-meter__hub" />
+                <rect x="32" y="81" width="36" height="4" rx="2" class="tb-meter__slot" />
+              </svg>
+            </div>
+            <span class="tb-duct" aria-hidden="true"></span>
+            <div class="tb-rail">
+              <span class="tb-rail__din" aria-hidden="true"></span>
+              {services.map((s, i) => (
+                <button type="button" class="tb-brk" data-i={i + 1} aria-pressed="true" aria-controls={`tb-card-${s.code}`}>
+                  <span class="tb-brk__body" aria-hidden="true">
+                    <span class="tb-brk__screws"><i></i><i class="tb-brk__term"></i><i></i></span>
+                    <span class="tb-brk__face">
+                      <i class="tb-brk__led"></i>
+                      <span class="tb-brk__win"><span class="tb-brk__lever"><i></i></span></span>
+                      <span class="tb-brk__marks"><i class="tb-brk__mk-on"></i><i class="tb-brk__mk-off"></i></span>
+                      <svg class="tb-brk__burst" viewBox="-20 -20 40 40"><path d="M0-18V-9M0 9V18M-18 0H-9M9 0H18M-12.7-12.7-6.4-6.4M6.4 6.4 12.7 12.7M12.7-12.7 6.4-6.4M-6.4 6.4-12.7 12.7" /><circle r="4" /></svg>
+                    </span>
+                    <span class="tb-brk__screws"><i></i><i></i><i></i></span>
+                  </span>
+                  <span class="tb-brk__plate"><span class="tb-brk__code mono"><span class="sr-only">Circuito </span>{s.code}</span><span class="tb-brk__name">{plate(s.short)}</span></span>
+                </button>
+              ))}
+            </div>
+            <span class="tb-duct tb-duct--low" aria-hidden="true"></span>
+          </div>
+          <div class="tb-door" aria-hidden="true">
+            <div class="tb-door__face tb-door__front">
+              <span class="tb-door__plate"><b>SSD<i>&amp;</i>S</b><small>Tablero de distribución</small></span>
+              <svg class="tb-door__hazard" viewBox="0 0 100 88"><path d="M50 6 95 83H5Z" /><path d="M55 25 38 55h13l-5 21 19-31H52l3-20Z" /></svg>
+              <span class="tb-door__warn">Peligro<br />Riesgo eléctrico</span>
+              <span class="tb-door__handle"></span>
+              <span class="tb-door__vents"></span>
+            </div>
+            <div class="tb-door__face tb-door__back">
+              <span class="tb-door__pocket">
+                <svg viewBox="0 0 60 80"><path d="M30 6v14M30 20h-18M30 20h18M12 20v12M30 20v12M48 20v12M8 32h8v10H8zM26 32h8v10h-8zM44 32h8v10h-8zM12 42v22M30 42v22M48 42v22M6 64h12M24 64h12M42 64h12" /></svg>
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    {pin && (
+      <svg class="tb__wires" aria-hidden="true" preserveAspectRatio="none">
+        <defs>
+          <linearGradient id="tb-grad" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#d95a12" /><stop offset=".55" stop-color="#ff7d33" /><stop offset="1" stop-color="#ffb454" /></linearGradient>
+        </defs>
+        <g class="tb-wires__dormant">
+          {services.map(() => <path class="tb-wire__base" d="M0 0" />)}
+          <rect class="tb-gland" x="0" y="0" width="12" height="30" rx="4" />
+        </g>
+        {services.map((s, i) => (
+          <g class="tb-wire" data-i={i + 1}>
+            <path class="tb-wire__halo" d="M0 0" />
+            <path class="tb-wire__live" d="M0 0" />
+            <path class="tb-wire__flow" d="M0 0" />
+            <path class="tb-wire__comet" d="M0 0" />
+            <circle class="tb-wire__term" r="5" cx="0" cy="0" />
+            <g class="tb-spark"><circle r="14" class="tb-spark__halo" /><circle r="7" class="tb-spark__mid" /><circle r="3" class="tb-spark__core" /></g>
+          </g>
+        ))}
+      </svg>
+    )}
+
+    <ol class="tb__deck" data-stagger={pin ? undefined : '0.1'}>
+      {services.map((s, i) => (
+        <li class="tb-card" id={`tb-card-${s.code}`} data-i={i + 1}>
+          <article class="tb-card__in card" data-glow data-tilt="3" aria-labelledby={`tb-card-${s.code}-t`}>
+            <span class="tb-card__rail" aria-hidden="true"></span>
+            <span class="tb-card__num num" aria-hidden="true">{s.code}</span>
+            <div class="tb-card__top">
+              <p class="tb-card__kicker mono"><span class="tb-card__code">{s.code}</span>{s.kicker}</p>
+              <span class="tb-card__state mono" aria-hidden="true"><i></i><span class="tb-card__st-off">En espera</span><span class="tb-card__st-on">Energizado</span></span>
+            </div>
+            <h3 class="tb-card__name" id={`tb-card-${s.code}-t`}>{s.name}</h3>
+            <p class="tb-card__sum">{s.summary}</p>
+            <ul class="tb-card__items">
+              {s.items.slice(0, 3).map((it) => (
+                <li><svg class="tb-card__chk" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12.5 4.2 4.2L19 7" pathLength="1" /></svg>{it.t}</li>
+              ))}
+            </ul>
+            <ul class="tb-card__tags" aria-label="Especialidades">
+              {s.tags.map((t) => <li>{t}</li>)}
+            </ul>
+            <div class="tb-card__cta">
+              <a class="btn btn--sm btn--wa tb-card__wa" href={wa(s.waText)} target="_blank" rel="noopener"><Icon name="whatsapp" size={18} />{s.cta}</a>
+              <a class="btn btn--text tb-card__more" href={`${base}/servicios/${s.slug}/`}>Ver servicio<span class="sr-only">: {s.short}</span> <Icon name="arrow" size={16} class="arrow" /></a>
+            </div>
+          </article>
+        </li>
+      ))}
+    </ol>
+
+    <div class="tb__foot">
+      {pin && (
+        <div class="tb-prog" aria-hidden="true">
+          <span class="tb-prog__label mono">Circuitos</span>
+          <span class="tb-prog__bars">{services.map((s, i) => <i data-i={i + 1}><b></b><span class="mono">{s.code}</span></i>)}</span>
+        </div>
+      )}
+      <div class="tb-final">
+        <p class="tb-final__txt"><i class="tb-final__led" aria-hidden="true"></i><span><strong>Sistema energizado.</strong> <span class="tb-final__claim">Energía confiable para tu negocio.</span></span></p>
+        <div class="tb-final__row">
+          <a class="btn btn--primary" href={wa()} target="_blank" rel="noopener" data-magnetic><Icon name="whatsapp" size={18} />Cotiza tu proyecto</a>
+          {pin && <a class="btn btn--ghost tb-final__all" href={`${base}/servicios/`}>Todos los servicios <Icon name="arrow" size={18} class="arrow" /></a>}
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<script>
+  import { onPage } from '../../scripts/engine.js';
+  import { initTablero } from '../../scripts/tablero.js';
+  onPage(initTablero);
+</script>
+
+<style>
+  /* =====================================================================
+     BASE = static final state (mode="static", reduced motion, no JS): everything ON, cards in a grid.
+     ===================================================================== */
+  /* --tb-ink-orange: orange for small text on white/paper (5.5:1, AA) */
+  .tb { --led-off: #8a93a6; --led-on: #22c55e; --tb-ink-orange: #b4460c; overflow: clip; }
+  .tb--static { padding-block: calc(var(--section-y) * 0.7); }
+  .tb__grid {
+    position: absolute; inset: 0; z-index: -1; pointer-events: none;
+    background:
+      linear-gradient(rgba(11, 26, 58, 0.05) 1px, transparent 1px) 0 0 / 40px 40px,
+      linear-gradient(90deg, rgba(11, 26, 58, 0.05) 1px, transparent 1px) 0 0 / 40px 40px;
+    -webkit-mask-image: radial-gradient(120% 80% at 30% 45%, #000 20%, transparent 75%);
+    mask-image: radial-gradient(120% 80% at 30% 45%, #000 20%, transparent 75%);
+  }
+  .tb__stage {
+    position: relative;
+    width: min(100% - 2 * var(--gutter), 1320px); margin-inline: auto;
+    display: grid; grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: "titles" "intro" "panel" "deck" "foot";
+    column-gap: clamp(32px, 6vw, 96px);
+  }
+  .tb__titles { grid-area: titles; }
+  .tb__intro { grid-area: intro; margin-top: 18px; }
+  .tb__panelcol { grid-area: panel; margin-top: clamp(28px, 5vw, 56px); }
+  .tb__deck { grid-area: deck; }
+  .tb__foot { grid-area: foot; }
+  .tb__title { max-width: 15ch; }
+  .tb__accent { background: var(--grad-ink); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .tb__lead { max-width: 46ch; }
+  .tb__hint, .tb__skip, .tb__wires, .tb-prog, .tb__ray { display: none; }
+  @media (min-width: 1024px) {
+    .tb__stage { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-areas: "titles panel" "intro panel" "deck deck" "foot foot"; align-items: start; }
+    .tb__panelcol { margin-top: 0; align-self: center; }
+    .tb__title { max-width: 13ch; }
+  }
+
+  /* ---------- the cabinet (sized in cqw of its own width, so it scales anywhere) ---------- */
+  .tb__panelcol { display: grid; justify-items: center; }
+  .tb-panel { width: 100%; display: grid; justify-items: center; }
+  .tb-cab {
+    --cw: min(100% / 1.3, 460px);
+    position: relative; width: var(--cw); aspect-ratio: 25 / 24; container-type: inline-size;
+    margin-left: calc(var(--cw) * 0.26); /* room for the open door */
+    border-radius: 2.6cqw; perspective: 3200px;
+    background: linear-gradient(150deg, #f3f5f8 0%, #dde2e9 55%, #cbd2dc 100%);
+    box-shadow: 0 50px 80px -46px rgba(11, 26, 58, 0.55), 0 16px 30px -18px rgba(11, 26, 58, 0.35), inset 0 1px 0 #fff, inset 0 0 0 1px rgba(11, 26, 58, 0.12);
+  }
+  .tb-cab__glow {
+    position: absolute; inset: -3px; border-radius: inherit; pointer-events: none; opacity: 0;
+    box-shadow: 0 0 0 2px rgba(255, 140, 60, 0.75), 0 0 46px 6px rgba(242, 106, 27, 0.35), 0 0 120px 20px rgba(255, 180, 84, 0.22);
+    transition: opacity 0.9s var(--ease-out);
+  }
+  .tb-cab__inner {
+    position: absolute; inset: 3.6cqw; border-radius: 1.4cqw; overflow: hidden;
+    display: grid; grid-template-rows: auto 6.4cqw minmax(0, 1fr) 4.6cqw; row-gap: 2.8cqw;
+    padding: 3cqw 3.4cqw;
+    background:
+      radial-gradient(circle, rgba(11, 26, 58, 0.11) 0.28cqw, transparent 0.36cqw) 0 0 / 3.4cqw 3.4cqw,
+      linear-gradient(180deg, #e9edf2, #dfe4ea 70%, #d6dce4);
+    box-shadow: inset 0 1.4cqw 2.6cqw -1.2cqw rgba(11, 26, 58, 0.45), inset 0 0 0 1px rgba(11, 26, 58, 0.16);
+  }
+  .tb-cab__light { position: absolute; inset: 0; pointer-events: none; background: radial-gradient(90% 60% at 50% 0%, rgba(255, 246, 228, 0.9), transparent 70%); mix-blend-mode: soft-light; }
+
+  .tb-cab__top { position: relative; display: grid; grid-template-columns: auto minmax(0, 1fr) 16cqw; align-items: center; gap: 2.6cqw; }
+  .tb-np { display: grid; gap: 1.2cqw; padding: 1.8cqw 2.8cqw; border-radius: 1cqw; background: linear-gradient(180deg, #13295a, var(--navy-900)); color: #fff; box-shadow: 0 0.6cqw 1.2cqw -0.6cqw rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.15); }
+  .tb-np b { font: italic 800 max(14px, 4.6cqw) / 1 var(--font-display); letter-spacing: -0.02em; }
+  .tb-np b i, .tb-door__plate b i { color: var(--orange-500); }
+  .tb-sys { display: inline-flex; align-items: center; gap: 1.4cqw; font: 600 max(12px, 2.5cqw) / 1 var(--font-mono); letter-spacing: 0.06em; text-transform: uppercase; color: #c9d3e6; white-space: nowrap; }
+  .tb-sys__led { width: max(8px, 2.2cqw); height: max(8px, 2.2cqw); border-radius: 50%; flex: none; background: var(--led-on); box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.25), 0 0 10px rgba(34, 197, 94, 0.85); transition: background 0.4s, box-shadow 0.4s; }
+  .tb-sys__off, .tb-sys__mid { display: none; }
+  .tb-load { display: grid; gap: 0.6cqw; margin: 0; min-width: 0; text-align: right; }
+  .tb-load__label { font: 600 max(12px, 2.6cqw) / 1.15 var(--font-body); color: var(--ink); }
+  .tb-load__sim { font: 500 max(12px, 2.3cqw) / 1.2 var(--font-body); color: var(--ink-2); }
+  .tb-load__bar { display: none; }
+  .tb-meter { width: 16cqw; height: 16cqw; filter: drop-shadow(0 0.8cqw 0.8cqw rgba(11, 26, 58, 0.35)); }
+  .tb-meter__bezel { fill: #18233a; }
+  .tb-meter__face { fill: #fbfaf6; }
+  .tb-meter__zone { fill: none; stroke-width: 5; }
+  .tb-meter__zone--ok { stroke: #3fb56b; }
+  .tb-meter__zone--hi { stroke: #f2a31b; }
+  .tb-meter__zone--max { stroke: #e0452b; }
+  .tb-meter__tick { stroke: #18233a; stroke-width: 1.4; }
+  .tb-meter__needle path { stroke: var(--orange-600); stroke-width: 2.6; stroke-linecap: round; }
+  .tb-meter__hub { fill: #18233a; stroke: var(--orange-500); stroke-width: 1.4; }
+  .tb-meter__slot { fill: #e2ded2; }
+  .tb-meter__jit { transform-box: view-box; transform-origin: 50px 72px; }
+
+  /* slotted wiring ducts (the circuits run along the upper one on desktop) */
+  .tb-duct {
+    position: relative; border-radius: 0.6cqw;
+    background:
+      repeating-linear-gradient(90deg, transparent 0 2.4cqw, rgba(11, 26, 58, 0.2) 2.4cqw 3cqw) 0 0 / 100% 22% no-repeat,
+      repeating-linear-gradient(90deg, transparent 0 2.4cqw, rgba(11, 26, 58, 0.2) 2.4cqw 3cqw) 0 100% / 100% 22% no-repeat,
+      linear-gradient(180deg, #c8cfd9, #b5bdc9);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6), 0 0.8cqw 1.2cqw -0.8cqw rgba(11, 26, 58, 0.5);
+  }
+
+  /* DIN rail + 3 breakers */
+  .tb-rail { position: relative; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 2.6cqw; align-content: center; align-items: start; }
+  .tb-rail__din {
+    position: absolute; left: -1.6cqw; right: -1.6cqw; top: 11.5cqw; height: 6.4cqw; border-radius: 0.4cqw;
+    background: repeating-linear-gradient(90deg, transparent 0 4cqw, rgba(11, 26, 58, 0.18) 4cqw 6.2cqw) 0 50% / 100% 34% no-repeat, linear-gradient(180deg, #f4f6f9, #aab3bf 30%, #e3e7ec 55%, #9aa4b1);
+    box-shadow: 0 0.8cqw 1.4cqw -0.6cqw rgba(11, 26, 58, 0.45);
+  }
+  .tb-brk { position: relative; display: grid; justify-items: stretch; gap: 2cqw; min-width: 0; border-radius: 1.4cqw; text-align: center; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+  .tb-brk:focus-visible { outline: 3px solid var(--orange-600); outline-offset: 1cqw; }
+  .tb-brk__body {
+    position: relative; display: grid; grid-template-rows: auto 1fr auto; height: 30cqw;
+    border-radius: 1.2cqw; padding: 1.2cqw 1.4cqw; margin-inline: 1.6cqw;
+    background: linear-gradient(90deg, #d7dce3, #fbfcfd 18%, #f2f4f7 70%, #cdd3db);
+    box-shadow: 0 1.4cqw 2.2cqw -1cqw rgba(11, 26, 58, 0.5), inset 0 0 0 1px rgba(11, 26, 58, 0.14), inset 0 1px 0 #fff;
+  }
+  .tb-brk__screws { display: flex; justify-content: space-around; }
+  .tb-brk__screws i { width: 3.2cqw; height: 3.2cqw; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #fff, #b9c1cc 55%, #8c96a4); box-shadow: inset 0 0 0 1px rgba(11, 26, 58, 0.25); position: relative; }
+  .tb-brk__screws i::after { content: ''; position: absolute; left: 20%; right: 20%; top: 50%; height: 1px; background: rgba(11, 26, 58, 0.5); transform: rotate(-35deg); }
+  .tb-brk__face { position: relative; display: grid; place-items: center; }
+  .tb-brk__led {
+    position: absolute; right: 0.2cqw; top: 1cqw; width: 2.6cqw; height: 2.6cqw; border-radius: 50%;
+    background: var(--led-on); box-shadow: 0 0 0 0.5cqw rgba(34, 197, 94, 0.22), 0 0 2.6cqw rgba(34, 197, 94, 0.9);
+    transition: background 0.3s 0.18s, box-shadow 0.3s 0.18s;
+  }
+  .tb-brk__win {
+    position: relative; width: 10cqw; height: 14.6cqw; border-radius: 1cqw; perspective: 60cqw;
+    background: linear-gradient(180deg, #111a2c, #25324a); box-shadow: inset 0 0.8cqw 1.4cqw rgba(0, 0, 0, 0.6), 0 1px 0 #fff;
+  }
+  .tb-brk__lever {
+    position: absolute; left: 1.1cqw; right: 1.1cqw; top: 1.1cqw; height: 6cqw; border-radius: 0.8cqw;
+    background: linear-gradient(180deg, #2a4a8f, var(--navy-800) 60%, var(--navy-900));
+    box-shadow: 0 0.8cqw 1.2cqw rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+    transform: translate3d(0, 0, 0) rotateX(16deg); transform-origin: 50% 100%;
+    transition: transform 0.55s cubic-bezier(0.3, 1.9, 0.5, 1);
+  }
+  .tb-brk__lever i { position: absolute; left: 14%; right: 14%; top: 0.9cqw; height: 1cqw; border-radius: 1cqw; background: var(--grad-brand); box-shadow: 0 0 1.6cqw rgba(255, 140, 60, 0.9); transition: opacity 0.3s; }
+  .tb-brk__marks { position: absolute; left: 0.4cqw; top: 0; bottom: 0; display: grid; align-content: space-between; padding-block: 1.2cqw; }
+  .tb-brk__marks i { display: block; }
+  .tb-brk__mk-on { width: 0.9cqw; height: 2.8cqw; border-radius: 0.4cqw; background: #d32f2f; }
+  .tb-brk__mk-off { width: 2.4cqw; height: 2.4cqw; border-radius: 50%; border: 0.6cqw solid #1f8f4d; }
+  .tb-brk__burst { position: absolute; left: 50%; top: 22%; width: 16cqw; height: 16cqw; margin: -8cqw 0 0 -8cqw; overflow: visible; pointer-events: none; fill: #fff; stroke: #ffb454; stroke-width: 2.4; stroke-linecap: round; opacity: 0; }
+  .tb-brk__plate {
+    display: grid; gap: 0.6cqw; padding: 1.4cqw 0.6cqw 1.6cqw; border-radius: 1cqw;
+    background: linear-gradient(180deg, #13295a, var(--navy-900)); color: #fff;
+    box-shadow: 0 0.8cqw 1.4cqw -0.8cqw rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.14);
+    transition: box-shadow 0.4s;
+  }
+  .tb-brk__code { font-size: max(12px, 2.8cqw); font-weight: 700; color: var(--orange-300); letter-spacing: 0.12em; line-height: 1; }
+  .tb-brk__name { font: 600 max(12px, 2.8cqw) / 1.18 var(--font-body); letter-spacing: -0.01em; hyphens: manual; }
+  .tb-brk:hover .tb-brk__plate, .tb-brk.is-hover .tb-brk__plate { box-shadow: 0 0 0 2px var(--orange-500), 0 1.2cqw 2.4cqw -0.8cqw rgba(242, 106, 27, 0.6); }
+  .tb-brk:hover .tb-brk__lever, .tb-brk.is-hover .tb-brk__lever { transform: translate3d(0, 0, 0) rotateX(16deg) scale(1.05); }
+  /* OFF */
+  .tb-brk[aria-pressed='false'] .tb-brk__lever { transform: translate3d(0, 6.4cqw, 0) rotateX(-16deg); }
+  .tb-brk[aria-pressed='false']:hover .tb-brk__lever, .tb-brk[aria-pressed='false'].is-hover .tb-brk__lever { transform: translate3d(0, 5.2cqw, 0) rotateX(-8deg); }
+  .tb-brk[aria-pressed='false'] .tb-brk__lever i { opacity: 0.2; }
+  .tb-brk[aria-pressed='false'] .tb-brk__led { background: var(--led-off); box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.35); transition-delay: 0s; }
+
+  /* ---------- door (static: open; desktop pin: swings open with the scroll) ---------- */
+  .tb-door { position: absolute; inset: 0; border-radius: inherit; transform-origin: 0 50%; transform-style: preserve-3d; transform: rotateY(-100deg); pointer-events: none; }
+  .tb-door__face { position: absolute; inset: 0; border-radius: inherit; -webkit-backface-visibility: hidden; backface-visibility: hidden; }
+  .tb-door__front {
+    background: linear-gradient(150deg, #f4f6f9 0%, #dfe4ea 55%, #cfd5de 100%);
+    box-shadow: inset 0 0 0 1px rgba(11, 26, 58, 0.14), inset 0 0 0 2.2cqw rgba(255, 255, 255, 0.25), inset 0 0 0 2.4cqw rgba(11, 26, 58, 0.08);
+    display: grid; place-content: center; justify-items: center; gap: 3.4cqw;
+  }
+  .tb-door__plate { display: grid; justify-items: center; gap: 0.8cqw; padding: 2.4cqw 5cqw; border-radius: 1.2cqw; background: linear-gradient(180deg, #13295a, var(--navy-900)); color: #fff; box-shadow: 0 1cqw 2cqw -1cqw rgba(0, 0, 0, 0.5); }
+  .tb-door__plate b { font: italic 800 max(14px, 7cqw) / 1 var(--font-display); letter-spacing: -0.03em; }
+  .tb-door__plate small { font: 500 max(12px, 2.8cqw) / 1 var(--font-mono); letter-spacing: 0.08em; text-transform: uppercase; color: #c9d3e6; }
+  .tb-door__hazard { width: 18cqw; }
+  .tb-door__hazard path:first-child { fill: #ffc21a; stroke: #0b1a3a; stroke-width: 6; stroke-linejoin: round; }
+  .tb-door__hazard path:last-child { fill: #0b1a3a; }
+  .tb-door__warn { font: 700 max(12px, 3cqw) / 1.25 var(--font-mono); letter-spacing: 0.12em; text-transform: uppercase; text-align: center; color: var(--ink); }
+  .tb-door__handle { position: absolute; right: 5cqw; top: 40%; width: 3.2cqw; height: 18cqw; border-radius: 2cqw; background: linear-gradient(90deg, #1b2336, #4a566b 45%, #1b2336); box-shadow: 0 1cqw 1.4cqw rgba(0, 0, 0, 0.4); }
+  .tb-door__vents { position: absolute; left: 24%; right: 24%; bottom: 5cqw; height: 8cqw; background: repeating-linear-gradient(180deg, rgba(11, 26, 58, 0.28) 0 0.9cqw, transparent 0.9cqw 2.3cqw); border-radius: 0.6cqw; }
+  .tb-door__back { transform: rotateY(180deg); background: linear-gradient(210deg, #e6eaf0, #c7ced8); box-shadow: inset 0 0 0 2.6cqw #aeb7c4, inset 0 0 0 3cqw rgba(11, 26, 58, 0.25); display: grid; place-items: center; }
+  .tb-door__pocket { width: 56%; aspect-ratio: 3 / 4; border-radius: 1cqw; background: #f7f5ee; box-shadow: 0 1cqw 2cqw -1cqw rgba(0, 0, 0, 0.4); display: grid; place-items: center; }
+  .tb-door__pocket svg { width: 80%; fill: none; stroke: #1a3468; stroke-width: 1.6; }
+
+  /* ---------- cards ---------- */
+  .tb__deck { list-style: none; display: grid; gap: clamp(16px, 2.4vw, 28px); margin-top: clamp(40px, 6vw, 72px); }
+  @media (min-width: 720px) { .tb__deck { grid-template-columns: repeat(2, minmax(0, 1fr)); } .tb-card:last-child { grid-column: 1 / -1; } }
+  @media (min-width: 1024px) { .tb__deck { grid-template-columns: repeat(3, minmax(0, 1fr)); } .tb-card:last-child { grid-column: auto; } }
+  .tb-card { position: relative; display: grid; scroll-margin-top: calc(var(--header-h) + 24px); }
+  .tb-card__in { display: flex; flex-direction: column; gap: 14px; overflow: hidden; padding: clamp(22px, 2.6vw, 30px); padding-left: calc(clamp(22px, 2.6vw, 30px) + 6px); box-shadow: 0 30px 60px -44px rgba(11, 26, 58, 0.45); }
+  .tb-card__in > :not(.tb-card__rail, .tb-card__num) { position: relative; }
+  .tb-card.is-flash .tb-card__in { border-color: var(--orange-500); box-shadow: 0 0 0 3px rgba(242, 106, 27, 0.25), 0 30px 60px -40px rgba(242, 106, 27, 0.6); }
+  .tb-card.is-hover .tb-card__in { border-color: color-mix(in srgb, var(--accent) 45%, var(--line)); }
+  .tb-card__rail { position: absolute; left: 0; top: 0; bottom: 0; width: 5px; background: var(--grad-brand-v); box-shadow: 0 0 14px rgba(242, 106, 27, 0.55); transform-origin: 50% 0; transition: transform 0.8s var(--ease-out) 0.1s; }
+  .tb-card__num { position: absolute; right: 0.08em; bottom: -0.2em; font-size: clamp(6rem, 9vw, 8.5rem); font-weight: 800; line-height: 1; letter-spacing: -0.05em; color: transparent; -webkit-text-stroke: 1px rgba(11, 26, 58, 0.075); pointer-events: none; user-select: none; }
+  .tb-card__top { display: flex; align-items: center; justify-content: space-between; gap: 8px 12px; flex-wrap: wrap; }
+  .tb-card__kicker { display: inline-flex; align-items: center; gap: 10px; margin: 0; font-size: var(--step--1); font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--tb-ink-orange); }
+  .tb-card__code { display: inline-grid; place-items: center; min-width: 32px; height: 26px; padding: 0 6px; border-radius: 6px; background: var(--navy-900); color: var(--orange-300); font-weight: 700; letter-spacing: 0.06em; }
+  .tb-card__state { display: none; align-items: center; gap: 7px; font-size: 0.75rem; letter-spacing: 0.08em; text-transform: uppercase; color: #15803d; }
+  .tb-card__state i { width: 8px; height: 8px; border-radius: 50%; background: var(--led-on); box-shadow: 0 0 8px rgba(34, 197, 94, 0.8); transition: background 0.3s, box-shadow 0.3s; }
+  .tb-card__st-off { display: none; }
+  .tb-card__name { font-size: clamp(1.4rem, 1.1rem + 0.9vw, 1.85rem); line-height: 1.1; letter-spacing: -0.025em; max-width: 20ch; }
+  .tb-card__sum { color: var(--muted); font-size: 0.98rem; line-height: 1.55; }
+  .tb-card__items { list-style: none; display: grid; gap: 8px; font-size: 0.95rem; font-weight: 500; line-height: 1.35; }
+  .tb-card__items li { display: grid; grid-template-columns: 22px minmax(0, 1fr); gap: 10px; align-items: start; }
+  .tb-card__chk { width: 22px; height: 22px; padding: 3px; border-radius: 50%; background: color-mix(in srgb, var(--orange-500) 14%, transparent); fill: none; stroke: var(--orange-600); stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+  .tb-card__chk path { stroke-dasharray: 1; stroke-dashoffset: 0; transition: stroke-dashoffset 0.5s var(--ease-out); }
+  .tb-card__tags { list-style: none; display: flex; flex-wrap: wrap; gap: 6px; }
+  .tb-card__tags li { padding: 4px 10px; border-radius: var(--r-pill); border: 1px solid var(--line); font-size: 0.8rem; font-weight: 500; line-height: 1.3; color: var(--ink-2); background: var(--paper); }
+  .tb-card__cta { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 20px; margin-top: auto; padding-top: 6px; }
+  .tb-card__wa { white-space: normal; text-align: left; min-height: 44px; line-height: 1.2; padding-block: 8px; }
+  .tb-card__more { --btn-fg: var(--tb-ink-orange); font-family: var(--font-display); font-weight: 600; font-size: 0.95rem; gap: 8px; }
+
+  /* ---------- foot / final ---------- */
+  .tb__foot { margin-top: clamp(32px, 5vw, 56px); display: grid; }
+  .tb-final { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px 28px; padding: clamp(20px, 3vw, 28px) clamp(20px, 3vw, 32px); border-radius: var(--radius-lg); background: var(--navy-900); color: #fff; position: relative; overflow: hidden; }
+  .tb-final::before { content: ''; position: absolute; left: -20%; right: -20%; top: 50%; height: 2px; background: var(--grad-streak); transform: rotate(-8deg); opacity: 0.55; pointer-events: none; }
+  .tb-final__txt { position: relative; display: flex; align-items: center; gap: 12px; font-size: var(--step-0); line-height: 1.35; color: #d7deeb; }
+  .tb-final__txt strong { color: #fff; font-family: var(--font-display); }
+  .tb-final__led { flex: none; width: 10px; height: 10px; border-radius: 50%; background: var(--led-on); box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.25), 0 0 14px rgba(34, 197, 94, 0.9); }
+  .tb-final__row { position: relative; display: flex; flex-wrap: wrap; gap: 12px; }
+  .tb-final__row .btn--ghost { --btn-fg: #fff; border-color: rgba(255, 255, 255, 0.3); }
+  .tb-final__row .btn--ghost:hover { border-color: #fff; }
+
+  /* ---------- < 768 or touch: compact board (every mode): no door, no ducts, a load bar instead of the dial ---------- */
+  @media (max-width: 767px), (pointer: coarse) {
+    .tb-cab { --cw: 100%; aspect-ratio: auto; margin-left: 0; container-type: normal; border-radius: 16px; perspective: none; box-shadow: 0 18px 30px -22px rgba(11, 26, 58, 0.5), inset 0 1px 0 #fff, inset 0 0 0 1px rgba(11, 26, 58, 0.12); }
+    .tb-panel { max-width: 560px; margin-inline: auto; }
+    .tb-cab__inner { position: relative; inset: auto; border-radius: 10px; margin: 7px; padding: 12px 12px 10px; display: flex; flex-direction: column; gap: 10px; }
+    .tb-duct, .tb-door, .tb-meter, .tb-np { display: none; }
+    .tb-rail { order: 1; gap: 10px; }
+    .tb-cab__top { order: 2; display: block; }
+    .tb-rail__din { top: 22px; height: 16px; left: -12px; right: -12px; }
+    .tb-brk { gap: 6px; border-radius: 8px; }
+    .tb-brk__body { height: 70px; padding: 5px 7px; margin-inline: 4px; border-radius: 7px; width: min(100% - 8px, 104px); justify-self: center; }
+    .tb-brk__screws i { width: 8px; height: 8px; }
+    .tb-brk__led { width: 9px; height: 9px; right: 0; top: 4px; }
+    .tb-brk__win { width: 26px; height: 34px; border-radius: 4px; perspective: 120px; }
+    .tb-brk__lever { left: 3px; right: 3px; top: 3px; height: 14px; border-radius: 3px; }
+    .tb-brk__lever i { top: 2px; height: 2px; }
+    .tb-brk[aria-pressed='false'] .tb-brk__lever, .tb-brk[aria-pressed='false']:hover .tb-brk__lever { transform: translate3d(0, 14px, 0) rotateX(-16deg); }
+    .tb-brk__marks { left: 2px; padding-block: 4px; }
+    .tb-brk__mk-on { width: 2px; height: 7px; }
+    .tb-brk__mk-off { width: 7px; height: 7px; border-width: 2px; }
+    .tb-brk__burst { width: 44px; height: 44px; margin: -22px 0 0 -22px; }
+    .tb-brk__plate { padding: 6px 4px 7px; gap: 3px; border-radius: 6px; }
+    .tb-brk__code, .tb-brk__name { font-size: 12px; }
+    .tb-load { grid-template-columns: minmax(0, 1fr) auto; column-gap: 10px; row-gap: 6px; align-items: baseline; text-align: left; }
+    .tb-load__label, .tb-load__sim { font-size: 12px; }
+    .tb-load__sim { text-align: right; }
+    .tb-load__bar { display: block; grid-column: 1 / -1; height: 6px; border-radius: 6px; background: rgba(11, 26, 58, 0.12); overflow: hidden; }
+    .tb-load__bar i { display: block; height: 100%; background: linear-gradient(90deg, #3fb56b, #f2a31b 80%, #e0452b); transform-origin: 0 50%; transform: scaleX(var(--load, 0.84)); transition: transform 0.9s var(--ease-out); }
+    .tb-final { padding: 20px; }
+    .tb-final__row, .tb-final__row .btn { width: 100%; }
+  }
+  @media (max-width: 380px) {
+    .tb-rail { gap: 6px; }
+    .tb-brk__body { margin-inline: 2px; }
+    .tb-load { grid-template-columns: 1fr; }
+    .tb-load__sim { text-align: left; }
+  }
+
+  /* =====================================================================
+     TOUCH / < 768 (pin mode, motion allowed): compact board sticky on top, cards scroll under it.
+     tablero.js sets aria-pressed / .is-active / .is-past / .is-on; this CSS does the motion.
+     ===================================================================== */
+  @media (max-width: 767px) and (prefers-reduced-motion: no-preference), (pointer: coarse) and (prefers-reduced-motion: no-preference) {
+    :global(html.js) .tb--pin .tb__stage { grid-template-columns: minmax(0, 1fr); grid-template-areas: "titles" "intro" "panel" "deck" "foot"; }
+    :global(html.js) .tb--pin .tb__panelcol {
+      position: sticky; top: 0; z-index: 5; align-self: start;
+      padding-top: var(--header-h); margin-top: 0;
+      transition: transform 0.55s var(--ease-out);
+    }
+    /* the header hides while scrolling down: the board follows it up */
+    :global(html.js:has(.hdr.is-hidden)) .tb--pin .tb__panelcol { transform: translate3d(0, calc(-1 * var(--header-h)), 0); }
+    :global(html.js) .tb--pin .tb-panel { max-width: 560px; margin-inline: auto; padding-block: 12px 10px; background: var(--bg); position: relative; }
+    :global(html.js) .tb--pin .tb-panel::before { content: ''; position: absolute; inset: 0 calc(50% - 50vw); background: var(--bg); z-index: -1; }
+    :global(html.js) .tb--pin .tb-panel::after { content: ''; position: absolute; left: calc(50% - 50vw); right: calc(50% - 50vw); top: 100%; height: 22px; background: linear-gradient(var(--bg), transparent); pointer-events: none; }
+    :global(html.js) .tb--pin .tb__deck { grid-template-columns: minmax(0, 1fr); max-width: 640px; width: 100%; margin-inline: auto; margin-top: 20px; gap: 20px; }
+    :global(html.js) .tb--pin .tb-card:last-child { grid-column: auto; }
+    :global(html.js) .tb--pin .tb__foot { max-width: 640px; width: 100%; margin-inline: auto; }
+    :global(html.js) .tb--pin .tb-card { scroll-margin-top: 0; }
+    /* a closed breaker's plate glows */
+    :global(html.js) .tb--pin .tb-brk[aria-pressed='true'] .tb-brk__plate { box-shadow: 0 0 0 1.5px rgba(255, 140, 60, 0.9), 0 6px 16px -6px rgba(242, 106, 27, 0.8); transition: box-shadow 0.4s 0.2s; }
+    :global(html.js) .tb--pin .tb-card:not(.is-active):not(.is-past) .tb-card__rail { transform: scaleY(0); }
+    :global(html.js) .tb--pin .tb-card:not(.is-active):not(.is-past) .tb-card__chk path { stroke-dashoffset: 1; }
+    :global(html.js) .tb--pin .tb-card:not(.is-active):not(.is-past) .tb-card__state { color: var(--ink-2); }
+    :global(html.js) .tb--pin .tb-card:not(.is-active):not(.is-past) .tb-card__state i { background: var(--led-off); box-shadow: none; }
+    :global(html.js) .tb--pin .tb-card:not(.is-active):not(.is-past) .tb-card__st-on { display: none; }
+    :global(html.js) .tb--pin .tb-card:not(.is-active):not(.is-past) .tb-card__st-off { display: inline; }
+    :global(html.js) .tb--pin .tb-card.is-active .tb-card__in { border-color: color-mix(in srgb, var(--orange-500) 55%, var(--line)); box-shadow: 0 30px 60px -40px rgba(242, 106, 27, 0.55); }
+    :global(html.js) .tb--pin .tb-card__items li:nth-child(2) .tb-card__chk path { transition-delay: 0.12s; }
+    :global(html.js) .tb--pin .tb-card__items li:nth-child(3) .tb-card__chk path { transition-delay: 0.24s; }
+  }
+
+  /* shared by both pin gates: board states driven by tablero.js */
+  @media (prefers-reduced-motion: no-preference) {
+    :global(html.js) .tb--pin .tb-card__state { display: inline-flex; }
+    :global(html.js) .tb--pin:not(.is-on) .tb-sys__led { background: #f2a31b; box-shadow: 0 0 8px rgba(242, 163, 27, 0.8); animation: tb-blink 1.6s steps(2, jump-none) infinite; }
+    :global(html.js) .tb--pin:not(.is-on) .tb-sys__on { display: none; }
+    :global(html.js) .tb--pin:not(.is-on):not(.is-live) .tb-sys__off, :global(html.js) .tb--pin.is-live:not(.is-on) .tb-sys__mid { display: inline; }
+    :global(html.js) .tb--pin .tb-brk[aria-pressed='true'] .tb-brk__burst { animation: tb-burst 0.6s var(--ease-out) 0.12s both; }
+    :global(html.js) .tb--pin .tb-brk[aria-pressed='true'] .tb-brk__body { animation: tb-jolt 0.36s ease-out 0.1s; }
+    :global(html.js) .tb--pin.is-on .tb-brk__led { animation: tb-led 2.4s ease-in-out infinite; }
+    :global(html.js) .tb--pin.is-on .tb-brk:nth-child(3) .tb-brk__led { animation-delay: 0.3s; }
+    :global(html.js) .tb--pin.is-on .tb-brk:nth-child(4) .tb-brk__led { animation-delay: 0.6s; }
+    :global(html.js) .tb--pin.is-live .tb-meter__jit { animation: tb-jit 0.9s steps(2, jump-none) infinite; }
+    :global(html.js) .tb--pin .tb-final { opacity: 0; transform: translate3d(0, 18px, 0); transition: opacity 0.5s var(--ease-out), transform 0.8s var(--ease-out); }
+    :global(html.js) .tb--pin.is-on .tb-final { opacity: 1; transform: none; }
+    :global(html.js) .tb--pin.is-on .tb-cab__glow { opacity: 1; }
+  }
+
+  /* =====================================================================
+     DESKTOP GATE (pin mode): the stage is pinned for +220 %.
+     Title on top; board (+ progress / final CTA under it) on the left; card deck on the right.
+     ===================================================================== */
+  @media (min-width: 768px) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
+    :global(html.js) .tb--pin { padding: 0; }
+    :global(html.js) .tb--pin .tb__stage {
+      width: min(100% - 2 * var(--gutter), 1440px);
+      height: 100vh; padding-block: calc(var(--header-h) + max(2.6vh, (100vh - 1000px) / 2)) max(3.4vh, (100vh - 1000px) / 2);
+      grid-template-columns: minmax(0, 45fr) minmax(0, 55fr);
+      grid-template-rows: auto minmax(0, 1fr) auto;
+      grid-template-areas: "titles titles" "panel deck" "foot deck";
+      column-gap: clamp(64px, 8vw, 150px); row-gap: 2.4vh; align-items: stretch;
+    }
+    :global(html.js) .tb--pin .tb__head { display: contents; }
+    :global(html.js) .tb--pin .tb__title { font-size: min(var(--step-4), 6vh, 3.3vw); max-width: none; }
+    :global(html.js) .tb--pin .tb__titles .eyebrow { margin-bottom: 1.2vh; }
+
+    /* board column: a size container; the cabinet takes what fits (height-bound on laptops) */
+    :global(html.js) .tb--pin .tb__panelcol { margin: 0; container-type: size; min-height: 0; align-self: stretch; align-items: center; justify-items: center; }
+    :global(html.js) .tb--pin .tb-panel { height: 100%; align-content: center; }
+    :global(html.js) .tb--pin .tb-cab { --cw: min(76cqw, 82cqh, 500px); margin-left: calc(var(--cw) * 0.26); }
+    :global(html.js) .tb--pin .tb-door { transform: rotateY(0deg); }
+    :global(html.js) .tb--pin .tb-cab__light { opacity: 0; }
+    :global(html.js) .tb--pin .tb-brk { cursor: pointer; }
+
+    /* the energized ray: the brand's diagonal streak crosses the stage at the end */
+    :global(html.js) .tb--pin .tb__ray {
+      display: block; position: absolute; left: -10%; right: -10%; top: 66%; height: 2px; z-index: -1; pointer-events: none;
+      background: var(--grad-streak); filter: drop-shadow(0 0 6px rgba(255, 150, 70, 0.9));
+      transform: rotate(-11deg) scaleX(0); transform-origin: 0 50%; opacity: 0;
+      transition: transform 1.3s var(--ease-out), opacity 0.6s;
+    }
+    :global(html.js) .tb--pin.is-on .tb__ray { transform: rotate(-11deg) scaleX(1); opacity: 0.85; }
+
+    /* circuits overlay */
+    :global(html.js) .tb--pin .tb__wires { display: block; position: absolute; inset: 0; width: 100%; height: 100%; z-index: 2; pointer-events: none; overflow: visible; }
+    .tb__wires path { fill: none; stroke-linecap: round; stroke-linejoin: round; }
+    .tb-wire__base { stroke: rgba(11, 26, 58, 0.24); stroke-width: 1.5; stroke-dasharray: 3 5; }
+    .tb-gland { fill: #b9c1cc; stroke: rgba(11, 26, 58, 0.35); stroke-width: 1; }
+    .tb-wire__halo { stroke: rgba(242, 106, 27, 0.16); stroke-width: 10; }
+    .tb-wire__live { stroke: url(#tb-grad); stroke-width: 2.8; }
+    .tb-wire__comet { stroke: #fff6e0; stroke-width: 4; opacity: 0; }
+    .tb-wire__flow { stroke: #fff4dc; stroke-width: 1.8; stroke-dasharray: 2 16; opacity: 0; transition: opacity 0.5s; animation: tb-flow 0.9s linear infinite; }
+    .tb-wire.is-live .tb-wire__flow { opacity: 0.95; }
+    :global(html.js) .tb--pin.is-on .tb-wire__flow { animation-duration: 0.45s; stroke: #fff; }
+    .tb-wire__term { fill: #f4f6fb; stroke: rgba(11, 26, 58, 0.35); stroke-width: 1.5; transition: fill 0.3s, stroke 0.3s; }
+    .tb-wire.is-live .tb-wire__term { fill: var(--orange-500); stroke: #ffd79a; stroke-width: 2.5; }
+    .tb-spark { opacity: 0; }
+    .tb-spark__halo { fill: rgba(255, 150, 70, 0.22); }
+    .tb-spark__mid { fill: rgba(255, 196, 120, 0.7); }
+    .tb-spark__core { fill: #fff; }
+
+    /* intro copy and the deck share the right-hand cell; they cross-fade */
+    :global(html.js) .tb--pin .tb__intro { grid-area: deck; align-self: center; margin: 0; padding-left: clamp(28px, 3vw, 48px); max-width: 38rem; transition: opacity 0.5s var(--ease-out), transform 0.8s var(--ease-out); }
+    :global(html.js) .tb--pin .tb__lead { font-size: min(var(--step-1), 3.4vh); }
+    :global(html.js) .tb--pin .tb__hint { display: inline-flex; align-items: center; gap: 12px; margin-top: 3vh; font-size: 0.8rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--tb-ink-orange); }
+    .tb__hint-ico { display: grid; place-items: center; width: 38px; height: 38px; border-radius: 50%; border: 1px solid color-mix(in srgb, var(--orange-500) 45%, transparent); }
+    .tb__hint-ico svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; animation: tb-bob 1.8s var(--ease-in-out) infinite; }
+    :global(html.js) .tb--pin .tb__skip { display: flex; width: fit-content; margin-top: 1vh; color: var(--muted); font-size: 0.85rem; }
+    :global(html.js) .tb--pin:not([data-step='0']) .tb__intro { opacity: 0; transform: translate3d(0, -24px, 0); pointer-events: none; }
+
+    :global(html.js) .tb--pin .tb__deck { grid-area: deck; display: grid; grid-template-columns: minmax(0, 1fr); margin: 0; padding-top: 30px; gap: 0; align-self: center; align-items: start; max-width: 600px; width: 100%; z-index: 3; }
+    :global(html.js) .tb--pin .tb-card { grid-area: 1 / 1; grid-column: 1; --depth: 0; transform-origin: 50% 0; }
+    :global(html.js) .tb--pin .tb-card__in { gap: min(12px, 1.5vh); padding: min(28px, 3.4vh) min(30px, 3.6vh) min(26px, 3.2vh) calc(min(30px, 3.6vh) + 6px); box-shadow: 0 40px 80px -50px rgba(11, 26, 58, 0.55), 0 0 0 1px rgba(11, 26, 58, 0.04); }
+    :global(html.js) .tb--pin .tb-card__name { font-size: min(1.85rem, 3.8vh); }
+    :global(html.js) .tb--pin .tb-card__sum { font-size: max(0.875rem, min(0.98rem, 2.2vh)); }
+    :global(html.js) .tb--pin .tb-card__items { font-size: max(0.875rem, min(0.95rem, 2.15vh)); gap: min(8px, 1vh); }
+    :global(html.js) .tb--pin .tb-card__tags li { font-size: max(12px, min(0.8rem, 1.8vh)); }
+    :global(html.js) .tb--pin .tb-card__num { font-size: min(8.5rem, 16vh); }
+    /* future: waiting beyond the terminal strip, clipped from the left (current flows in from the wire).
+       Only opacity/clip: the cards stay in the accessibility tree and focusable (focus jumps to their stage). */
+    :global(html.js) .tb--pin .tb-card {
+      opacity: 0; transform: translate3d(56px, 0, 0); clip-path: inset(0 100% 0 0 round 24px); pointer-events: none;
+      transition: opacity 0.35s var(--ease-out), transform 0.9s var(--ease-out), clip-path 0.8s var(--ease-out);
+    }
+    :global(html.js) .tb--pin .tb-card:is(.is-active, .is-past) { clip-path: inset(-60px -60px -100px -60px round 24px); pointer-events: auto; }
+    :global(html.js) .tb--pin .tb-card.is-active { opacity: 1; transform: none; z-index: 3; }
+    /* past: a clean paper stack behind the live card (edges + their orange rails peek out) */
+    :global(html.js) .tb--pin .tb-card.is-past { opacity: 1; transform: translate3d(0, calc(var(--depth) * -14px), 0) scale(calc(1 - var(--depth) * 0.045)); z-index: calc(3 - var(--depth)); }
+    :global(html.js) .tb--pin .tb-card.is-past .tb-card__in { background: #f7f8fb; pointer-events: none; }
+    :global(html.js) .tb--pin.is-on .tb-card.is-past { transform: translate3d(calc(var(--depth) * -12px), calc(var(--depth) * -14px), 0) scale(calc(1 - var(--depth) * 0.045)) rotate(calc(var(--depth) * -2.2deg)); }
+    /* the live card's content arrives in sequence; a past card's content fades out */
+    :global(html.js) .tb--pin .tb-card :is(.tb-card__top, .tb-card__name, .tb-card__sum, .tb-card__items li, .tb-card__tags, .tb-card__cta, .tb-card__num) { opacity: 0; transform: translate3d(18px, 0, 0); transition: opacity 0.45s var(--ease-out), transform 0.7s var(--ease-out); }
+    :global(html.js) .tb--pin .tb-card.is-active :is(.tb-card__top, .tb-card__name, .tb-card__sum, .tb-card__items li, .tb-card__tags, .tb-card__cta, .tb-card__num) { opacity: 1; transform: none; }
+    :global(html.js) .tb--pin .tb-card.is-active .tb-card__name { transition-delay: 0.08s; }
+    :global(html.js) .tb--pin .tb-card.is-active .tb-card__sum { transition-delay: 0.14s; }
+    :global(html.js) .tb--pin .tb-card.is-active .tb-card__items li:nth-child(1) { transition-delay: 0.2s; }
+    :global(html.js) .tb--pin .tb-card.is-active .tb-card__items li:nth-child(2) { transition-delay: 0.26s; }
+    :global(html.js) .tb--pin .tb-card.is-active .tb-card__items li:nth-child(3) { transition-delay: 0.32s; }
+    :global(html.js) .tb--pin .tb-card.is-active .tb-card__tags { transition-delay: 0.38s; }
+    :global(html.js) .tb--pin .tb-card.is-active .tb-card__cta { transition-delay: 0.44s; }
+    :global(html.js) .tb--pin .tb-card.is-active .tb-card__num { transition-delay: 0.3s; }
+    :global(html.js) .tb--pin .tb-card:not(.is-active):not(.is-past) .tb-card__rail { transform: scaleY(0); }
+    :global(html.js) .tb--pin .tb-card:not(.is-active) .tb-card__chk path { stroke-dashoffset: 1; }
+    :global(html.js) .tb--pin .tb-card.is-active .tb-card__items li:nth-child(1) .tb-card__chk path { transition-delay: 0.4s; }
+    :global(html.js) .tb--pin .tb-card.is-active .tb-card__items li:nth-child(2) .tb-card__chk path { transition-delay: 0.5s; }
+    :global(html.js) .tb--pin .tb-card.is-active .tb-card__items li:nth-child(3) .tb-card__chk path { transition-delay: 0.6s; }
+    :global(html.js) .tb--pin .tb-card.is-active .tb-card__in { border-color: color-mix(in srgb, var(--orange-500) 40%, var(--line)); }
+
+    /* foot (under the board): circuit progress, replaced by the final CTA */
+    :global(html.js) .tb--pin .tb__foot { margin: 0; display: grid; align-items: center; justify-items: center; min-height: 56px; z-index: 3; }
+    :global(html.js) .tb--pin .tb__foot > * { grid-area: 1 / 1; }
+    :global(html.js) .tb--pin .tb-prog { display: flex; align-items: center; gap: 16px; transition: opacity 0.4s var(--ease-out), transform 0.6s var(--ease-out); }
+    .tb-prog__label { font-size: 0.75rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-2); }
+    .tb-prog__bars { display: flex; gap: 8px; }
+    .tb-prog__bars i { display: grid; gap: 6px; width: 60px; font-style: normal; }
+    .tb-prog__bars b { display: block; height: 4px; border-radius: 4px; background: rgba(11, 26, 58, 0.12); overflow: hidden; position: relative; }
+    .tb-prog__bars b::after { content: ''; position: absolute; inset: 0; background: var(--grad-brand); transform: scaleX(0); transform-origin: 0 50%; transition: transform 0.6s var(--ease-out); }
+    .tb-prog__bars i.is-on b::after { transform: scaleX(1); }
+    .tb-prog__bars span { font-size: 0.75rem; letter-spacing: 0.1em; color: var(--ink-2); }
+    .tb-prog__bars i.is-on span { color: var(--tb-ink-orange); }
+    :global(html.js) .tb--pin.is-on .tb-prog { opacity: 0; transform: translate3d(0, -12px, 0); }
+    :global(html.js) .tb--pin .tb-final { width: 100%; max-width: 520px; flex-wrap: nowrap; padding: 10px 10px 10px 18px; gap: 14px; border-radius: 18px; }
+    :global(html.js) .tb--pin .tb-final__txt { font-size: 0.9rem; gap: 10px; }
+    :global(html.js) .tb--pin .tb-final__row { flex: none; }
+    :global(html.js) .tb--pin .tb-final__all { display: none; }
+    :global(html.js) .tb--pin .tb-final .btn { min-height: 46px; padding-inline: 20px; font-size: 0.95rem; }
+    :global(html.js) .tb--pin:not(.is-on) .tb-final { pointer-events: none; }
+  }
+  @media (min-width: 2200px) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
+    :global(html.js) .tb--pin .tb__stage { width: min(100% - 2 * var(--gutter), 1760px); padding-block: calc(var(--header-h) + max(2.6vh, (100vh - 1120px) / 2)) max(3.4vh, (100vh - 1120px) / 2); }
+    :global(html.js) .tb--pin .tb-cab { --cw: min(76cqw, 82cqh, 620px); }
+    :global(html.js) .tb--pin .tb__deck, :global(html.js) .tb--pin .tb__intro { max-width: 720px; }
+    :global(html.js) .tb--pin .tb-card__name { font-size: min(2.4rem, 3.8vh); }
+    :global(html.js) .tb--pin .tb-card__sum { font-size: 1.15rem; }
+    :global(html.js) .tb--pin .tb-card__items { font-size: 1.1rem; }
+    :global(html.js) .tb--pin .tb-card__tags li { font-size: 0.92rem; }
+    :global(html.js) .tb--pin .tb-card__kicker { font-size: 0.95rem; }
+    :global(html.js) .tb--pin .tb-final { max-width: 600px; }
+  }
+  /* desktop pin on narrow windows: a lighter card */
+  @media (min-width: 768px) and (max-width: 1100px) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
+    :global(html.js) .tb--pin .tb-card__tags { display: none; }
+    :global(html.js) .tb--pin .tb-final__claim { display: none; }
+  }
+
+  @keyframes tb-burst { 0% { opacity: 0; transform: scale(0.3); } 25% { opacity: 1; } 100% { opacity: 0; transform: scale(1.35); } }
+  @keyframes tb-jolt { 0%, 100% { transform: none; } 30% { transform: translate3d(0, 2px, 0); } 60% { transform: translate3d(0, -1px, 0); } }
+  @keyframes tb-led { 0%, 100% { opacity: 1; } 50% { opacity: 0.72; } }
+  @keyframes tb-blink { 0% { opacity: 1; } 100% { opacity: 0.35; } }
+  @keyframes tb-jit { 0% { transform: rotate(-0.7deg); } 100% { transform: rotate(0.9deg); } }
+  @keyframes tb-flow { to { stroke-dashoffset: -18; } }
+  @keyframes tb-bob { 0%, 100% { transform: translateY(-2px); } 50% { transform: translateY(3px); } }
+</style>

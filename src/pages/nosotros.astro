@@ -1,86 +1,117 @@
 ---
+/*
+  Nosotros. Theme rhythm: hero (dark) → valores (light) → qué hacemos + cómo trabajamos (dark) → sectores (light) →
+  Instagram (dark) → CTA (dark).
+  Hero: a "readout" panel whose only numbers are verifiable facts (3 lines, 4 stages, 23 states), each counted up
+  while its segment meter lights one unit at a time; below, the brand's conviction lights word by word on scroll.
+  Valores: every card carries a small switch that flips ON in sequence. Sectores: a reactive marquee of real claims.
+*/
 import Base from '../layouts/Base.astro';
 import Icon from '../components/ui/Icon.astro';
 import Cta from '../components/ui/Cta.astro';
 import Instagram from '../components/home/Instagram.astro';
-import { brand, values, sectors, services, process } from '../data/site.js';
+import PageHero from '../components/pages/PageHero.astro';
+import Proceso from '../components/pages/Proceso.astro';
+import { brand, values, sectors, services, process, claims } from '../data/site.js';
 const base = import.meta.env.BASE_URL.replace(/\/$/, '');
 const valueIcons = ['gauge', 'clock', 'shield', 'pin'] as const;
 const sectorIcons = ['factory', 'building', 'home'] as const;
+const readout = [
+  { n: services.length, t: 'Líneas de servicio' },
+  { n: process.length, t: 'Etapas de trabajo' },
+  { n: 23, t: 'Estados con cobertura' },
+];
 ---
 <Base title="Nosotros" description="SSD&S C.A. es una empresa de potencia e ingeniería industrial con oficina principal en Maracay, Aragua. Rigor técnico, respuesta oportuna y máxima seguridad en cada proyecto, con atención en todo el territorio nacional.">
-  <section class="ab-hero section">
-    <div class="ab-hero__bg" aria-hidden="true">
-      <span class="streak streak--thick" style="top: 26%; --angle: -12deg"></span>
-      <span class="streak" style="top: 72%; --angle: -12deg; --streak-opacity: .5"></span>
+  <PageHero id="nosotros" kicker="Nosotros" title="Potencia e ingeniería industrial desde Maracay para toda Venezuela." accent="para toda Venezuela." lead={`Detrás de cada gran proceso industrial hay una infraestructura eléctrica sólida y un equipo técnico calificado respaldándola. En ${brand.name} combinamos el rigor técnico con la ejecución segura para garantizar que la energía de tu planta nunca se detenga.`} crumbs={[{ label: 'Nosotros' }]} bleed="Venezuela" tone="b" size="lg">
+    <div slot="aside" class="ab-meter" data-ab-meter data-tilt="4">
+      <p class="ab-meter__head mono" aria-hidden="true"><span class="ab-meter__led"></span>Lectura · {brand.shortName}</p>
+      <dl class="ab-meter__rows">
+        {readout.map((r) => (
+          <div class="ab-meter__row">
+            <dt>{r.t}</dt>
+            <dd><span class="ab-meter__n num" data-count={r.n}>{r.n}</span></dd>
+            <span class="ab-meter__seg" aria-hidden="true" style={`--n:${r.n}`}>{Array.from({ length: r.n }, () => <i></i>)}</span>
+          </div>
+        ))}
+      </dl>
+      <p class="ab-meter__foot mono">{brand.city}, {brand.region} · cobertura nacional</p>
     </div>
-    <div class="container ab-hero__grid">
-      <div>
-        <p class="eyebrow">Nosotros</p>
-        <h1 data-split="words">Potencia e ingeniería industrial desde Maracay para toda Venezuela.</h1>
-        <p class="lead" data-reveal="up" data-delay=".15">Detrás de cada gran proceso industrial hay una infraestructura eléctrica sólida y un equipo técnico calificado respaldándola. En {brand.name} combinamos el rigor técnico con la ejecución segura para garantizar que la energía de tu planta nunca se detenga.</p>
-      </div>
-      <blockquote class="ab-hero__quote" data-reveal="left" data-delay=".3">
+    <div slot="bottom" class="container ab-conviction">
+      <p class="ab-conviction__label mono" aria-hidden="true">Nuestra convicción</p>
+      <blockquote class="ab-conviction__quote">
         <p data-lit>La ingeniería no es solo suministrar energía; es saber distribuirla, automatizarla y protegerla.</p>
         <cite class="mono">— {brand.legalName}</cite>
       </blockquote>
     </div>
-  </section>
+  </PageHero>
 
-  <section class="section on-light">
+  <section id="valores" class="section ab-values" data-theme="light" aria-labelledby="valores-title">
     <div class="container">
-      <div class="section__head">
-        <p class="eyebrow">Lo que garantizamos</p>
-        <h2 data-split="words">Rigor técnico, respuesta oportuna y máxima seguridad.</h2>
+      <div class="ab-head">
+        <p class="eyebrow" data-reveal="up">Lo que garantizamos</p>
+        <h2 id="valores-title" data-split="lines">Rigor técnico, respuesta oportuna y máxima seguridad.</h2>
       </div>
-      <ul class="grid grid--4 ab-values" data-stagger="0.1">
+      <ul class="ab-values__grid" data-stagger="0.1" data-ab-values>
         {values.map((v, i) => (
-          <li class="card" data-glow>
-            <span class="ab-values__icon"><Icon name={valueIcons[i]} size={28} /></span>
+          <li class="ab-val" data-glow data-tilt="4" style={`--i:${i}`}>
+            <span class="ab-val__top">
+              <span class="ab-val__icon" data-draw aria-hidden="true"><Icon name={valueIcons[i]} size={28} /></span>
+              <span class="ab-val__sw" aria-hidden="true"><i></i></span>
+            </span>
             <h3>{v.t}</h3>
-            <p class="muted">{v.d}</p>
+            <p>{v.d}</p>
           </li>
         ))}
       </ul>
     </div>
   </section>
 
-  <section class="section ab-story">
+  <section id="que-hacemos" class="section ab-story" data-theme="dark" aria-labelledby="que-hacemos-title">
     <div class="container ab-story__grid">
       <div class="ab-story__col">
-        <p class="eyebrow">Qué hacemos</p>
-        <h2 data-split="words">Tres líneas de servicio, un solo equipo.</h2>
+        <p class="eyebrow" data-reveal="up">Qué hacemos</p>
+        <h2 id="que-hacemos-title" data-split="lines">Tres líneas de servicio, un solo equipo.</h2>
         <p class="lead" data-reveal="up">Desde la evaluación inicial hasta el montaje en alta y media tensión, entregamos soluciones dinámicas para el sector residencial, comercial e industrial.</p>
-        <ul class="ab-story__services" data-stagger="0.1">
+        <ul class="ab-lines" data-stagger="0.1">
           {services.map((s) => (
-            <li><a href={`${base}/servicios/${s.slug}/`}><span class="mono accent">{s.code}</span><strong>{s.name}</strong><Icon name="arrow" size={18} /></a></li>
+            <li>
+              <a href={`${base}/servicios/${s.slug}/`} data-glow>
+                <span class="ab-lines__code mono">{s.code}</span>
+                <span class="ab-lines__txt"><strong>{s.name}</strong><span class="mono">{s.kicker}</span></span>
+                <span class="ab-lines__go" aria-hidden="true"><Icon name="arrow" size={18} /></span>
+                <span class="ab-lines__wire" aria-hidden="true"></span>
+              </a>
+            </li>
           ))}
         </ul>
       </div>
-      <div class="ab-story__col">
-        <p class="eyebrow">Cómo trabajamos</p>
-        <ol class="ab-process" data-stagger="0.1">
-          {process.map((p) => (
-            <li><span class="num accent">{p.n}</span><div><strong>{p.t}</strong><p class="muted">{p.d}</p></div></li>
-          ))}
-        </ol>
+      <div class="ab-story__col ab-story__col--proc">
+        <p class="eyebrow" data-reveal="up">Cómo trabajamos</p>
+        <Proceso layout="column" />
       </div>
     </div>
   </section>
 
-  <section class="section on-light">
-    <div class="container">
-      <div class="section__head">
-        <p class="eyebrow">A quién atendemos</p>
-        <h2 data-split="words">Industrial, comercial y residencial.</h2>
-        <p class="lead">No importa dónde esté tu planta industrial o comercio: nuestro equipo llega a ti con soluciones de ingeniería de alto nivel.</p>
+  <section id="sectores" class="section ab-sectors" data-theme="light" aria-labelledby="sectores-title">
+    <div class="marquee ab-claims" data-speed="0.7" aria-hidden="true">
+      <div class="marquee__track">
+        {claims.map((c) => <span class="ab-claims__item">{c}<Icon name="bolt" size={22} /></span>)}
       </div>
-      <ul class="grid grid--3" data-stagger="0.1">
+    </div>
+    <div class="container">
+      <div class="ab-head">
+        <p class="eyebrow" data-reveal="up">A quién atendemos</p>
+        <h2 id="sectores-title" data-split="lines">Industrial, comercial y residencial.</h2>
+        <p class="lead" data-reveal="up" data-delay=".1">No importa dónde esté tu planta industrial o comercio: nuestro equipo llega a ti con soluciones de ingeniería de alto nivel.</p>
+      </div>
+      <ul class="ab-sectors__grid" data-stagger="0.12">
         {sectors.map((s, i) => (
-          <li class="card ab-sector">
-            <span class="ab-values__icon"><Icon name={sectorIcons[i]} size={28} /></span>
+          <li class="ab-sec" data-glow data-tilt="4">
+            <span class="ab-sec__n mono" aria-hidden="true">0{i + 1}</span>
+            <span class="ab-sec__icon" data-draw aria-hidden="true"><Icon name={sectorIcons[i]} size={34} stroke={1.5} /></span>
             <h3>{s.t}</h3>
-            <p class="muted">{s.d}</p>
+            <p>{s.d}</p>
           </li>
         ))}
       </ul>
@@ -92,25 +123,112 @@ const sectorIcons = ['factory', 'building', 'home'] as const;
 </Base>
 
 <style>
-  .ab-hero { overflow: hidden; padding-top: calc(var(--header-h) + clamp(56px, 9vw, 120px)); background: radial-gradient(80% 60% at 0% 0%, rgba(242, 106, 27, 0.22), transparent 60%), var(--navy-900); }
-  .ab-hero__bg { position: absolute; inset: 0; pointer-events: none; }
-  .ab-hero__grid { position: relative; display: grid; gap: 40px; align-items: end; }
-  @media (min-width: 960px) { .ab-hero__grid { grid-template-columns: 1.3fr 0.9fr; } }
-  .ab-hero h1 { font-size: var(--step-4); max-width: 18ch; }
-  .ab-hero .lead { margin-top: 22px; max-width: 54ch; }
-  .ab-hero__quote { margin: 0; padding: clamp(22px, 3vw, 34px); border-left: 3px solid var(--accent); background: var(--card); border-radius: 0 var(--radius-lg) var(--radius-lg) 0; }
-  .ab-hero__quote p { font-family: var(--font-display); font-size: var(--step-2); line-height: 1.15; letter-spacing: -0.02em; }
-  .ab-hero__quote cite { display: block; margin-top: 16px; font-style: normal; color: var(--muted); font-size: 0.78rem; letter-spacing: 0.1em; text-transform: uppercase; }
-  .ab-values__icon { display: grid; place-items: center; width: 52px; height: 52px; border-radius: 14px; background: rgba(242, 106, 27, 0.12); color: var(--accent); margin-bottom: 18px; }
-  .ab-values h3, .ab-sector h3 { margin-bottom: 10px; }
-  .ab-story__grid { display: grid; gap: clamp(36px, 6vw, 80px); }
-  @media (min-width: 960px) { .ab-story__grid { grid-template-columns: 1fr 1fr; } }
+  .ab-head { max-width: 46rem; margin-bottom: clamp(32px, 5vw, 60px); }
+  .ab-head h2 { font-size: var(--step-3); max-width: 21ch; }
+  .ab-head .lead { margin-top: 18px; }
+
+  /* ---------- hero readout ---------- */
+  @media (prefers-reduced-motion: no-preference) { :global(.js) .ab-meter { opacity: 0; } } /* powered up by the script */
+  .ab-meter {
+    position: relative; width: min(100%, 420px); justify-self: center; padding: 20px 22px; border-radius: var(--radius-lg);
+    border: 1px solid rgba(255, 255, 255, 0.12); background: linear-gradient(160deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.015) 60%), rgba(6, 13, 31, 0.55);
+    box-shadow: 0 40px 80px -40px rgba(0, 0, 0, 0.8), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  }
+  @media (max-width: 959px) { .ab-meter { justify-self: start; width: 100%; max-width: 520px; } }
+  .ab-meter__head { display: flex; align-items: center; gap: 10px; margin: 0 0 6px; padding-bottom: 14px; border-bottom: 1px dashed rgba(255, 255, 255, 0.14); font-size: 0.75rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
+  .ab-meter__led { width: 9px; height: 9px; border-radius: 50%; background: var(--ok); box-shadow: 0 0 12px rgba(61, 220, 132, 0.9); animation: ab-blink 2.4s ease-in-out infinite; }
+  @keyframes ab-blink { 50% { opacity: 0.45; } }
+  .ab-meter__rows { margin: 0; }
+  .ab-meter__row { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: 4px 16px; padding: 16px 0; border-bottom: 1px solid rgba(255, 255, 255, 0.08); }
+  .ab-meter__row dt { grid-row: 1; font-size: 0.9rem; color: var(--muted); }
+  .ab-meter__row dd { grid-row: 1 / span 2; grid-column: 2; margin: 0; }
+  .ab-meter__n { display: block; min-width: 2ch; text-align: right; font-size: clamp(2.4rem, 1.8rem + 2vw, 3.4rem); font-weight: 800; line-height: 0.9; letter-spacing: -0.04em; background: var(--grad-brand); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .ab-meter__seg { grid-row: 2; display: flex; gap: 3px; align-items: center; }
+  .ab-meter__seg i { flex: 0 1 18px; min-width: 4px; height: 10px; border-radius: 2px; background: var(--orange-500); box-shadow: 0 0 8px rgba(255, 140, 60, 0.6); }
+  .ab-meter__foot { margin: 14px 0 0; font-size: 0.75rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--amber-400); }
+
+  /* the conviction, lit on scroll */
+  .ab-conviction { display: grid; gap: 16px 40px; margin-top: clamp(64px, 10vh, 120px); padding-top: clamp(32px, 5vh, 56px); border-top: 1px solid rgba(255, 255, 255, 0.1); }
+  @media (min-width: 900px) { .ab-conviction { grid-template-columns: minmax(0, 3fr) minmax(0, 9fr); } }
+  .ab-conviction__label { margin: 0; padding-top: 0.7rem; font-size: 0.75rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--accent-text); }
+  .ab-conviction__quote { margin: 0; }
+  .ab-conviction__quote p { font-family: var(--font-display); font-weight: 600; font-size: clamp(1.5rem, 1rem + 2.2vw, 3rem); line-height: 1.18; letter-spacing: -0.025em; max-width: 30ch; }
+  .ab-conviction__quote cite { display: block; margin-top: 20px; font-style: normal; font-size: 0.75rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
+
+  /* ---------- values ---------- */
+  .ab-values__grid { list-style: none; margin: 0; padding: 0; display: grid; gap: 16px; }
+  @media (min-width: 640px) { .ab-values__grid { grid-template-columns: 1fr 1fr; } }
+  @media (min-width: 1100px) { .ab-values__grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+  .ab-val { position: relative; padding: clamp(22px, 2.4vw, 30px); border-radius: var(--radius-lg); background: var(--card); border: 1px solid var(--line); box-shadow: 0 18px 40px -30px rgba(11, 26, 58, 0.4); transition: border-color 0.4s, box-shadow 0.6s var(--ease-out); }
+  .ab-val:hover { border-color: color-mix(in srgb, var(--accent) 45%, var(--line)); box-shadow: 0 26px 50px -28px rgba(242, 106, 27, 0.45); }
+  .ab-val__top { display: flex; align-items: start; justify-content: space-between; margin-bottom: 20px; }
+  .ab-val__icon { display: grid; place-items: center; width: 54px; height: 54px; border-radius: 15px; background: rgba(242, 106, 27, 0.12); color: var(--orange-600); }
+  .ab-val__sw { position: relative; width: 38px; height: 22px; border-radius: 22px; background: var(--paper-2); box-shadow: inset 0 0 0 1px var(--line); transition: background-color 0.4s calc(0.25s + var(--i) * 0.18s); }
+  .ab-val__sw i { position: absolute; left: 3px; top: 3px; width: 16px; height: 16px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(11, 26, 58, 0.35); transition: transform 0.45s var(--ease-spring) calc(0.25s + var(--i) * 0.18s); }
+  .is-on .ab-val__sw { background: var(--orange-500); }
+  .is-on .ab-val__sw i { transform: translateX(16px); }
+  .ab-val h3 { font-size: var(--step-1); letter-spacing: -0.02em; margin-bottom: 10px; }
+  .ab-val p { color: var(--muted); }
+  :global(html:not(.js)) .ab-val__sw { background: var(--orange-500); }
+  :global(html:not(.js)) .ab-val__sw i { transform: translateX(16px); }
+
+  /* ---------- story ---------- */
+  .ab-story { background: radial-gradient(70% 60% at 0% 100%, rgba(242, 106, 27, 0.12), transparent 60%), var(--navy-900); }
+  .ab-story__grid { display: grid; gap: clamp(48px, 7vw, 96px); }
+  @media (min-width: 960px) { .ab-story__grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } }
+  .ab-story__col h2 { font-size: var(--step-3); max-width: 15ch; }
   .ab-story__col .lead { margin: 18px 0 28px; }
-  .ab-story__services { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
-  .ab-story__services a { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 16px; padding: 16px 18px; border-radius: var(--radius); border: 1px solid var(--line); background: var(--card); font-family: var(--font-display); transition: border-color 0.3s, transform 0.5s var(--ease-out); }
-  .ab-story__services a:hover { border-color: color-mix(in srgb, var(--accent) 50%, var(--line)); transform: translateX(4px); }
-  .ab-process { list-style: none; margin: 0; padding: 0; display: grid; gap: 18px; }
-  .ab-process li { display: grid; grid-template-columns: auto 1fr; gap: 18px; padding-bottom: 18px; border-bottom: 1px solid var(--line); }
-  .ab-process .num { font-size: var(--step-1); font-weight: 800; }
-  .ab-process strong { font-family: var(--font-display); font-size: var(--step-1); display: block; margin-bottom: 4px; }
+  @media (min-width: 960px) { .ab-story__col--proc { padding-top: 6px; } }
+  .ab-lines { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+  .ab-lines a { position: relative; overflow: hidden; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 16px; min-height: 72px; padding: 14px 16px 14px 18px; border-radius: var(--radius); border: 1px solid var(--line); background: var(--card); transition: border-color 0.4s, transform 0.5s var(--ease-out); }
+  .ab-lines a:hover { border-color: color-mix(in srgb, var(--accent) 50%, var(--line)); transform: translateX(6px); }
+  .ab-lines__code { font-size: 0.85rem; color: var(--accent-text); }
+  .ab-lines__txt { display: grid; gap: 2px; }
+  .ab-lines__txt strong { font-family: var(--font-display); font-size: 1.05rem; line-height: 1.25; }
+  .ab-lines__txt .mono { font-size: 0.75rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+  .ab-lines__go { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 50%; border: 1px solid var(--line); transition: background-color 0.3s, border-color 0.3s, transform 0.5s var(--ease-out); }
+  .ab-lines a:hover .ab-lines__go { background: var(--orange-500); border-color: var(--orange-500); transform: rotate(-35deg); }
+  .ab-lines__wire { position: absolute; left: 0; bottom: 0; width: 100%; height: 2px; background: var(--grad-brand); transform: scaleX(0); transform-origin: 0 50%; transition: transform 0.8s var(--ease-out); }
+  .ab-lines a:hover .ab-lines__wire, .ab-lines a:focus-visible .ab-lines__wire { transform: scaleX(1); }
+
+  /* ---------- sectors ---------- */
+  .ab-sectors { overflow: hidden; padding-top: 0; }
+  .ab-claims { margin-bottom: var(--section-y); padding-block: clamp(18px, 2.4vw, 28px); border-bottom: 1px solid var(--line); background: var(--white); }
+  .ab-claims__item { display: inline-flex; align-items: center; gap: clamp(20px, 3vw, 40px); padding-right: clamp(20px, 3vw, 40px); white-space: nowrap; font-family: var(--font-display); font-weight: 700; font-size: clamp(1.4rem, 1rem + 2vw, 2.8rem); letter-spacing: -0.03em; color: var(--ink); }
+  .ab-claims__item:nth-child(even) { color: transparent; -webkit-text-stroke: 1.2px var(--ink-2); }
+  .ab-claims__item :global(svg) { color: var(--orange-500); flex: none; }
+  .ab-sectors__grid { list-style: none; margin: 0; padding: 0; display: grid; gap: 16px; }
+  @media (min-width: 720px) { .ab-sectors__grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+  .ab-sec { position: relative; padding: clamp(24px, 2.6vw, 34px); border-radius: var(--radius-lg); background: var(--card); border: 1px solid var(--line); box-shadow: 0 18px 40px -30px rgba(11, 26, 58, 0.4); transition: border-color 0.4s, box-shadow 0.6s var(--ease-out); }
+  .ab-sec:hover { border-color: color-mix(in srgb, var(--accent) 45%, var(--line)); box-shadow: 0 26px 50px -28px rgba(242, 106, 27, 0.45); }
+  .ab-sec__n { position: absolute; top: 22px; right: 24px; font-size: 0.8rem; color: var(--muted); }
+  .ab-sec__icon { display: grid; place-items: center; width: 64px; height: 64px; margin-bottom: 22px; border-radius: 18px; color: #fff; background: linear-gradient(135deg, var(--orange-500), var(--amber-400)); box-shadow: 0 14px 30px -14px rgba(242, 106, 27, 0.8); }
+  .ab-sec h3 { font-size: var(--step-2); margin-bottom: 10px; }
+  .ab-sec p { color: var(--muted); }
+
+  @media (prefers-reduced-motion: reduce) {
+    .ab-meter__led { animation: none; }
+    .ab-val__sw { background: var(--orange-500); }
+    .ab-val__sw i { transform: translateX(16px); }
+  }
 </style>
+
+<script>
+  import { onPage } from '../scripts/engine.js';
+  onPage(({ gsap, env, ScrollTrigger }) => {
+    const meter = document.querySelector<HTMLElement>('[data-ab-meter]');
+    if (!meter) return;
+    const values = document.querySelector<HTMLElement>('[data-ab-values]');
+    if (env.reduced) { values?.classList.add('is-on'); return; }
+
+    // switches on the value cards flip ON in sequence once the grid is in view
+    if (values) ScrollTrigger.create({ trigger: values, start: 'top 75%', once: true, onEnter: () => values.classList.add('is-on') });
+
+    // readout: the panel powers up, then each meter lights one unit per count step
+    const tl = gsap.timeline({ delay: 0.4, scrollTrigger: env.desktop ? undefined : { trigger: meter, start: 'top 90%', once: true } });
+    tl.fromTo(meter, { clipPath: 'inset(0% 0% 100% 0% round 24px)', opacity: 0 }, { clipPath: 'inset(0% 0% 0% 0% round 24px)', opacity: 1, duration: 1, ease: 'expo.inOut', clearProps: 'clipPath' });
+    meter.querySelectorAll<HTMLElement>('.ab-meter__seg').forEach((seg, i) => {
+      tl.from(seg.children, { opacity: 0.12, scaleY: 0.5, duration: 0.1, stagger: Math.min(0.08, 1.2 / seg.children.length), ease: 'none' }, 0.7 + i * 0.25);
+    });
+  });
+</script>

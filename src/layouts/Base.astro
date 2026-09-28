@@ -5,10 +5,13 @@ import '@fontsource-variable/inter/wght.css';
 import '@fontsource-variable/jetbrains-mono/wght.css';
 import 'lenis/dist/lenis.css';
 import '../styles/base.css';
+import '../styles/transitions.css';
 import soraLatin from '@fontsource-variable/sora/files/sora-latin-wght-normal.woff2?url';
 import interLatin from '@fontsource-variable/inter/files/inter-latin-wght-normal.woff2?url';
+import Loader from '../components/chrome/Loader.astro';
 import Header from '../components/chrome/Header.astro';
 import Footer from '../components/chrome/Footer.astro';
+import Linea from '../components/chrome/Linea.astro';
 import WhatsAppFab from '../components/chrome/WhatsAppFab.astro';
 import { brand, contact, social } from '../data/site.js';
 
@@ -17,8 +20,9 @@ interface Props {
   description?: string;
   image?: string;        // base-less path of the share image
   home?: boolean;
+  loader?: boolean;      // show the intro loader on this page (first visit per session); default: home only
 }
-const { title, description = brand.description, image = '/og.png', home = false } = Astro.props;
+const { title, description = brand.description, image = '/og.png', home = false, loader = home } = Astro.props;
 const base = import.meta.env.BASE_URL.replace(/\/$/, '');
 const origin = Astro.site?.origin ?? '';
 const canonical = origin + Astro.url.pathname;
@@ -68,9 +72,11 @@ const jsonLd = {
     <slot name="head" />
   </head>
   <body>
+    {loader && <Loader />}
     <a class="skip-link" href="#main">Ir al contenido</a>
     <Header />
     <main id="main" tabindex="-1">
+      <Linea />
       <slot />
     </main>
     <Footer />

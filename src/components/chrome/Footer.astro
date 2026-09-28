@@ -1,43 +1,60 @@
 ---
+/**
+ * Footer. La Línea arrives from the left margin and runs into the hex mark (desktop, ≥1024px), which draws itself;
+ * elsewhere the mark draws when it comes into view. Below, a giant "SSD&S" wordmark fills with the brand gradient
+ * as you reach the bottom (scrub on desktop, once elsewhere). Logic: scripts/chrome.js.
+ */
 import Logo from './Logo.astro';
 import { brand, contact, nav, services, social, wa } from '../../data/site.js';
 const base = import.meta.env.BASE_URL.replace(/\/$/, '');
 const demo = !!import.meta.env.PUBLIC_DEMO;
 const year = new Date().getFullYear();
 ---
-<footer class="footer">
-  <div class="footer__streaks" aria-hidden="true">
-    <span class="streak" style="top: 18%; --angle: -9deg; --streak-opacity: .5"></span>
-    <span class="streak" style="top: 62%; --angle: -9deg; --streak-opacity: .35"></span>
+<footer class="ftr" data-theme="dark">
+  <svg class="ftr__thread" width="1" height="1" aria-hidden="true" focusable="false">
+    <defs><linearGradient id="ftr-thread-g" gradientUnits="userSpaceOnUse" x1="24" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffb454" /><stop offset="1" stop-color="#f26a1b" /></linearGradient></defs>
+    <path d="" pathLength="1" stroke="url(#ftr-thread-g)" />
+  </svg>
+  <div class="ftr__streaks" aria-hidden="true">
+    <span class="streak" style="top: 18%; --angle: -9deg; --streak-opacity: .45"></span>
+    <span class="streak" style="top: 58%; --angle: -9deg; --streak-opacity: .3"></span>
   </div>
-  <div class="container footer__grid">
-    <div class="footer__brand">
-      <Logo size={44} tagline />
-      <p class="footer__claim">Ingeniería integral para mantener tu empresa en movimiento.</p>
+
+  <div class="container ftr__grid">
+    <div class="ftr__brand">
+      <svg class="ftr__mark" viewBox="0 0 100 100" width="64" height="64" aria-hidden="true" focusable="false">
+        <polyline points="14,71 14,29 50,8 86,29" pathLength="1" class="fm fm-a" />
+        <polyline points="86,29 86,71 50,92 14,71" pathLength="1" class="fm fm-b" />
+        <path d="M66 32 H38 a6 6 0 0 0 -6 6 v6 a6 6 0 0 0 6 6 H50" pathLength="1" class="fm fm-a" />
+        <path d="M50 50 H62 a6 6 0 0 1 6 6 v6 a6 6 0 0 1 -6 6 H34" pathLength="1" class="fm fm-b" />
+      </svg>
+      <Logo size={40} tagline variant="wordmark" />
+      <p class="ftr__claim">Ingeniería integral para mantener tu empresa en movimiento.</p>
       <div class="btn-row">
         <a class="btn btn--primary" href={wa()} target="_blank" rel="noopener">Cotizar por WhatsApp</a>
         <a class="btn btn--ghost" href={`${base}/contacto/`}>Contacto</a>
       </div>
     </div>
 
-    <div>
-      <h4 class="footer__h">Servicios</h4>
-      <ul class="footer__list">
+    <nav aria-label="Servicios">
+      <h2 class="ftr__h">Servicios</h2>
+      <ul class="ftr__list">
         {services.map((s) => <li><a href={`${base}/servicios/${s.slug}/`}>{s.name}</a></li>)}
+        <li><a href={`${base}/diagnostico/`}>Diagnóstico rápido</a></li>
       </ul>
-    </div>
+    </nav>
 
-    <div>
-      <h4 class="footer__h">Empresa</h4>
-      <ul class="footer__list">
+    <nav aria-label="Empresa">
+      <h2 class="ftr__h">Empresa</h2>
+      <ul class="ftr__list">
         {nav.map((n) => <li><a href={`${base}${n.href}`}>{n.label}</a></li>)}
         <li><a href={social.instagram} target="_blank" rel="noopener">Instagram</a></li>
       </ul>
-    </div>
+    </nav>
 
     <div>
-      <h4 class="footer__h">Contacto</h4>
-      <ul class="footer__list">
+      <h2 class="ftr__h">Contacto</h2>
+      <ul class="ftr__list">
         <li><a href={`tel:${contact.phoneE164}`}>{contact.phoneDisplay}</a></li>
         <li><a href={`mailto:${contact.email}`}>{contact.email}</a></li>
         <li><span>{contact.address}</span></li>
@@ -46,23 +63,53 @@ const year = new Date().getFullYear();
     </div>
   </div>
 
-  <div class="container footer__bottom">
+  <div class="ftr__giant" aria-hidden="true">
+    <svg viewBox="0 0 1160 250" preserveAspectRatio="xMidYMid meet" focusable="false">
+      <defs>
+        <linearGradient id="ftr-giant-g" x1="0" x2="1"><stop offset="0" stop-color="#f26a1b" /><stop offset=".5" stop-color="#ff9c5c" /><stop offset="1" stop-color="#ffd79a" /></linearGradient>
+        <clipPath id="ftr-giant-clip"><text x="580" y="212" text-anchor="middle" class="ftr__giant-text">SSD&amp;S</text></clipPath>
+      </defs>
+      <text x="580" y="212" text-anchor="middle" class="ftr__giant-text ftr__giant-outline">SSD&amp;S</text>
+      <g clip-path="url(#ftr-giant-clip)">
+        <rect class="ftr__fill" data-travel="1160" x="-1160" y="0" width="1160" height="250" fill="url(#ftr-giant-g)" />
+      </g>
+    </svg>
+  </div>
+
+  <div class="container ftr__bottom">
     <span>© {year} {brand.legalName} · {brand.tagline}</span>
-    {demo && <span class="footer__demo">Propuesta de sitio web · demo</span>}
+    {demo && <span class="ftr__demo">Propuesta de sitio web · demo</span>}
     <a href={social.instagram} target="_blank" rel="noopener">@{contact.instagram}</a>
   </div>
 </footer>
 
 <style>
-  .footer { position: relative; overflow: hidden; background: var(--navy-950); color: var(--fg); padding-block: clamp(56px, 8vw, 96px) 28px; border-top: 1px solid var(--line); }
-  .footer__streaks { position: absolute; inset: 0; pointer-events: none; }
-  .footer__grid { position: relative; display: grid; gap: 40px 32px; }
-  @media (min-width: 720px) { .footer__grid { grid-template-columns: 1.6fr 1fr 1fr 1.2fr; } }
-  .footer__claim { margin: 22px 0 26px; max-width: 34ch; color: var(--muted); text-wrap: pretty; }
-  .footer__h { font-family: var(--font-mono); font-size: 0.78rem; letter-spacing: 0.16em; text-transform: uppercase; color: var(--accent); margin-bottom: 18px; font-weight: 500; }
-  .footer__list { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
-  .footer__list a { color: rgba(255, 255, 255, 0.82); transition: color 0.3s; }
-  .footer__list a:hover { color: var(--glow); }
-  .footer__bottom { position: relative; display: flex; flex-wrap: wrap; gap: 10px 24px; justify-content: space-between; margin-top: clamp(40px, 6vw, 72px); padding-top: 22px; border-top: 1px solid var(--line); font-size: 0.85rem; color: var(--muted); }
-  .footer__demo { font-family: var(--font-mono); letter-spacing: 0.08em; text-transform: uppercase; font-size: 0.72rem; color: var(--amber-400); }
+  .ftr { position: relative; overflow: hidden; background: var(--navy-950); color: var(--fg); padding-block: clamp(56px, 8vw, 96px) calc(28px + env(safe-area-inset-bottom)); border-top: 1px solid var(--line); }
+  @media (max-width: 599px) { .ftr { padding-bottom: calc(var(--bar-h) + 28px + env(safe-area-inset-bottom)); } }
+  .ftr__streaks { position: absolute; inset: 0; pointer-events: none; }
+  .ftr__thread { display: none; position: absolute; left: 0; top: 0; overflow: visible; pointer-events: none; z-index: 2; }
+  .ftr__thread.is-on { display: block; }
+  .ftr__thread path { fill: none; stroke-width: 1.5; stroke-dasharray: 1 1; stroke-dashoffset: 1; filter: drop-shadow(0 0 4px rgba(255, 140, 60, 0.5)); }
+  .ftr__grid { position: relative; display: grid; gap: 40px 32px; }
+  @media (min-width: 720px) { .ftr__grid { grid-template-columns: 1.6fr 1fr 1fr 1.2fr; } }
+  .ftr__brand { display: grid; justify-items: start; gap: 18px; }
+  .ftr__mark { width: 64px; height: 64px; overflow: visible; }
+  .fm { fill: none; stroke-width: 10; stroke-linejoin: round; stroke-linecap: round; stroke-dasharray: 1; stroke-dashoffset: 1; transition: stroke-dashoffset 0.9s var(--ease-out); }
+  .fm-a { stroke: var(--orange-500); }
+  .fm-b { stroke: #fff; transition-delay: 0.12s; }
+  .ftr__mark.is-drawn .fm { stroke-dashoffset: 0; }
+  .ftr__claim { max-width: 34ch; color: var(--muted); }
+  .ftr__h { font-family: var(--font-mono); font-size: 0.78rem; letter-spacing: 0.16em; text-transform: uppercase; color: var(--accent); margin-bottom: 18px; font-weight: 500; }
+  .ftr__list { list-style: none; display: grid; gap: 4px; }
+  .ftr__list a, .ftr__list span { display: inline-flex; align-items: center; min-height: 36px; }
+  .ftr__list a { color: rgba(255, 255, 255, 0.82); transition: color 0.3s; }
+  .ftr__list a:hover { color: var(--glow); }
+  .ftr__giant { position: relative; width: min(100% - 2 * var(--gutter), 1400px); margin: clamp(40px, 6vw, 72px) auto 0; }
+  .ftr__giant svg { width: 100%; height: auto; overflow: visible; }
+  .ftr__giant-text { font-family: var(--font-display); font-weight: 800; font-style: italic; font-size: 250px; letter-spacing: -12px; }
+  .ftr__giant-outline { fill: none; stroke: rgba(255, 255, 255, 0.14); stroke-width: 1.2; }
+  .ftr__bottom { position: relative; display: flex; flex-wrap: wrap; gap: 10px 24px; justify-content: space-between; margin-top: clamp(24px, 4vw, 40px); padding-top: 22px; border-top: 1px solid var(--line); font-size: 0.85rem; color: var(--muted); }
+  .ftr__bottom a { display: inline-flex; align-items: center; min-height: 36px; }
+  .ftr__demo { font-family: var(--font-mono); letter-spacing: 0.08em; text-transform: uppercase; font-size: 0.72rem; color: var(--amber-400); }
+  @media (prefers-reduced-motion: reduce) { .ftr__fill { transform: translateX(1160px); } }
 </style>

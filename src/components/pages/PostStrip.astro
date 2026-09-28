@@ -1,0 +1,145 @@
+---
+/*
+  Related Instagram pieces: a horizontal scroll-snap strip of the company's real posts (each links to the post),
+  closing with a "follow" card. Prev/next buttons scroll one card; their disabled state comes from
+  IntersectionObservers on the first/last card (no scroll handler). A CSS scroll-driven progress bar where
+  supported. Cards sweep in from the right once (desktop tilt via the engine's [data-tilt]).
+*/
+import Icon from '../ui/Icon.astro';
+import { posts, postUrl, social, contact } from '../../data/site.js';
+interface Props { id: string; codes: string[]; title: string; kicker?: string; theme?: 'dark' | 'light' }
+const { id, codes, title, kicker = 'Desde nuestro Instagram', theme = 'dark' } = Astro.props;
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+const list = codes.map((c) => posts.find((p) => p.code === c)).filter(Boolean) as typeof posts;
+const fmt = (d: string) => new Date(d + 'T12:00:00').toLocaleDateString('es-VE', { day: 'numeric', month: 'short', year: 'numeric' });
+---
+<section id={id} class="ps section" data-theme={theme} aria-labelledby={`${id}-title`} data-ps>
+  <div class="container ps__head">
+    <div>
+      <p class="eyebrow" data-reveal="up">{kicker}</p>
+      <h2 id={`${id}-title`} class="ps__h" data-split="lines">{title}</h2>
+    </div>
+    <div class="ps__nav" data-reveal="up" data-delay=".15">
+      <button class="ps__btn" type="button" data-dir="-1" aria-controls={`${id}-strip`} aria-label="Pieza anterior"><Icon name="arrow" size={20} class="ps__prev" /></button>
+      <button class="ps__btn" type="button" data-dir="1" aria-controls={`${id}-strip`} aria-label="Pieza siguiente"><Icon name="arrow" size={20} /></button>
+    </div>
+  </div>
+
+  <ul class="ps__strip" id={`${id}-strip`} data-ps-strip>
+    {list.map((p) => (
+      <li class="ps__item">
+        <a class="ps__card" href={postUrl(p.code)} target="_blank" rel="noopener" aria-label={`${p.title} — ver publicación en Instagram`} data-tilt="4">
+          <span class="ps__media">
+            <img src={`${base}/ig/${p.code}.webp`} width="640" height="811" alt="" loading="lazy" decoding="async" />
+            {p.reel && <span class="ps__reel mono"><Icon name="play" size={12} />Reel</span>}
+          </span>
+          <span class="ps__body">
+            <span class="ps__date mono">{fmt(p.date)}</span>
+            <strong class="ps__title">{p.title}</strong>
+            <span class="ps__text">{p.text}</span>
+            <span class="ps__go mono">Ver en Instagram<Icon name="arrowUpRight" size={14} /></span>
+          </span>
+        </a>
+      </li>
+    ))}
+    <li class="ps__item ps__item--more">
+      <a class="ps__more" href={social.instagram} target="_blank" rel="noopener">
+        <span class="ps__more-icon"><Icon name="instagram" size={30} /></span>
+        <strong class="ps__more-handle">@{contact.instagram}</strong>
+        <span class="ps__more-text">Todas nuestras piezas técnicas, reels y avisos.</span>
+        <span class="ps__go mono">Seguir en Instagram<Icon name="arrowUpRight" size={14} /></span>
+      </a>
+    </li>
+  </ul>
+  <div class="container ps__bar" aria-hidden="true"><span></span></div>
+</section>
+
+<style>
+  .ps { overflow: hidden; }
+  .ps__head { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 20px 32px; margin-bottom: clamp(24px, 4vw, 44px); }
+  .ps__h { font-size: var(--step-3); max-width: 20ch; }
+  .ps__nav { display: flex; gap: 10px; }
+  .ps__btn { display: grid; place-items: center; width: 52px; height: 52px; border-radius: 50%; border: 1px solid var(--line); color: var(--fg); background: var(--card); transition: background-color 0.3s, color 0.3s, border-color 0.3s, opacity 0.3s, transform 0.4s var(--ease-out); }
+  .ps__btn:not(:disabled):hover { background: var(--orange-500); border-color: var(--orange-500); color: #fff; transform: scale(1.06); }
+  .ps__btn:disabled { opacity: 0.35; cursor: default; }
+  .ps :global(.ps__prev) { transform: scaleX(-1); }
+  .ps[data-fits] .ps__nav, .ps[data-fits] .ps__bar { display: none; }
+  @media (min-width: 900px) { .ps[data-fits] .ps__item { flex: 1 1 0; max-width: 380px; } }
+
+  .ps__strip {
+    --pad: max(var(--gutter), (100% - var(--container)) / 2);
+    list-style: none; margin: 0; display: flex; gap: clamp(14px, 2vw, 24px);
+    padding: 10px var(--pad) 26px; scroll-padding-inline: var(--pad);
+    overflow-x: auto; overscroll-behavior-x: contain; scroll-snap-type: x mandatory; scrollbar-width: none;
+    perspective: 1400px;
+  }
+  .ps__strip::-webkit-scrollbar { display: none; }
+  .ps__item { flex: 0 0 clamp(236px, 72vw, 300px); scroll-snap-align: start; display: flex; }
+  .ps__card, .ps__more {
+    position: relative; display: flex; flex-direction: column; width: 100%; border-radius: var(--radius-lg); overflow: hidden;
+    background: var(--card); border: 1px solid var(--line); transition: border-color 0.4s, box-shadow 0.6s var(--ease-out);
+  }
+  [data-theme='light'] .ps__card, [data-theme='light'] .ps__more { box-shadow: 0 18px 40px -26px rgba(11, 26, 58, 0.35); }
+  .ps__card:hover, .ps__more:hover { border-color: color-mix(in srgb, var(--accent) 55%, var(--line)); box-shadow: 0 26px 50px -24px rgba(242, 106, 27, 0.45); }
+  .ps__media { position: relative; display: block; aspect-ratio: 640 / 811; overflow: hidden; background: var(--navy-800); }
+  .ps__media img { width: 100%; height: 100%; object-fit: cover; transition: transform 1.1s var(--ease-out); }
+  .ps__card:hover .ps__media img { transform: scale(1.06); }
+  .ps__media::after { content: ''; position: absolute; left: -30%; top: 0; width: 30%; height: 100%; background: linear-gradient(100deg, transparent, rgba(255, 215, 154, 0.35), transparent); transform: skewX(-12deg); pointer-events: none; }
+  .ps__card:hover .ps__media::after { transform: translateX(560%) skewX(-12deg); transition: transform 1.1s var(--ease-out); }
+  .ps__reel { position: absolute; top: 12px; left: 12px; display: inline-flex; align-items: center; gap: 5px; padding: 6px 10px; border-radius: 999px; background: rgba(6, 13, 31, 0.78); color: #fff; font-size: 0.75rem; text-transform: uppercase; }
+  .ps__body { display: grid; gap: 6px; padding: 16px 18px 18px; flex: 1; align-content: start; }
+  .ps__date { font-size: 0.75rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent-text); }
+  .ps__title { font-family: var(--font-display); font-size: 1.05rem; line-height: 1.2; letter-spacing: -0.01em; }
+  .ps__text { font-size: 0.9rem; line-height: 1.45; color: var(--muted); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+  .ps__go { display: inline-flex; align-items: center; gap: 6px; margin-top: 6px; font-size: 0.75rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--fg); }
+  .ps__card:hover .ps__go, .ps__more:hover .ps__go { color: var(--accent-text); }
+
+  .ps__more { justify-content: flex-end; gap: 10px; padding: 24px 22px; min-height: 100%; color: #fff; background: radial-gradient(120% 80% at 100% 0%, rgba(242, 106, 27, 0.55), transparent 60%), linear-gradient(160deg, var(--navy-700), var(--navy-950)); border-color: transparent; }
+  .ps__more-icon { display: grid; place-items: center; width: 60px; height: 60px; border-radius: 18px; background: rgba(255, 255, 255, 0.1); margin-bottom: auto; }
+  .ps__more-handle { font-family: var(--font-display); font-size: 1.15rem; line-height: 1.2; overflow-wrap: anywhere; }
+  .ps__more-text { color: rgba(255, 255, 255, 0.78); font-size: 0.92rem; }
+  .ps__more .ps__go { color: var(--glow); }
+
+  .ps__bar { height: 2px; margin-top: 4px; border-radius: 2px; background: var(--line); overflow: hidden; display: none; }
+  .ps__bar span { display: block; height: 100%; background: var(--grad-brand); transform-origin: 0 50%; transform: scaleX(0.1); }
+  @supports (animation-timeline: scroll()) {
+    .ps { timeline-scope: --ps-strip; }
+    .ps__strip { scroll-timeline: --ps-strip x; }
+    .ps__bar { display: block; }
+    .ps__bar span { animation: ps-bar linear both; animation-timeline: --ps-strip; }
+  }
+  @keyframes ps-bar { from { transform: scaleX(0.1); } to { transform: scaleX(1); } }
+</style>
+
+<script>
+  import { onPage } from '../../scripts/engine.js';
+  onPage(({ gsap, env }) => {
+    const root = document.querySelector<HTMLElement>('[data-ps]');
+    if (!root) return;
+    const strip = root.querySelector<HTMLElement>('[data-ps-strip]')!;
+    const items = [...strip.children] as HTMLElement[];
+    const [prev, next] = [...root.querySelectorAll<HTMLButtonElement>('.ps__btn')];
+
+    // ends reached → disable the matching button; both visible → the row fits, hide the controls
+    const seen = new Set<Element>();
+    const io = new IntersectionObserver((entries) => {
+      entries.forEach((e) => (e.isIntersecting ? seen.add(e.target) : seen.delete(e.target)));
+      const atStart = seen.has(items[0]), atEnd = seen.has(items[items.length - 1]);
+      prev.disabled = atStart; next.disabled = atEnd;
+      root.toggleAttribute('data-fits', atStart && atEnd);
+    }, { root: strip, threshold: 0.92 });
+    io.observe(items[0]); io.observe(items[items.length - 1]);
+
+    const go = (e: Event) => {
+      const dir = +((e.currentTarget as HTMLElement).dataset.dir || 1);
+      const step = items[0].getBoundingClientRect().width + (parseFloat(getComputedStyle(strip).columnGap) || 16);
+      strip.scrollBy({ left: dir * step, behavior: env.reduced ? 'auto' : 'smooth' });
+    };
+    prev.addEventListener('click', go); next.addEventListener('click', go);
+
+    if (!env.reduced) {
+      gsap.from(items, { x: env.desktop ? 140 : 60, rotationY: env.desktop ? -14 : 0, opacity: 0, duration: 1.2, ease: 'expo.out', stagger: 0.09, clearProps: 'transform,opacity', scrollTrigger: { trigger: strip, start: 'top 86%', once: true } });
+    }
+    return () => { io.disconnect(); prev.removeEventListener('click', go); next.removeEventListener('click', go); };
+  });
+</script>

@@ -1,0 +1,118 @@
+---
+/*
+  The process as a live cable: stations on a conductor that fills ahead of the reader, with a glowing tip; each
+  station's node lights and its number fills with the brand gradient as the current reaches it.
+  layout="row": horizontal ≥ 900px, vertical below. layout="column": always vertical.
+  Desktop: scrubbed with scroll. Touch / < 768px: plays once on entering. Reduced motion / no JS: fully energised.
+*/
+import { process as defaults } from '../../data/site.js';
+interface Step { n: string; t: string; d: string }
+interface Props { steps?: Step[]; layout?: 'row' | 'column'; label?: string }
+const { steps = defaults, layout = 'row', label = 'Etapas de trabajo' } = Astro.props;
+---
+<div class:list={['pc', `pc--${layout}`]} data-proceso style={`--n:${steps.length}`}>
+  <div class="pc__cable" aria-hidden="true"><span class="pc__fill"></span><span class="pc__tip"></span></div>
+  <ol class="pc__list" aria-label={label}>
+    {steps.map((s) => (
+      <li class="pc__step">
+        <span class="pc__node" aria-hidden="true"><span></span></span>
+        <span class="pc__n num" data-n={s.n} aria-hidden="true">{s.n}</span>
+        <h3 class="pc__t">{s.t}</h3>
+        <p class="pc__d">{s.d}</p>
+      </li>
+    ))}
+  </ol>
+</div>
+
+<style>
+  .pc { position: relative; --node: 22px; }
+  .pc__list { position: relative; list-style: none; margin: 0; padding: 0; display: grid; gap: clamp(28px, 4vw, 44px); }
+  .pc__step { position: relative; padding-left: calc(var(--node) + 22px); }
+  .pc__node {
+    position: absolute; left: 0; top: 2px; width: var(--node); height: var(--node); border-radius: 50%; display: grid; place-items: center;
+    border: 2px solid color-mix(in srgb, var(--fg) 22%, transparent); background: var(--bg);
+    transition: border-color 0.4s, box-shadow 0.7s var(--ease-out);
+  }
+  .pc__node span { width: 8px; height: 8px; border-radius: 50%; background: color-mix(in srgb, var(--fg) 18%, transparent); transition: background-color 0.4s, transform 0.6s var(--ease-spring); }
+  .pc__n { position: relative; display: block; width: max-content; margin-bottom: 12px; font-size: clamp(2.2rem, 1.6rem + 2vw, 3.4rem); font-weight: 800; line-height: 1; letter-spacing: -0.04em; color: transparent; -webkit-text-stroke: 1px color-mix(in srgb, var(--fg) 35%, transparent); }
+  .pc__n::after {
+    content: attr(data-n); position: absolute; inset: 0; -webkit-text-stroke: 0;
+    background: var(--grad-text); -webkit-background-clip: text; background-clip: text; color: transparent;
+    clip-path: inset(0 100% 0 0); transition: clip-path 0.9s var(--ease-out);
+  }
+  .pc__t { font-size: var(--step-1); letter-spacing: -0.02em; margin-bottom: 8px; }
+  .pc__d { color: var(--muted); max-width: 42ch; }
+  .pc__step.is-on .pc__node { border-color: var(--orange-500); box-shadow: 0 0 0 6px rgba(242, 106, 27, 0.14), 0 0 26px rgba(255, 140, 60, 0.55); }
+  .pc__step.is-on .pc__node span { background: var(--glow); transform: scale(1.25); }
+  .pc__step.is-on .pc__n::after { clip-path: inset(0 0 0 0); }
+
+  .pc__cable { position: absolute; left: calc(var(--node) / 2 - 1px); top: 12px; bottom: 12px; width: 2px; border-radius: 2px; background: color-mix(in srgb, var(--fg) 13%, transparent); }
+  .pc__fill { position: absolute; inset: 0; border-radius: inherit; background: linear-gradient(180deg, #f26a1b, #ff9c5c 60%, #ffd79a); transform-origin: 50% 0; transform: scaleY(0); box-shadow: 0 0 12px rgba(255, 140, 60, 0.6); }
+  .pc__tip { position: absolute; left: 50%; top: 0; width: 10px; height: 10px; margin: -5px 0 0 -5px; border-radius: 50%; background: #fff; box-shadow: 0 0 10px #ffd79a, 0 0 24px rgba(255, 125, 51, 0.9); opacity: 0; will-change: transform; }
+
+  @media (min-width: 900px) {
+    .pc--row .pc__list { grid-template-columns: repeat(var(--n), minmax(0, 1fr)); gap: clamp(20px, 3vw, 44px); }
+    .pc--row .pc__step { padding-left: 0; padding-top: calc(var(--node) + 30px); }
+    .pc--row .pc__node { top: 0; }
+    .pc--row .pc__cable { left: 12px; right: 0; top: calc(var(--node) / 2 - 1px); bottom: auto; width: auto; height: 2px; -webkit-mask-image: linear-gradient(90deg, #000 85%, transparent); mask-image: linear-gradient(90deg, #000 85%, transparent); }
+    .pc--row .pc__fill { background: linear-gradient(90deg, #f26a1b, #ff9c5c 60%, #ffd79a); transform-origin: 0 50%; transform: scaleX(0); }
+    .pc--row .pc__tip { left: 0; top: 50%; margin: -5px 0 0 -5px; }
+  }
+
+  /* no JS / reduced motion: fully energised */
+  :global(html:not(.js)) .pc__fill { transform: none; }
+  :global(html:not(.js)) .pc__n::after { clip-path: none; }
+  @media (prefers-reduced-motion: reduce) {
+    .pc__fill { transform: none !important; }
+    .pc__n::after { clip-path: none; }
+    .pc__node { border-color: var(--orange-500); }
+    .pc__node span { background: var(--glow); }
+  }
+</style>
+
+<script>
+  import { onPage } from '../../scripts/engine.js';
+  onPage(({ gsap, env, ScrollTrigger, onRefresh }) => {
+    const all = document.querySelectorAll<HTMLElement>('[data-proceso]');
+    if (!all.length) return;
+    const mqRow = window.matchMedia('(min-width: 900px)');
+    const tweens: gsap.core.Tween[] = [];
+
+    all.forEach((pc) => {
+      const cable = pc.querySelector<HTMLElement>('.pc__cable')!;
+      const fill = pc.querySelector<HTMLElement>('.pc__fill')!;
+      const tip = pc.querySelector<HTMLElement>('.pc__tip')!;
+      const steps = [...pc.querySelectorAll<HTMLElement>('.pc__step')];
+      const state = { p: 0 };
+      let vertical = true, len = 0, marks: number[] = [];
+
+      // measured once per refresh: axis, cable length and where each node sits on it (0..1)
+      const measure = () => {
+        vertical = pc.classList.contains('pc--column') || !mqRow.matches;
+        const c = cable.getBoundingClientRect();
+        len = vertical ? c.height : c.width;
+        marks = steps.map((s) => {
+          const r = s.querySelector('.pc__node')!.getBoundingClientRect();
+          return vertical ? (r.top + r.height / 2 - c.top) / c.height : (r.left + r.width / 2 - c.left) / c.width;
+        });
+      };
+      const set = (p: number) => {
+        fill.style.transform = vertical ? `scaleY(${p})` : `scaleX(${p})`;
+        tip.style.transform = vertical ? `translate3d(0,${p * len}px,0)` : `translate3d(${p * len}px,0,0)`;
+        tip.style.opacity = p > 0.01 && p < 0.99 ? '1' : '0';
+        steps.forEach((s, i) => s.classList.toggle('is-on', p >= marks[i] - 0.02));
+      };
+
+      measure();
+      if (env.reduced) { set(1); return; }
+      set(0);
+      onRefresh(() => { measure(); set(state.p); });
+      if (env.desktop) {
+        gsap.to(state, { p: 1, ease: 'none', onUpdate: () => set(state.p), scrollTrigger: { trigger: pc, start: 'top 78%', end: 'bottom 60%', scrub: 0.6 } });
+      } else {
+        ScrollTrigger.create({ trigger: pc, start: 'top 82%', once: true, onEnter: () => { tweens.push(gsap.to(state, { p: 1, duration: 0.7 * steps.length, ease: 'power1.inOut', onUpdate: () => set(state.p) })); } });
+      }
+    });
+    return () => tweens.forEach((t) => t.kill());
+  });
+</script>

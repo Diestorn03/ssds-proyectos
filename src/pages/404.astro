@@ -1,27 +1,139 @@
 ---
+/*
+  404 · "circuito abierto". A breaker drawn in SVG sits TRIPPED: the feed wire is live, an arc flickers at the
+  terminal, the load side is dead and the window reads TRIP. The whole breaker is a "Restablecer" link home:
+  hovering / focusing it flips the lever ON (window turns green, current reaches the load); clicking lets the
+  flip play, then navigates. Reduced motion: static tripped state, instant navigation.
+*/
 import Base from '../layouts/Base.astro';
 import Icon from '../components/ui/Icon.astro';
+import HeroFx from '../components/pages/HeroFx.astro';
 import { wa } from '../data/site.js';
 const base = import.meta.env.BASE_URL.replace(/\/$/, '');
 ---
 <Base title="Página no encontrada" description="La página que buscas no existe.">
-  <section class="nf section">
-    <span class="streak streak--thick" style="top: 40%; --angle: -12deg" aria-hidden="true"></span>
-    <div class="container nf__inner">
-      <p class="eyebrow">Error 404 · circuito abierto</p>
-      <h1 data-split="words">Aquí no llega la corriente.</h1>
-      <p class="lead" data-reveal="up" data-delay=".15">La página que buscas no existe o cambió de dirección. Volvamos al tablero principal.</p>
-      <div class="btn-row" data-reveal="up" data-delay=".3">
-        <a class="btn btn--primary" href={`${base}/`}><Icon name="arrow" size={18} />Ir al inicio</a>
-        <a class="btn btn--ghost" href={wa()} target="_blank" rel="noopener"><Icon name="whatsapp" size={18} />Escríbenos</a>
+  <section id="no-encontrada" class="nf section" data-theme="dark" aria-labelledby="nf-title">
+    <HeroFx tone="b" />
+    <p class="nf__404" aria-hidden="true">404</p>
+    <div class="container nf__grid">
+      <a class="nf-reset" href={`${base}/`} data-nf-reset data-reveal="up" data-start="top 100%">
+        <svg class="nf-brk" viewBox="0 0 220 360" aria-hidden="true" focusable="false">
+          <path class="nf-brk__wire" d="M110 0v70" />
+          <path class="nf-brk__flow" d="M110 0v70" />
+          <path class="nf-brk__wire nf-brk__wire--load" d="M110 290v44h70" />
+          <path class="nf-brk__flow nf-brk__flow--load" d="M110 290v44h70" />
+          <circle class="nf-brk__node" cx="186" cy="334" r="7" />
+          <rect class="nf-brk__body" x="46" y="52" width="128" height="256" rx="18" />
+          <rect class="nf-brk__term" x="82" y="64" width="56" height="30" rx="6" />
+          <circle class="nf-brk__screw" cx="110" cy="79" r="8" />
+          <path class="nf-brk__slot" d="M104 79h12" />
+          <rect class="nf-brk__term" x="82" y="266" width="56" height="30" rx="6" />
+          <circle class="nf-brk__screw" cx="110" cy="281" r="8" />
+          <path class="nf-brk__slot" d="M104 281h12" />
+          <text class="nf-brk__label" x="110" y="116" text-anchor="middle">SSD&amp;S</text>
+          <rect class="nf-brk__slotbg" x="82" y="128" width="56" height="96" rx="10" />
+          <g class="nf-brk__lever">
+            <rect x="89" y="176" width="42" height="42" rx="8" />
+            <path d="M98 189h24M98 197h24M98 205h24" />
+          </g>
+          <rect class="nf-brk__win" x="80" y="234" width="60" height="22" rx="5" />
+          <text class="nf-brk__state nf-brk__state--trip" x="110" y="250" text-anchor="middle">TRIP</text>
+          <text class="nf-brk__state nf-brk__state--on" x="110" y="250" text-anchor="middle">ON</text>
+          <g class="nf-brk__arc">
+            <path d="M126 56l10-9-4 9 11-6-8 11" />
+            <path d="M92 52l-9-8 3 9-10-5 7 10" />
+          </g>
+        </svg>
+        <span class="nf-reset__label"><Icon name="power" size={18} />Restablecer<span class="nf-reset__sub">y volver al inicio</span></span>
+      </a>
+
+      <div class="nf__copy" data-hfx-exit>
+        <p class="eyebrow" data-reveal="up" data-start="top 100%">Error 404 · circuito abierto</p>
+        <h1 id="nf-title" data-split="lines" data-delay=".1">Aquí no llega <span class="nf__accent">la corriente.</span></h1>
+        <p class="lead" data-reveal="up" data-delay=".25" data-start="top 100%">La página que buscas no existe o cambió de dirección. Volvamos al tablero principal.</p>
+        <div class="btn-row nf__actions" data-reveal="up" data-delay=".4" data-start="top 100%">
+          <a class="btn btn--primary" href={`${base}/`}><Icon name="arrow" size={18} />Ir al inicio</a>
+          <a class="btn btn--ghost" href={wa()} target="_blank" rel="noopener"><Icon name="whatsapp" size={18} />Escríbenos</a>
+        </div>
       </div>
     </div>
   </section>
 </Base>
 
 <style>
-  .nf { min-height: 100svh; display: grid; align-items: center; overflow: hidden; padding-top: calc(var(--header-h) + 40px); }
-  .nf__inner { position: relative; max-width: 60ch; }
-  .nf h1 { max-width: 14ch; }
-  .nf .lead { margin: 22px 0 32px; }
+  .nf { position: relative; min-height: 100svh; display: grid; align-items: center; overflow: hidden; isolation: isolate; padding-top: calc(var(--header-h) + clamp(24px, 5vh, 56px)); background: var(--navy-900); }
+  .nf__404 { position: absolute; right: -2vw; top: 50%; z-index: -1; margin: 0; transform: translateY(-50%); font-family: var(--font-display); font-weight: 800; font-size: clamp(9rem, 6rem + 22vw, 30rem); line-height: 0.8; letter-spacing: -0.06em; color: transparent; -webkit-text-stroke: 1px rgba(255, 255, 255, 0.07); pointer-events: none; user-select: none; }
+  .nf__grid { position: relative; display: grid; grid-template-columns: minmax(0, 1fr); gap: clamp(28px, 5vw, 80px); align-items: center; }
+  @media (min-width: 860px) { .nf__grid { grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); } }
+  .nf__copy h1 { font-size: min(clamp(2.3rem, 1rem + 4.6vw, 5.4rem), 11vh); line-height: 0.98; letter-spacing: -0.04em; max-width: 12ch; }
+  .nf__accent { background: linear-gradient(90deg, #f26a1b 0%, #ff9c5c 45%, #ffd79a 100%); -webkit-background-clip: text; background-clip: text; color: transparent; -webkit-text-fill-color: transparent; padding-right: 0.06em; }
+  .nf__copy .lead { margin: 22px 0 30px; max-width: 44ch; color: rgba(244, 246, 251, 0.8); }
+
+  /* the breaker link */
+  .nf-reset { justify-self: center; display: grid; justify-items: center; gap: 14px; padding: 10px 18px 14px; border-radius: var(--radius-lg); }
+  .nf-reset:focus-visible { outline-offset: 6px; }
+  .nf-brk { width: clamp(170px, 17vw, 290px); height: auto; overflow: visible; }
+  @media (max-width: 859px) { .nf-brk { width: clamp(150px, 42vw, 190px); } }
+  .nf-brk__body { fill: #13295a; stroke: rgba(255, 255, 255, 0.18); stroke-width: 1.5; }
+  .nf-brk__term, .nf-brk__slotbg { fill: #060d1f; }
+  .nf-brk__screw { fill: #8f9bb4; }
+  .nf-brk__slot { stroke: #2c3a58; stroke-width: 2.5; stroke-linecap: round; }
+  .nf-brk__label { fill: rgba(255, 255, 255, 0.55); font-family: var(--font-display); font-weight: 800; font-style: italic; font-size: 15px; letter-spacing: 0.02em; }
+  .nf-brk__wire { fill: none; stroke: #2a3b61; stroke-width: 7; stroke-linecap: round; stroke-linejoin: round; }
+  .nf-brk__flow { fill: none; stroke: #ffb454; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 8 16; filter: drop-shadow(0 0 4px rgba(255, 150, 70, 0.9)); animation: nf-flow 0.9s linear infinite; }
+  .nf-brk__flow--load { opacity: 0; transition: opacity 0.3s 0.25s; }
+  @keyframes nf-flow { to { stroke-dashoffset: -24; } }
+  .nf-brk__node { fill: #2a3b61; transition: fill 0.3s 0.35s; }
+  .nf-brk__lever { transition: transform 0.45s var(--ease-spring); }
+  .nf-brk__lever rect { fill: #e9edf5; }
+  .nf-brk__lever path { stroke: #9aa6be; stroke-width: 2; stroke-linecap: round; }
+  .nf-brk__win { fill: #2a0d10; stroke: rgba(255, 92, 92, 0.5); transition: fill 0.3s, stroke 0.3s; }
+  .nf-brk__state { font-family: var(--font-mono); font-weight: 700; font-size: 12px; letter-spacing: 0.14em; transition: opacity 0.25s; }
+  .nf-brk__state--trip { fill: #ff6b6b; }
+  .nf-brk__state--on { fill: var(--ok); opacity: 0; }
+  .nf-brk__arc { fill: none; stroke: #fff4d6; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; filter: drop-shadow(0 0 4px #ffd79a); animation: nf-arc 2.6s steps(1) infinite; }
+  @keyframes nf-arc { 0%, 100% { opacity: 0; } 8% { opacity: 1; } 11% { opacity: 0.2; } 14% { opacity: 1; } 18% { opacity: 0; } 52% { opacity: 0; } 55% { opacity: 0.9; } 58% { opacity: 0; } }
+
+  /* ON: hover / focus / clicked */
+  .nf-reset:hover .nf-brk__lever, .nf-reset:focus-visible .nf-brk__lever, .nf-reset.is-on .nf-brk__lever { transform: translateY(-44px); }
+  .nf-reset:is(:hover, :focus-visible, .is-on) .nf-brk__win { fill: #0c2a1b; stroke: rgba(61, 220, 132, 0.6); }
+  .nf-reset:is(:hover, :focus-visible, .is-on) .nf-brk__state--trip { opacity: 0; }
+  .nf-reset:is(:hover, :focus-visible, .is-on) .nf-brk__state--on { opacity: 1; }
+  .nf-reset:is(:hover, :focus-visible, .is-on) .nf-brk__flow--load { opacity: 1; }
+  .nf-reset:is(:hover, :focus-visible, .is-on) .nf-brk__node { fill: var(--glow); }
+  .nf-reset:is(:hover, :focus-visible, .is-on) .nf-brk__arc { animation: none; opacity: 0; }
+
+  .nf-reset__label { display: inline-flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 4px 10px; min-height: 48px; padding: 8px 20px; border-radius: var(--r-pill); border: 1px solid rgba(255, 255, 255, 0.22); font-family: var(--font-display); font-weight: 600; color: #fff; transition: background-color 0.3s, border-color 0.3s, color 0.3s; }
+  .nf-reset__label :global(svg) { color: var(--orange-400); transition: color 0.3s; }
+  .nf-reset__sub { font-family: var(--font-body); font-weight: 400; font-size: 0.875rem; color: var(--muted); transition: color 0.3s; }
+  .nf-reset:is(:hover, :focus-visible, .is-on) .nf-reset__label { background: var(--ok); border-color: var(--ok); color: #062a16; }
+  .nf-reset:is(:hover, :focus-visible, .is-on) .nf-reset__label :global(svg), .nf-reset:is(:hover, :focus-visible, .is-on) .nf-reset__sub { color: #062a16; }
+
+  @media (max-width: 859px) {
+    .nf { align-items: start; }
+    .nf-reset { order: 2; justify-self: start; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .nf-brk__flow, .nf-brk__arc { animation: none; }
+    .nf-brk__arc { opacity: 1; }
+  }
 </style>
+
+<script>
+  import { onPage } from '../scripts/engine.js';
+  import { navigate } from 'astro:transitions/client';
+  onPage(({ env }) => {
+    const link = document.querySelector<HTMLAnchorElement>('[data-nf-reset]');
+    if (!link) return;
+    let timer = 0;
+    // let the lever flip and the current reach the load, then go home
+    const click = (e: MouseEvent) => {
+      if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+      e.preventDefault();
+      link.classList.add('is-on');
+      timer = window.setTimeout(() => navigate(link.href), env.reduced ? 0 : 750);
+    };
+    link.addEventListener('click', click);
+    return () => { clearTimeout(timer); link.removeEventListener('click', click); };
+  });
+</script>

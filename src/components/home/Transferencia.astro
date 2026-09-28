@@ -1,0 +1,768 @@
+---
+/**
+ * #transferencia · "La Transferencia (ATS)" · dark (docs/CONCEPTO.md, scene 3).
+ *   <Transferencia />               home. One-line schematic RED → ATS → TU EMPRESA with the GENERADOR below, driven by one
+ *                                   GSAP timeline (scripts/transferencia.js):
+ *                                     desktop gate: pin +200 %, scrub normal → falla → manual → rebobinado → ATS,
+ *                                     with a scrubbed camera (.tr__cam) and time-based one-shots (sparks, brownout, rewind)
+ *                                     touch / <768: plays once at 50 % visible; the control replays a scenario; "Repetir"
+ *   <Transferencia mode="static" /> service page: manual vs automatic side by side (also reduced motion and no JS).
+ * Both figures are server-rendered in their final states (the static comparison). In the live modes only the first
+ * one is shown and the script drives its data-* attributes; CSS does the looks and the transitions.
+ * The schematic SVG is decorative (aria-hidden): the steps, figure captions, HUD and comparison carry the text.
+ */
+import Icon from '../ui/Icon.astro';
+import { services, wa } from '../../data/site.js';
+
+interface Props { mode?: 'pin' | 'static' }
+const { mode = 'pin' } = Astro.props;
+const pin = mode === 'pin';
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+const svc = services.find((s) => s.slug === 'respaldo-energetico')!;
+const svcHref = `${base}/servicios/${svc.slug}/`;
+const onSvcPage = Astro.url.pathname.replace(/\/?$/, '/') === svcHref;
+
+const steps = [
+  { tag: '01 · Red estable', t: 'La red alimenta tu empresa.', d: 'Mientras hay servicio, la corriente llega de la red a tus equipos y todo opera con normalidad.' },
+  { tag: '02 · Falla en la red', t: 'Se va la luz.', d: 'Un corte deja tu operación a oscuras. Lo que pase en los siguientes minutos depende de tu sistema de transferencia.' },
+  { tag: '03 · Transferencia manual', t: 'Alguien tiene que ir al tablero.', d: 'Depender de un operador para cambiar el interruptor durante una falla eléctrica puede significar minutos valiosos de pérdida o daños en maquinaria sensible.' },
+  { tag: '04 · Transferencia automática (ATS)', t: 'El tablero cambia de fuente solo.', d: 'El ATS detecta la falla, arranca la planta y hace el cambio de fuente de forma inmediata y segura, sin depender de un operador.' },
+];
+
+// the two final states (static comparison); the live figure starts from the first one and is rewritten by the script
+const figs = [
+  { k: 'manual', title: 'Transferencia manual', icon: 'wrench', cap: steps[2].d, sc: 'manual', grid: 'off', gen: 'off', load: 'off', ats: 'manual', actor: 'operate', arm: 0, lcd: 'MANUAL', src: 'Sin energía', act: 'Operador en el tablero', clock: '15:00' },
+  { k: 'auto', title: 'Transferencia automática (ATS)', icon: 'ats', cap: steps[3].d, sc: 'auto', grid: 'off', gen: 'on', load: 'on', ats: 'gen', actor: 'adone', arm: -29.4, lcd: 'GEN OK', src: 'Planta eléctrica', act: 'ATS · sin operador', clock: '00:06' },
+] as const;
+
+// schematic geometry (viewBox 800 × 580)
+const wires = {
+  feed: ['M-12 122 Q 26 150 62 142', 'M-12 156 Q 32 186 72 177'],
+  grid: ['M158 142 C 196 148 214 196 250 196 H 365'],
+  gen: ['M372 412 V 293'],
+  load: ['M459 241 H 598'],
+};
+const rnd = (i: number) => { const x = Math.sin(i * 91.7 + 7.3) * 43758.5453; return x - Math.floor(x); };
+// building windows: they light up from the ground floor upwards and die in random order
+const windows = Array.from({ length: 28 }, (_, i) => {
+  const row = Math.floor(i / 4);
+  return { x: 616 + (i % 4) * 34, y: 124 + row * 34, on: ((6 - row) * 0.07 + rnd(i) * 0.12).toFixed(2), off: (rnd(i + 40) * 0.22).toFixed(2), dim: rnd(i + 80) < 0.1 };
+});
+const rays = (cx: number, cy: number, r1: number, r2: number, n = 8) =>
+  Array.from({ length: n }, (_, i) => {
+    const a = (i / n) * Math.PI * 2 + 0.3;
+    const r = i % 2 ? r2 * 0.72 : r2;
+    return `M${(cx + Math.cos(a) * r1).toFixed(1)} ${(cy + Math.sin(a) * r1).toFixed(1)}L${(cx + Math.cos(a) * r).toFixed(1)} ${(cy + Math.sin(a) * r).toFixed(1)}`;
+  }).join('');
+const vs = {
+  manual: ['Un operador tiene que llegar al tablero y mover el interruptor.', 'Minutos valiosos de pérdida con la operación detenida.', 'Riesgo de daños en maquinaria sensible.'],
+  auto: ['Detecta la falla y cambia de fuente de forma inmediata y segura.', 'No depende de que alguien esté en sitio.', 'Fabricado a medida, adaptado a la carga exacta de tu empresa.'],
+};
+---
+<section id="transferencia" class:list={['tr section', `tr--${mode}`]} data-theme="dark" data-mode={mode} data-sc="manual" data-step="2" aria-labelledby="transferencia-title">
+  <div class="tr__stage">
+    <span class="bleed-word tr__bleed" aria-hidden="true">ATS</span>
+    <span class="streak tr__streak" aria-hidden="true"></span>
+
+    <header class="tr__head">
+      <p class="eyebrow">Respaldo energético · ATS</p>
+      <h2 id="transferencia-title" class="tr__title" data-split="lines">Cuando se va la luz, <span class="accent">¿quién mueve el interruptor?</span></h2>
+      <p class="tr__lead">Así se vive un mismo corte eléctrico con transferencia manual y con un tablero de transferencia automática.</p>
+
+      {pin && (
+        <div class="tr__switch" role="group" aria-label="Escenario de la simulación">
+          <span class="tr__switch-lbl mono" aria-hidden="true">Transferencia</span>
+          <div class="tr__seg">
+            <span class="tr__seg-pill" aria-hidden="true"></span>
+            <button type="button" class="tr__seg-btn" data-sc="manual" aria-pressed="true"><span class="sr-only">Transferencia </span>Manual</button>
+            <button type="button" class="tr__seg-btn" data-sc="auto" aria-pressed="false"><span class="sr-only">Transferencia </span>Automática<span class="tr__ats"> (ATS)</span></button>
+          </div>
+          <span class="tr__prog" aria-hidden="true"><i class="tr__prog-fill"></i><i class="tr__prog-mark" style="--at: 8.9%"></i><i class="tr__prog-mark" style="--at: 73.3%"></i></span>
+        </div>
+      )}
+    </header>
+
+    <div class="tr__figs">
+      {figs.map((f) => (
+        <figure class={`tr__fig tr__fig--${f.k}`} data-sc={f.sc} data-grid={f.grid} data-gen={f.gen} data-load={f.load} data-ats={f.ats} data-actor={f.actor} aria-labelledby={`tr-cap-${f.k}`}>
+          <h3 class="tr__fig-title"><Icon name={f.icon} size={22} />{f.title}</h3>
+          <div class="tr__frame" data-glow>
+            <div class="tr__bar">
+              <span class="tr__bar-l mono"><i class="tr__rec" aria-hidden="true"></i>Esquema unifilar</span>
+              <span class="tr__sim mono">Simulación ilustrativa</span>
+            </div>
+
+            <div class="tr__hud">
+              <p class="tr__cell tr__cell--src">
+                <span class="tr__lbl">Fuente activa</span>
+                <span class="tr__val"><i class="tr__dot" aria-hidden="true"></i><span data-tr-src>{f.src}</span></span>
+              </p>
+              <p class="tr__cell tr__cell--clock">
+                <span class="tr__lbl">Sin energía <span class="tr__unit">(min:s)</span></span>
+                <span class="tr__clock" data-tr-clock>{f.clock}</span>
+                {f.k === 'auto' || pin ? <span class="tr__prev mono">Manual: 15:00</span> : null}
+              </p>
+              <p class="tr__cell tr__cell--actor">
+                <span class="tr__lbl">Transferencia</span>
+                <span class="tr__val" data-tr-actor>{f.act}</span>
+                <span class="tr__walk" aria-hidden="true"><i></i></span>
+              </p>
+            </div>
+            <div class="tr__diagram">
+              <div class="tr__cam">
+              <svg class="tr__svg" viewBox="0 0 800 580" aria-hidden="true" focusable="false">
+                <defs>
+                  <radialGradient id={`tr-${f.k}-glow`}>
+                    <stop offset="0" stop-color="#ffb454" stop-opacity=".42" />
+                    <stop offset=".55" stop-color="#ff7d33" stop-opacity=".12" />
+                    <stop offset="1" stop-color="#ff7d33" stop-opacity="0" />
+                  </radialGradient>
+                  <linearGradient id={`tr-${f.k}-box`} x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0" stop-color="#18336a" />
+                    <stop offset="1" stop-color="#0a1633" />
+                  </linearGradient>
+                  <linearGradient id={`tr-${f.k}-gen`} x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0" stop-color="#20407c" />
+                    <stop offset="1" stop-color="#0c1d42" />
+                  </linearGradient>
+                  <radialGradient id={`tr-${f.k}-puff`}>
+                    <stop class="puff-stop" offset="0" stop-opacity=".8" />
+                    <stop class="puff-stop" offset=".55" stop-opacity=".35" />
+                    <stop class="puff-stop" offset="1" stop-opacity="0" />
+                  </radialGradient>
+                </defs>
+
+                <ellipse class="bld-glow" cx="678" cy="258" rx="176" ry="210" fill={`url(#tr-${f.k}-glow)`} />
+
+                {/* conductors: dead base, halo, live current (dashes), glint (one bright packet) */}
+                {Object.entries(wires).map(([key, ds]) => (
+                  <g class={`w w--${key}`}>
+                    {ds.map((d) => <path class="w-base" d={d} />)}
+                    {ds.map((d) => <path class="w-halo" d={d} />)}
+                    {ds.map((d) => <path class="w-live" d={d} />)}
+                    {ds.map((d) => <path class="w-glint" d={d} pathLength="100" />)}
+                  </g>
+                ))}
+
+                {/* RED ELÉCTRICA: lattice pylon */}
+                <g class="tower">
+                  <path d="M72 380 L100 160 L104 98 L110 84 L116 98 L120 160 L148 380 M100 160 H120" />
+                  <path class="tower__lattice" d="M77 345 H143 M84 300 H136 M90 256 H130 M95 212 H125 M77 345 L136 300 L90 256 L125 212 L100 160 M143 345 L84 300 L130 256 L95 212 L120 160" />
+                  <path d="M54 132 H166 M60 132 L104 112 M160 132 L116 112 M64 168 H156 M70 168 L101 150 M150 168 L119 150" />
+                  <path class="tower__ins" d="M62 132 V142 M158 132 V142 M72 168 V177 M148 168 V177" />
+                  <path d="M60 380 H160 M110 380 V392 M92 392 H128 M98 399 H122 M104 406 H116" />
+                  <circle class="beacon" cx="110" cy="80" r="4.5" />
+                </g>
+                <g class="spark spark--t"><circle cx="158" cy="142" r="7" /><path d={rays(158, 142, 10, 30)} /></g>
+
+                {/* exhaust smoke: drawn behind the board and the operator */}
+                <g class="puffs">
+                  <circle class="puff" cx="320" cy="384" r="9" fill={`url(#tr-${f.k}-puff)`} />
+                  <circle class="puff" cx="320" cy="384" r="9" fill={`url(#tr-${f.k}-puff)`} />
+                  <circle class="puff" cx="320" cy="384" r="9" fill={`url(#tr-${f.k}-puff)`} />
+                </g>
+
+                {/* TABLERO ATS (its texts are HTML, below: they must stay ≥ 12 px at any size) */}
+                <g class="ats">
+                  <rect class="ats__ring" x="300" y="104" width="212" height="262" rx="28" />
+                  <rect class="ats__box" x="318" y="120" width="176" height="230" rx="16" fill={`url(#tr-${f.k}-box)`} />
+                  <rect class="ats__plate" x="332" y="132" width="148" height="30" rx="7" />
+                  <circle class="led led--r" cx="440" cy="147" r="5.5" />
+                  <circle class="led led--g" cx="462" cy="147" r="5.5" />
+                  <path class="ats__arc" d="M371.8 195.8 A92 92 0 0 0 371.8 286.2" />
+                  <circle class="contact contact--n" cx="372" cy="196" r="7" />
+                  <circle class="contact contact--e" cx="372" cy="286" r="7" />
+                  <g class="arm-rest" transform={`rotate(${f.arm} 452 241)`}>
+                    <g class="arm">
+                      <line class="arm-base" x1="452" y1="241" x2="361" y2="241" />
+                      <line class="arm-live" x1="452" y1="241" x2="361" y2="241" />
+                    </g>
+                  </g>
+                  <circle class="pivot" cx="452" cy="241" r="8" />
+                </g>
+                <g class="spark spark--e"><circle cx="372" cy="286" r="7" /><path d={rays(372, 286, 10, 28)} /></g>
+
+                {/* GENERADOR */}
+                <g class="gen">
+                  <g class="gen__body">
+                    <path class="gen__stack" d="M314 422 V390 H326 V422" />
+                    <rect class="gen__case" x="292" y="420" width="164" height="82" rx="10" fill={`url(#tr-${f.k}-gen)`} />
+                    <path class="gen__louver" d="M386 440 V482 M398 440 V482 M410 440 V482" />
+                    <circle class="gen__grille" cx="340" cy="461" r="25" />
+                    <g class="gen__fan">
+                      <ellipse cx="340" cy="449" rx="5.5" ry="11" />
+                      <ellipse cx="340" cy="449" rx="5.5" ry="11" transform="rotate(120 340 461)" />
+                      <ellipse cx="340" cy="449" rx="5.5" ry="11" transform="rotate(240 340 461)" />
+                    </g>
+                    <circle class="gen__hub" cx="340" cy="461" r="4.5" />
+                    <rect class="gen__panel" x="424" y="434" width="22" height="42" rx="4" />
+                    <circle class="gen__led" cx="435" cy="446" r="4.5" />
+                    <path class="gen__louver" d="M429 461 H441 M429 468 H441" />
+                    <rect class="gen__term" x="364" y="411" width="16" height="10" rx="2" />
+                  </g>
+                  <path class="gen__skid" d="M286 509 H462" />
+                </g>
+
+                {/* TU EMPRESA */}
+                <g class="bld">
+                  <path class="bld__mast" d="M736 104 V72" />
+                  <circle class="beacon beacon--b" cx="736" cy="69" r="3.5" />
+                  <rect class="bld__body" x="598" y="104" width="160" height="306" rx="6" />
+                  <path class="bld__parapet" d="M592 104 H764" />
+                  {windows.map((w) => <rect class="win" x={w.x} y={w.y} width="22" height="20" rx="2" />)}
+                  {windows.map((w) => !w.dim && <rect class="win-lit" x={w.x} y={w.y} width="22" height="20" rx="2" style={`--on:${w.on}s;--off:${w.off}s`} />)}
+                  <rect class="bld__door" x="660" y="370" width="36" height="40" rx="3" />
+                  <path class="bld__ground" d="M584 410 H772" />
+                </g>
+
+                {/* the operator who has to walk to the board (manual scenario only) */}
+                {f.k === 'manual' && (
+                  <>
+                    <path class="op-route" d="M36 570 C 120 566 176 520 212 470 S 268 382 296 374" />
+                    <g class="op-rest" transform="translate(296 374)">
+                      <g class="op">
+                        <g class="op__fig" transform="scale(2.4)">
+                          <line class="op__leg" x1="0" y1="-16" x2="0" y2="0" />
+                          <line class="op__leg op__leg--b" x1="0" y1="-16" x2="0" y2="0" />
+                          <rect class="op__vest" x="-7" y="-34" width="14" height="19" rx="4" />
+                          <path class="op__stripe" d="M-7 -25 H7" />
+                          <circle class="op__head" cx="0" cy="-40" r="5.2" />
+                          <path class="op__hat" d="M-7.5 -41 a7.5 7 0 0 1 15 0 z" />
+                        </g>
+                      </g>
+                    </g>
+                  </>
+                )}
+              </svg>
+
+              <span class="tr__tag tr__tag--grid mono" aria-hidden="true">Red eléctrica</span>
+              <span class="tr__tag tr__tag--ats mono" aria-hidden="true">Tablero ATS</span>
+              <span class="tr__tag tr__tag--gen mono" aria-hidden="true">Generador</span>
+              <span class="tr__tag tr__tag--load mono" aria-hidden="true">Tu empresa</span>
+              <span class="tr__name mono" aria-hidden="true">ATS</span>
+              <span class="tr__pole tr__pole--n mono" aria-hidden="true">Red</span>
+              <span class="tr__pole tr__pole--e mono" aria-hidden="true">Gen</span>
+              <span class="tr__lcd mono" aria-hidden="true" data-tr-lcd>{f.lcd}</span>
+              </div>
+
+              {(f.k === 'auto' || pin) && (
+                <div class="tr__verdict" aria-hidden="true">
+                  <p class="tr__v-h mono">Sin energía · simulación</p>
+                  <p class="tr__v-row tr__v-row--m"><span>Manual</span><i class="tr__v-bar"><b></b></i><span class="tr__v-t">15:00</span></p>
+                  <p class="tr__v-row tr__v-row--a"><span>ATS</span><i class="tr__v-bar"><b></b></i><span class="tr__v-t">00:06</span></p>
+                </div>
+              )}
+
+              <span class="tr__chip tr__chip--fault mono" aria-hidden="true"><Icon name="bolt" size={14} />Falla<span class="tr__long"> en la</span> red</span>
+              {f.k === 'manual' && <span class="tr__chip tr__chip--risk mono" aria-hidden="true"><Icon name="alert" size={14} /><span class="tr__long">Equipos en </span>riesgo</span>}
+              <span class="tr__chip tr__chip--ok mono" aria-hidden="true"><Icon name="check" size={14} /><span class="tr__long">Carga </span>respaldada</span>
+
+              {f.k === 'manual' && pin && (
+                <div class="tr__rw" aria-hidden="true">
+                  <span class="tr__rw-streak"></span>
+                  <span class="tr__rw-label mono"><Icon name="replay" size={16} />Mismo corte, ahora con ATS</span>
+                </div>
+              )}
+            </div>
+
+          </div>
+          <figcaption class="tr__fig-cap" id={`tr-cap-${f.k}`}><span class="sr-only">{f.title}. </span>{f.cap} <span class="tr__fig-note">Valores de una simulación ilustrativa.</span></figcaption>
+        </figure>
+      ))}
+    </div>
+
+    {pin && (
+      <div class="tr__side">
+        <ol class="tr__steps">
+          {steps.map((s, i) => (
+            <li class:list={['tr__step', { 'is-active': i === 2 }]}>
+              <p class="tr__step-tag mono">{s.tag}</p>
+              <h3 class="tr__step-t">{s.t}</h3>
+              <p class="tr__step-d">{s.d}</p>
+            </li>
+          ))}
+        </ol>
+        <div class="tr__row">
+          <p class="tr__hint mono" aria-hidden="true">Desplázate para simular el corte <Icon name="chevron" size={16} /></p>
+          <a class="tr__skip btn btn--text btn--sm" href="#transferencia-comparacion">Saltar simulación <Icon name="arrow" size={16} class="tr__skip-ico" /></a>
+        </div>
+        <button type="button" class="tr__replay btn btn--ghost btn--sm"><Icon name="replay" size={18} />Repetir simulación</button>
+        <p class="sr-only" aria-live="polite" data-tr-live></p>
+      </div>
+    )}
+
+  </div>
+
+  <div class="tr__after" id="transferencia-comparacion">
+    <header class="tr__after-head">
+      <p class="eyebrow">Manual vs. automática</p>
+      <h3 class="tr__after-title" data-split="words">La diferencia está en <span class="accent">quién</span> hace el cambio.</h3>
+    </header>
+    <div class="tr__vs" data-stagger="0.12">
+      <article class="tr__card tr__card--manual" data-glow>
+        <p class="tr__card-tag mono">Depende de una persona</p>
+        <h4 class="tr__card-t">Transferencia manual</h4>
+        <ul class="tr__list">
+          {vs.manual.map((b) => <li><Icon name="close" size={18} class="tr__li-ico" />{b}</li>)}
+        </ul>
+      </article>
+      <span class="tr__vs-badge mono" aria-hidden="true">vs</span>
+      <article class="tr__card tr__card--auto" data-glow>
+        <p class="tr__card-tag mono">Automática · a la medida</p>
+        <h4 class="tr__card-t">Transferencia automática (ATS)</h4>
+        <ul class="tr__list">
+          {vs.auto.map((b) => <li><Icon name="check" size={18} class="tr__li-ico" />{b}</li>)}
+        </ul>
+      </article>
+    </div>
+    <div class="tr__close" data-reveal="up">
+      <p class="tr__note"><Icon name="alert" size={20} class="tr__note-ico" /><span><strong>¿Ya tienes ATS?</strong> Un fallo en tu sistema de transferencia automática durante un corte eléctrico puede traducirse en horas de parada y pérdidas económicas. No esperes a la falla para actuar.</span></p>
+      <div class="cta-row">
+        <a class="btn btn--wa" href={wa(svc.waText)} target="_blank" rel="noopener" data-magnetic="0.2"><Icon name="whatsapp" size={20} />Cotiza tu tablero ATS</a>
+        {!onSvcPage && <a class="btn btn--ghost" href={svcHref}>Ver respaldo energético <Icon name="arrow" size={18} class="arrow" /></a>}
+      </div>
+    </div>
+  </div>
+</section>
+
+<script>
+  import '../../scripts/transferencia.js';
+</script>
+
+<style>
+  /* ================= tokens + base (= static layout: mode="static", reduced motion, no JS) ================= */
+  .tr {
+    --live: #ffd79a; --live-2: #ffb454; --halo: #ff7d33; --dead: #1e3464; --steel: #8196bd; --bad: #ff5c5c; --good: #3ddc84;
+    overflow: clip;
+    background:
+      radial-gradient(60% 55% at 74% 40%, rgba(242, 106, 27, 0.11), transparent 70%),
+      linear-gradient(180deg, var(--navy-900), var(--navy-950));
+  }
+  .tr__stage {
+    position: relative; isolation: isolate;
+    width: min(100% - 2 * var(--gutter), 1320px); margin-inline: auto;
+    display: grid; gap: clamp(28px, 4vw, 48px); grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: "head" "figs";
+  }
+  .tr__bleed { position: absolute; z-index: -1; right: -2vw; bottom: -4vw; font-size: clamp(9rem, 30vw, 30rem); -webkit-text-stroke-color: rgba(255, 255, 255, 0.05); }
+  .tr__streak { z-index: -1; top: 58%; --angle: -14deg; --streak-opacity: 0.22; transition: opacity 0.5s; }
+  .tr[data-load='off'] .tr__streak { opacity: 0.04; transition-duration: 0.12s; }
+  .tr__head { grid-area: head; max-width: 60ch; }
+  .tr__title { font-size: clamp(2rem, 1.3rem + 2.8vw, 3.6rem); max-width: 17ch; }
+  .tr__title .accent { display: inline; }
+  .tr__lead { margin-top: 18px; color: var(--muted); max-width: 48ch; }
+  .tr__switch, .tr__side, .tr__skip, .tr__hint, .tr__replay { display: none; }
+
+  .tr__figs { grid-area: figs; display: grid; gap: clamp(28px, 3vw, 40px); min-width: 0; }
+  @media (min-width: 960px) { .tr__figs { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  .tr__fig { margin: 0; display: grid; gap: 14px; align-content: start; min-width: 0; }
+  .tr__fig-title { display: flex; align-items: center; gap: 10px; font-size: var(--step-1); }
+  .tr__fig-title :global(.icon) { color: var(--accent-text); }
+  .tr__fig-cap { color: var(--muted); font-size: 0.98rem; max-width: 56ch; }
+  .tr__fig-note { display: block; margin-top: 6px; font-family: var(--font-mono); font-size: 0.75rem; letter-spacing: 0.06em; text-transform: uppercase; }
+
+  /* ---------- the instrument frame ---------- */
+  .tr__frame {
+    position: relative; border-radius: 20px; overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: linear-gradient(180deg, rgba(20, 42, 88, 0.55), rgba(6, 13, 31, 0.85));
+    box-shadow: 0 40px 90px -40px rgba(0, 0, 0, 0.85), inset 0 1px 0 rgba(255, 255, 255, 0.07);
+  }
+  .tr__frame { transition: border-color 0.4s, box-shadow 0.6s; }
+  .tr__fig[data-load='off'] .tr__frame { border-color: rgba(255, 92, 92, 0.42); box-shadow: 0 40px 90px -40px rgba(0, 0, 0, 0.85), 0 0 70px -24px rgba(255, 92, 92, 0.45); }
+  .tr__fig[data-sc='auto'][data-gen='on'][data-load='on'] .tr__frame { border-color: rgba(255, 180, 84, 0.5); box-shadow: 0 40px 90px -40px rgba(0, 0, 0, 0.85), 0 0 80px -24px rgba(255, 150, 60, 0.5); }
+  .tr__bar { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 14px; border-bottom: 1px solid var(--line); }
+  .tr__bar-l { display: inline-flex; align-items: center; gap: 8px; font-size: 0.75rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); white-space: nowrap; }
+  .tr__rec { width: 8px; height: 8px; border-radius: 50%; background: var(--good); box-shadow: 0 0 0 3px rgba(61, 220, 132, 0.18); }
+  .tr__sim {
+    display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; border-radius: var(--r-pill);
+    border: 1px dashed rgba(255, 180, 84, 0.7); color: var(--live-2); background: rgba(255, 180, 84, 0.08);
+    font-size: 0.75rem; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; white-space: nowrap;
+  }
+
+  .tr__diagram {
+    position: relative; aspect-ratio: 800 / 580;
+    background-image: radial-gradient(rgba(255, 255, 255, 0.07) 1px, transparent 1.4px);
+    background-size: 22px 22px; background-position: 11px 11px;
+    overflow: clip; /* the camera (.tr__cam) zooms inside it */
+  }
+  .tr__cam { position: absolute; inset: 0; transform-origin: 50% 50%; }
+  .tr__svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+
+  /* ---------- schematic parts ---------- */
+  .w path { fill: none; stroke-linecap: round; stroke-linejoin: round; }
+  .w-base { stroke: var(--dead); stroke-width: 6; }
+  .w-halo { stroke: var(--halo); stroke-width: 16; opacity: 0; transition: opacity 0.3s; }
+  .w-live { stroke: var(--live); stroke-width: 4; stroke-dasharray: 14 9; opacity: 0; transition: opacity 0.25s, stroke 0.2s; animation: tr-flow 0.9s linear infinite; }
+  .w-glint { stroke: #fff; stroke-width: 5; stroke-dasharray: 5 95; opacity: 0; transition: opacity 0.25s; animation: tr-glint 1.5s linear infinite; }
+  .w--feed .w-glint { animation-duration: 2.2s; }
+  .w--gen .w-glint { animation-duration: 1.1s; }
+  .w--load .w-glint { animation-delay: -0.6s; }
+  :global(html.is-lite) .tr .w-glint { display: none; }
+
+  :is([data-grid='on'], [data-grid='fault']) :is(.w--grid, .w--feed) .w-live,
+  [data-gen='on'] .w--gen .w-live,
+  [data-load='on'] .w--load .w-live { opacity: 1; }
+  :is([data-grid='on']) :is(.w--grid, .w--feed) :is(.w-halo),
+  [data-gen='on'] .w--gen .w-halo,
+  [data-load='on'] .w--load .w-halo { opacity: 0.2; }
+  [data-grid='on'] :is(.w--grid, .w--feed) .w-glint,
+  [data-gen='on'] .w--gen .w-glint,
+  [data-load='on'] .w--load .w-glint { opacity: 0.95; }
+  [data-grid='fault'] :is(.w--grid, .w--feed) .w-live { stroke: var(--bad); animation: tr-flow 0.9s linear infinite, tr-flick 0.28s steps(2) infinite; }
+
+  .tower path { fill: none; stroke: var(--steel); stroke-width: 2.5; stroke-linejoin: round; stroke-linecap: round; }
+  .tower .tower__lattice { stroke-width: 1.5; opacity: 0.75; }
+  .tower .tower__ins { stroke: #c7d3ea; stroke-width: 4; }
+  .beacon { fill: var(--bad); animation: tr-blink 2.4s steps(1) infinite; }
+  .beacon--b { animation-delay: -1.1s; }
+
+  .spark { opacity: 0; pointer-events: none; transform-box: fill-box; transform-origin: 50% 50%; }
+  .spark circle { fill: #fff6df; }
+  .spark path { fill: none; stroke: #fff1c9; stroke-width: 3; stroke-linecap: round; }
+  .spark--t path { stroke: #ffc2c2; }
+
+  .ats__ring { fill: none; stroke: var(--bad); stroke-width: 2; opacity: 0; transform-box: fill-box; transform-origin: center; }
+  .ats__box { stroke: rgba(255, 255, 255, 0.24); stroke-width: 2; }
+  .ats__plate { fill: #071029; stroke: rgba(255, 255, 255, 0.12); }
+  .ats__arc { fill: none; stroke: rgba(255, 255, 255, 0.2); stroke-width: 1.5; stroke-dasharray: 3 6; }
+  .led { fill: #2a3a5e; stroke: rgba(0, 0, 0, 0.4); transition: fill 0.2s; }
+  [data-grid='on'] .led--r { fill: var(--good); }
+  :is([data-grid='fault'], [data-grid='off']) .led--r { fill: var(--bad); }
+  [data-grid='fault'] .led--r { animation: tr-blink 0.4s steps(1) infinite; }
+  [data-ats='gen'] .led--g { fill: var(--good); }
+  [data-gen='crank'] .led--g { fill: var(--live-2); animation: tr-blink 0.3s steps(1) infinite; }
+  .contact { fill: #0b1a3a; stroke: var(--steel); stroke-width: 3; transition: fill 0.25s, stroke 0.25s; }
+  [data-grid='on'] .contact--n, [data-gen='on'] .contact--e { fill: var(--live); stroke: var(--live); }
+  .pivot { fill: #0b1a3a; stroke: var(--steel); stroke-width: 3; }
+  [data-load='on'] .pivot { stroke: var(--live); }
+  .arm line { stroke-linecap: round; }
+  .arm-base { stroke: #b9c6de; stroke-width: 7; }
+  .arm-live { stroke: var(--live); stroke-width: 7; opacity: 0; transition: opacity 0.25s; }
+  [data-load='on'] .arm-live { opacity: 1; }
+  [data-ats='detect'] .ats__ring { animation: tr-scan 0.7s ease-out infinite; }
+
+  .gen__stack { fill: #0f2147; stroke: var(--steel); stroke-width: 2; }
+  .gen__case { stroke: rgba(255, 255, 255, 0.22); stroke-width: 2; }
+  .gen__louver { fill: none; stroke: rgba(255, 255, 255, 0.14); stroke-width: 4; stroke-linecap: round; }
+  .gen__grille { fill: #071029; stroke: rgba(255, 255, 255, 0.2); stroke-width: 2; }
+  .gen__fan { fill: #5d7099; transform-box: view-box; transform-origin: 340px 461px; }
+  .gen__hub { fill: #b9c6de; }
+  .gen__panel { fill: #071029; }
+  .gen__led { fill: #2a3a5e; }
+  .gen__term { fill: var(--steel); }
+  .gen__skid { stroke: var(--steel); stroke-width: 5; stroke-linecap: round; }
+  .gen__body { transform-box: fill-box; transform-origin: 50% 100%; }
+  [data-gen='crank'] .gen__body { animation: tr-shake 0.09s steps(2) infinite; }
+  [data-gen='on'] .gen__body { animation: tr-hum 0.16s linear infinite; }
+  [data-gen='crank'] .gen__fan { animation: tr-spin 0.9s linear infinite; }
+  [data-gen='on'] .gen__fan { animation: tr-spin 0.28s linear infinite; }
+  [data-gen='crank'] .gen__led { fill: var(--live-2); animation: tr-blink 0.3s steps(1) infinite; }
+  [data-gen='on'] .gen__led { fill: var(--good); }
+  .puff-stop { stop-color: #b4c2dc; }
+  [data-gen='crank'] .puff-stop { stop-color: #6b7896; }
+  .puff { opacity: 0; transform-box: fill-box; transform-origin: center; }
+  [data-gen='crank'] .puff { animation: tr-puff 0.9s ease-out infinite; }
+  [data-gen='on'] .puff { animation: tr-puff 1.7s ease-out infinite; }
+  .puff:nth-child(2) { animation-delay: -0.55s !important; }
+  .puff:nth-child(3) { animation-delay: -1.1s !important; }
+
+  .bld__mast { stroke: var(--steel); stroke-width: 2.5; }
+  .bld__body { fill: #0d1d42; stroke: rgba(255, 255, 255, 0.2); stroke-width: 2; }
+  .bld__parapet, .bld__ground { stroke: var(--steel); stroke-width: 4; stroke-linecap: round; }
+  .bld__door { fill: #071029; stroke: rgba(255, 255, 255, 0.15); }
+  .win { fill: #13254d; }
+  .win-lit { fill: var(--live); opacity: 0; transition: opacity 0.12s linear var(--off, 0s); }
+  .win-lit:nth-of-type(3n) { fill: #ffc47e; }
+  [data-load='on'] .win-lit { opacity: 1; transition: opacity 0.35s ease-out var(--on, 0s); }
+  .bld-glow { opacity: 0; transition: opacity 0.5s; }
+  [data-load='on'] .bld-glow { opacity: 1; transition: opacity 0.9s 0.25s; }
+
+  .op-route { fill: none; stroke: rgba(255, 180, 84, 0.35); stroke-width: 2; stroke-dasharray: 2 8; stroke-linecap: round; opacity: 0; transition: opacity 0.4s; }
+  :is([data-actor='walk'], [data-actor='operate']) .op-route { opacity: 1; }
+  .op { opacity: 1; }
+  .op__leg { stroke: #2a3a5e; stroke-width: 4.5; stroke-linecap: round; transform-box: fill-box; transform-origin: 50% 0; }
+  .op__vest { fill: var(--orange-500); }
+  .op__stripe { stroke: var(--live); stroke-width: 2.5; }
+  .op__head { fill: #f0cfae; }
+  .op__hat { fill: var(--amber-400); }
+  /* the walk cycle only where he actually walks (live figure) */
+  :global(html.js) .tr--pin [data-actor='walk'] .op__leg { animation: tr-step 0.42s ease-in-out infinite alternate; }
+  :global(html.js) .tr--pin [data-actor='walk'] .op__leg--b { animation-direction: alternate-reverse; }
+  :global(html.js) .tr--pin [data-actor='walk'] .op__fig { animation: tr-bob 0.21s ease-in-out infinite alternate; }
+
+  .is-boot :is(.w-live, .w-halo, .w-glint, .win-lit, .bld-glow, .arm-live, .tr__chip) { opacity: 0 !important; }
+  .is-boot :is(.led, .contact, .gen__led) { fill: #2a3a5e !important; stroke: var(--steel) !important; }
+
+  /* ---------- the board's texts: HTML over the drawing, sized with the frame (cqi) but never under 12 px ---------- */
+  .tr__name, .tr__pole, .tr__lcd { position: absolute; font-family: var(--font-mono); font-weight: 700; line-height: 1; white-space: nowrap; pointer-events: none; text-transform: uppercase; }
+  .tr__name { left: 43.25%; top: 25.35%; transform: translateY(-50%); font-size: max(12px, 2.1cqi); letter-spacing: 0.18em; color: var(--live); }
+  .tr__pole { right: 55.5%; transform: translateY(-50%); font-size: max(12px, 1.8cqi); font-weight: 600; letter-spacing: 0.1em; color: #93a6cc; }
+  .tr__pole--n { top: 30.4%; }
+  .tr__pole--e { top: 51.4%; }
+  .tr__lcd {
+    left: 54.75%; top: 55.4%; transform: translate(-50%, -50%);
+    min-width: 6.2em; padding: 0.32em 0.45em; text-align: center; border-radius: 0.35em;
+    font-size: max(12px, 1.75cqi); letter-spacing: 0.06em; color: var(--good);
+    background: #03120c; border: 1px solid rgba(61, 220, 132, 0.35); box-shadow: inset 0 0 12px rgba(61, 220, 132, 0.12);
+  }
+  :is([data-ats='nored'], [data-ats='detect'], [data-ats='manual']) .tr__lcd { color: #ff8a8a; border-color: rgba(255, 92, 92, 0.4); box-shadow: inset 0 0 12px rgba(255, 92, 92, 0.12); }
+  [data-ats='detect'] .tr__lcd { animation: tr-blink 0.35s steps(1) infinite; }
+  @container tr-frame (max-width: 519px) { .tr__pole { display: none; } }
+  @container tr-frame (max-width: 359px) { .tr__lcd { letter-spacing: 0; min-width: 0; padding-inline: 0.3em; } }
+
+  /* ---------- HTML labels, alert chips ---------- */
+  .tr__tag { position: absolute; font-size: 0.75rem; letter-spacing: 0.08em; text-transform: uppercase; color: #c3cee4; white-space: nowrap; line-height: 1.2; pointer-events: none; }
+  .tr__tag--grid { left: 3%; top: 72%; }
+  .tr__tag--ats { left: 50.75%; bottom: 80.8%; transform: translateX(-50%); }
+  .tr__tag--gen { left: 46.5%; top: 89.2%; transform: translateX(-50%); }
+  .tr__tag--load { left: 84.75%; top: 72.5%; transform: translateX(-50%); }
+  .tr__chip {
+    position: absolute; top: 2.5%; display: inline-flex; align-items: center; gap: 6px;
+    padding: 5px 10px; border-radius: var(--r-pill); font-size: 0.75rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; line-height: 1.2; white-space: nowrap;
+    opacity: 0; transform: translateY(-6px); transition: opacity 0.3s, transform 0.5s var(--ease-out);
+  }
+  .tr__chip--fault { left: 2.5%; color: #ffd0d0; background: rgba(255, 92, 92, 0.16); border: 1px solid rgba(255, 92, 92, 0.6); }
+  .tr__chip--risk { right: 2.5%; color: #ffe2b8; background: rgba(255, 180, 84, 0.14); border: 1px solid rgba(255, 180, 84, 0.6); }
+  .tr__chip--ok { right: 2.5%; color: #c9f7dc; background: rgba(61, 220, 132, 0.14); border: 1px solid rgba(61, 220, 132, 0.55); }
+  .tr__fig:not([data-grid='on']) .tr__chip--fault,
+  [data-sc='manual'][data-load='off'] .tr__chip--risk,
+  [data-sc='auto'][data-load='on'][data-gen='on'] .tr__chip--ok { opacity: 1; transform: none; }
+  [data-grid='fault'] .tr__chip--fault { animation: tr-blink 0.4s steps(1) infinite; }
+  [data-sc='manual'][data-load='off'] .tr__chip--risk :global(.icon) { animation: tr-blink 1s steps(1) infinite; }
+
+  /* ---------- verdict: time without power, manual vs ATS (final ATS state, wide frames only) ---------- */
+  .tr__verdict {
+    position: absolute; left: 2.5%; bottom: 3.5%; width: 32%; display: none; gap: 7px;
+    padding: 10px 12px; border-radius: 12px; border: 1px solid rgba(255, 215, 154, 0.28);
+    background: rgba(6, 13, 31, 0.86); box-shadow: 0 18px 40px -20px rgba(0, 0, 0, 0.9);
+    opacity: 0; transform: translate3d(0, 10px, 0); transition: opacity 0.3s, transform 0.6s var(--ease-out);
+  }
+  @container tr-frame (min-width: 600px) { .tr__verdict { display: grid; } }
+  [data-actor='adone'] .tr__verdict { opacity: 1; transform: none; transition-delay: 0.3s; }
+  .tr__v-h { font-size: 0.75rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+  .tr__v-row { display: grid; grid-template-columns: 4.4em minmax(0, 1fr) auto; align-items: center; gap: 8px; font-family: var(--font-mono); font-size: 0.75rem; letter-spacing: 0.04em; color: #c3cee4; }
+  .tr__v-t { font-weight: 700; font-variant-numeric: tabular-nums; }
+  .tr__v-row--m .tr__v-t { color: #ff8a8a; }
+  .tr__v-row--a .tr__v-t { color: var(--live); }
+  .tr__v-bar { position: relative; display: block; height: 6px; border-radius: 3px; background: rgba(255, 255, 255, 0.08); overflow: hidden; }
+  .tr__v-bar b { position: absolute; inset: 0 auto 0 0; width: 100%; border-radius: inherit; transform: scaleX(0); transform-origin: 0 50%; transition: transform 0.2s; }
+  .tr__v-row--m b { background: linear-gradient(90deg, rgba(255, 92, 92, 0.5), var(--bad)); }
+  .tr__v-row--a b { width: max(4px, 0.7%); background: var(--live); box-shadow: 0 0 8px var(--live-2); }
+  [data-actor='adone'] .tr__v-row--a b { transform: none; transition: transform 0.25s ease-out 0.55s; }
+  [data-actor='adone'] .tr__v-row--m b { transform: none; transition: transform 1.8s cubic-bezier(0.3, 0.1, 0.2, 1) 0.8s; }
+
+  /* ---------- HUD ---------- */
+  .tr__hud { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); border-bottom: 1px solid var(--line); background: rgba(6, 13, 31, 0.35); }
+  .tr__cell { margin: 0; display: grid; align-content: center; gap: 3px; padding: 10px clamp(12px, 1.4vw, 18px); min-width: 0; }
+  .tr__cell + .tr__cell { border-left: 1px solid var(--line); }
+  .tr__lbl { font-family: var(--font-mono); font-size: 0.75rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); white-space: nowrap; }
+  .tr__unit { letter-spacing: 0.02em; text-transform: none; }
+  .tr__val { display: flex; align-items: center; gap: 8px; font-family: var(--font-display); font-weight: 600; font-size: clamp(0.9rem, 0.82rem + 0.25vw, 1.05rem); line-height: 1.25; }
+  .tr__dot { flex: none; width: 9px; height: 9px; border-radius: 50%; background: var(--good); box-shadow: 0 0 0 3px rgba(61, 220, 132, 0.2); transition: background 0.2s, box-shadow 0.2s; }
+  [data-load='off'] .tr__dot { background: var(--bad); box-shadow: 0 0 0 3px rgba(255, 92, 92, 0.22); animation: tr-blink 0.8s steps(1) infinite; }
+  [data-load='on'][data-gen='on'] .tr__dot { background: var(--live-2); box-shadow: 0 0 0 3px rgba(255, 180, 84, 0.22); }
+  .tr__cell--clock { text-align: center; justify-items: center; }
+  .tr__clock { font-family: var(--font-mono); font-weight: 700; font-size: clamp(1.7rem, 1.2rem + 1.3vw, 2.4rem); line-height: 1; letter-spacing: 0.02em; font-variant-numeric: tabular-nums; color: var(--fg); transition: color 0.3s; }
+  [data-load='off'] .tr__clock { color: #ff8a8a; }
+  [data-sc='auto'][data-load='on'] .tr__clock { color: var(--live); }
+  .tr__prev { font-size: 0.75rem; color: var(--muted); letter-spacing: 0.06em; opacity: 0; transition: opacity 0.4s; }
+  [data-actor='adone'] .tr__prev { opacity: 1; }
+  .tr__walk { display: block; height: 3px; border-radius: 3px; background: rgba(255, 255, 255, 0.1); overflow: hidden; opacity: 0; transition: opacity 0.3s; }
+  .tr__walk i { display: block; height: 100%; background: var(--grad-brand); transform-origin: 0 50%; transform: scaleX(var(--walk, 0.6)); }
+  [data-actor='walk'] .tr__walk { opacity: 1; }
+
+  /* ---------- steps (live captions) ---------- */
+  .tr__side { grid-area: side; min-width: 0; }
+  .tr__steps { list-style: none; display: grid; }
+  .tr__step { grid-area: 1 / 1; opacity: 0; transform: translate3d(0, 14px, 0); transition: opacity 0.35s, transform 0.7s var(--ease-out); pointer-events: none; }
+  .tr__step.is-active { opacity: 1; transform: none; pointer-events: auto; transition-delay: 0.08s; }
+  .tr__step-tag { font-size: 0.8rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent-text); margin-bottom: 10px; }
+  .tr__step-t { font-size: clamp(1.35rem, 1.05rem + 1vw, 1.9rem); letter-spacing: -0.02em; }
+  .tr__step-d { margin-top: 10px; color: var(--muted); font-size: clamp(0.95rem, 0.9rem + 0.2vw, 1.05rem); max-width: 46ch; }
+
+  /* ---------- comparison + CTA (all modes) ---------- */
+  .tr__after { width: min(100% - 2 * var(--gutter), 1320px); margin-inline: auto; padding-top: clamp(56px, 8vw, 110px); display: grid; gap: clamp(28px, 4vw, 44px); }
+  .tr__after-title { font-size: var(--step-3); max-width: 20ch; }
+  .tr__vs { position: relative; display: grid; gap: 16px; }
+  @media (min-width: 820px) { .tr__vs { grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: stretch; gap: 20px; } }
+  .tr__card { position: relative; border-radius: var(--radius-lg); padding: clamp(22px, 3vw, 34px); border: 1px solid var(--line); background: var(--card); display: grid; align-content: start; gap: 12px; transition: border-color 0.4s, transform 0.6s var(--ease-out); }
+  .tr__card:hover { transform: translateY(-4px); }
+  .tr__card--auto { border-color: rgba(255, 180, 84, 0.45); background: linear-gradient(160deg, rgba(242, 106, 27, 0.12), rgba(255, 215, 154, 0.03) 60%), var(--card); box-shadow: 0 30px 60px -40px rgba(242, 106, 27, 0.55); }
+  .tr__card--auto::after { content: ''; position: absolute; top: -1px; left: 12%; right: 12%; height: 2px; border-radius: 2px; background: var(--grad-streak); box-shadow: 0 0 14px rgba(255, 150, 70, 0.8); animation: tr-ray 3.2s ease-in-out infinite; }
+  @keyframes tr-ray { 0%, 100% { opacity: 0.35; transform: scaleX(0.7); } 50% { opacity: 1; transform: scaleX(1); } }
+  .tr__card-tag { font-size: 0.75rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
+  .tr__card--auto .tr__card-tag { color: var(--accent-text); }
+  .tr__card-t { font-size: var(--step-1); }
+  .tr__list { list-style: none; display: grid; gap: 12px; margin-top: 6px; }
+  .tr__list li { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 12px; align-items: start; color: var(--muted); }
+  .tr__list :global(.tr__li-ico) { margin-top: 3px; padding: 3px; width: 24px; height: 24px; border-radius: 50%; }
+  .tr__card--manual :global(.tr__li-ico) { color: #ff9d9d; background: rgba(255, 92, 92, 0.14); }
+  .tr__card--auto :global(.tr__li-ico) { color: #0b1a3a; background: var(--live); }
+  .tr__card--auto li { color: var(--fg); }
+  .tr__vs-badge { align-self: center; justify-self: center; display: grid; place-items: center; width: 52px; height: 52px; border-radius: 50%; border: 1px solid var(--line); background: var(--navy-900); color: var(--accent-text); font-size: 0.85rem; letter-spacing: 0.1em; text-transform: uppercase; }
+  @media (max-width: 819px) { .tr__vs-badge { margin-block: -34px; z-index: 1; } }
+  .tr__close { display: grid; gap: 22px; justify-items: start; }
+  .tr__note { display: flex; gap: 12px; align-items: flex-start; max-width: 70ch; color: var(--muted); padding: 16px 18px; border-radius: var(--radius); border: 1px solid rgba(255, 180, 84, 0.3); background: rgba(255, 180, 84, 0.06); }
+  .tr__note strong { color: var(--fg); }
+  .tr__note :global(.tr__note-ico) { color: var(--live-2); margin-top: 3px; }
+  @media (max-width: 560px) { .tr__close .btn { white-space: normal; } }
+
+  /* ================= small screens (all modes) ================= */
+  /* the instrument adapts to its own width (phones, phone landscape, two-column static layout) */
+  .tr__frame { display: flex; flex-direction: column; container: tr-frame / inline-size; }
+  @container tr-frame (max-width: 640px) {
+    .tr__diagram { order: 1; }
+    .tr__hud { order: 2; border-bottom: 0; border-top: 1px solid var(--line); }
+  }
+  @container tr-frame (max-width: 560px) {
+    .tr__bar { padding: 8px 10px; }
+    .tr__bar-l { display: none; }
+    .tr__bar { justify-content: flex-start; }
+    .tr__hud { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-areas: "clock clock" "src actor"; }
+    .tr__cell { padding: 8px 12px; }
+    .tr__cell--clock { grid-area: clock; grid-template-columns: auto auto; column-gap: 14px; align-items: center; justify-content: center; border-bottom: 1px solid var(--line); }
+    .tr__cell--clock .tr__lbl { grid-row: 1; }
+    .tr__cell--clock .tr__clock { grid-row: 1 / span 2; grid-column: 2; }
+    .tr__cell--src { grid-area: src; }
+    .tr__cell--actor { grid-area: actor; }
+    .tr__cell + .tr__cell { border-left: 0; }
+    .tr__cell--actor { border-left: 1px solid var(--line) !important; }
+    .tr__chip { padding: 3px 8px; gap: 4px; }
+    .tr__chip :global(.icon) { width: 12px; height: 12px; }
+    .tr__tag { font-size: 0.75rem; letter-spacing: 0.04em; }
+    .tr__tag--grid { left: 1%; top: 72.8%; }
+  }
+  @container tr-frame (max-width: 420px) { .tr__long, .tr__tag--ats { display: none; } }
+
+  /* ================= live (JS + motion allowed, mode="pin"): one figure, the control, crossfaded steps ================= */
+  @media (prefers-reduced-motion: no-preference) {
+    :global(html.js) .tr--pin .tr__fig--auto,
+    :global(html.js) .tr--pin :is(.tr__fig-title, .tr__fig-cap) { display: none; }
+    :global(html.js) .tr--pin .tr__stage { grid-template-areas: "head" "figs" "side"; }
+    :global(html.js) .tr--pin .tr__side { display: grid; align-content: start; gap: 18px; }
+    :global(html.js) .tr--pin .tr__switch { display: grid; gap: 10px; margin-top: clamp(20px, 3vh, 30px); max-width: 440px; }
+    :global(html.js) .tr--pin .tr__lead { display: none; }
+    :global(html.js) .tr--pin .tr__figs { grid-template-columns: minmax(0, 1fr); }
+    :global(html.js) .tr--pin.is-off *,
+    :global(html.js) .tr--pin.is-off *::before,
+    :global(html.js) .tr--pin.is-off *::after { animation-play-state: paused !important; }
+    /* one-shot beats, time-based (not scrubbed) so a fast scroll can't skip them: they start when the state is entered */
+    :global(html.js) .tr--pin :is([data-grid='fault'], [data-grid='off']) .spark--t { animation: tr-burst 0.6s ease-out both; }
+    :global(html.js) .tr--pin [data-ats='gen'] .spark--e { animation: tr-burst 0.5s ease-out both; }
+    :global(html.js) .tr--pin :is([data-grid='fault'], [data-grid='off']) .tr__cam { animation: tr-brown 0.55s linear both; }
+  }
+  .tr__switch-lbl { font-size: 0.75rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); }
+  .tr__seg { container: tr-seg / inline-size; position: relative; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); padding: 4px; border-radius: var(--r-pill); border: 1px solid rgba(255, 255, 255, 0.16); background: rgba(255, 255, 255, 0.04); }
+  .tr__seg-pill { position: absolute; top: 4px; bottom: 4px; left: 4px; width: calc(50% - 4px); border-radius: var(--r-pill); background: var(--grad-brand); box-shadow: 0 8px 26px -8px rgba(242, 106, 27, 0.8); transition: transform 0.6s var(--ease-out); }
+  .tr[data-sc='auto'] .tr__seg-pill { transform: translate3d(100%, 0, 0); }
+  .tr__seg-btn { position: relative; z-index: 1; min-height: 46px; padding: 0 12px; border-radius: var(--r-pill); font-family: var(--font-display); font-weight: 600; font-size: 0.95rem; color: var(--muted); transition: color 0.35s; white-space: nowrap; }
+  .tr__seg-btn[aria-pressed='true'] { color: var(--navy-900); }
+  .tr__seg-btn:not([aria-pressed='true']):hover { color: var(--fg); }
+  @container tr-seg (max-width: 339px) { .tr__ats { display: none; } }
+  .tr__prog { position: relative; display: block; height: 3px; margin-inline: 22px; border-radius: 3px; background: rgba(255, 255, 255, 0.1); }
+  .tr__prog-fill { position: absolute; inset: 0; border-radius: inherit; background: var(--grad-brand); transform-origin: 0 50%; transform: scaleX(var(--p, 0)); box-shadow: 0 0 10px rgba(255, 150, 70, 0.6); }
+  .tr__prog-mark { position: absolute; top: -3px; left: var(--at); width: 9px; height: 9px; margin-left: -4.5px; border-radius: 50%; background: var(--navy-900); border: 2px solid var(--bad); }
+
+  /* ---------- touch / narrow: no pin; plays once in view; "Repetir" ---------- */
+  @media (max-width: 767px) and (prefers-reduced-motion: no-preference), (pointer: coarse) and (prefers-reduced-motion: no-preference) {
+    :global(html.js) .tr--pin .tr__replay { display: inline-flex; justify-self: start; }
+    :global(html.js) .tr--pin .tr__fig { width: 100%; max-width: max(300px, calc((100svh - 170px) * 1.38)); justify-self: center; }
+    :global(html.js) .tr--pin .tr__stage { gap: 24px; }
+    :global(html.js) .tr--pin .tr__side { gap: 16px; }
+  }
+  @media (max-width: 420px) {
+    .tr__seg-btn { font-size: 0.875rem; padding: 0 8px; }
+  }
+
+  /* ---------- wide non-pinned live layout (touch tablets in landscape) ---------- */
+  @media (min-width: 1024px) and (pointer: coarse) and (orientation: landscape) and (prefers-reduced-motion: no-preference) {
+    :global(html.js) .tr--pin .tr__stage { grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); grid-template-areas: "head figs" "side figs"; align-items: start; }
+  }
+
+  /* ---------- desktop gate: pinned stage (100svh), text column + instrument ---------- */
+  @media (min-width: 768px) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
+    :global(html.js) .tr--pin { padding-top: 0; }
+    :global(html.js) .tr--pin .tr__stage {
+      height: 100vh; height: 100svh; min-height: 600px;
+      padding-block: calc(var(--header-h) + 2.5vh) 3vh;
+      width: min(100% - 2 * var(--gutter), 1480px);
+      grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+      grid-template-rows: minmax(0, 1fr) auto auto minmax(0, 1fr);
+      grid-template-areas: ". figs" "head figs" "side figs" ". figs";
+      column-gap: clamp(28px, 4.4vw, 80px); row-gap: 0;
+      align-items: center;
+    }
+    :global(html.js) .tr--pin .tr__side { margin-top: clamp(18px, 3.2vh, 36px); }
+    /* the fixed WhatsApp button sits bottom-right: keep the readouts on top of the instrument */
+    :global(html.js) .tr--pin :is(.tr__diagram, .tr__hud) { order: 0; }
+    :global(html.js) .tr--pin .tr__hud { border-top: 0; border-bottom: 1px solid var(--line); }
+    :global(html.js) .tr--pin .tr__title { font-size: clamp(1.8rem, 0.3rem + 2.1vw + 1.7vh, 3.4rem); max-width: 15ch; }
+    :global(html.js) .tr--pin .tr__figs { align-self: center; justify-items: end; }
+    :global(html.js) .tr--pin .tr__fig { width: min(100%, calc((100svh - var(--header-h) - 5.5vh - 132px) * 1.38)); }
+    :global(html.js) .tr--pin .tr__hint { display: inline-flex; align-items: center; gap: 8px; font-size: 0.8rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent-text); transition: opacity 0.4s; }
+    :global(html.js) .tr--pin:not([data-step='0']) .tr__hint { opacity: 0; }
+    :global(html.js) .tr--pin .tr__hint :global(svg) { animation: tr-bob 0.9s ease-in-out infinite alternate; }
+    :global(html.js) .tr--pin .tr__row { display: flex; align-items: center; justify-content: flex-start; gap: 8px 28px; flex-wrap: wrap; }
+    :global(html.js) .tr--pin .tr__skip { display: inline-flex; gap: 6px; color: var(--muted); }
+    :global(html.js) .tr--pin .tr__skip:hover { color: var(--accent-text); }
+    :global(html.js) .tr--pin .tr__skip :global(.tr__skip-ico) { transform: rotate(90deg); }
+  }
+  @media (min-width: 768px) and (max-height: 760px) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
+    :global(html.js) .tr--pin .tr__step-d { font-size: 0.95rem; }
+    :global(html.js) .tr--pin .eyebrow { margin-bottom: 10px; }
+  }
+  /* narrow desktop windows (split screen): even columns, a smaller title, no scroll hint, so the text fits the pinned 100svh */
+  @media (min-width: 768px) and (max-width: 1023px) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
+    :global(html.js) .tr--pin .tr__stage { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); column-gap: clamp(24px, 3vw, 36px); }
+    :global(html.js) .tr--pin .tr__title { font-size: clamp(1.5rem, 0.4rem + 1.5vw + 1.6vh, 2.5rem); max-width: none; }
+    :global(html.js) .tr--pin .tr__hint { display: none; }
+    :global(html.js) .tr--pin .tr__step-d { font-size: 0.9rem; }
+  }
+  /* short desktop windows */
+  @media (min-width: 768px) and (max-height: 680px) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
+    :global(html.js) .tr--pin .tr__stage { padding-block: calc(var(--header-h) + 1.5vh) 2vh; }
+    :global(html.js) .tr--pin .tr__head .eyebrow, :global(html.js) .tr--pin .tr__switch-lbl { display: none; }
+    :global(html.js) .tr--pin .tr__switch { margin-top: 14px; }
+    :global(html.js) .tr--pin .tr__side { margin-top: 12px; gap: 10px; }
+    :global(html.js) .tr--pin .tr__step-tag { margin-bottom: 6px; }
+    :global(html.js) .tr--pin .tr__step-d { margin-top: 6px; }
+  }
+  /* very wide screens: a bigger instrument, fewer dead margins */
+  @media (min-width: 1800px) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
+    :global(html.js) .tr--pin .tr__stage { width: min(100% - 2 * var(--gutter), 1720px); }
+  }
+
+  @keyframes tr-flow { to { stroke-dashoffset: -23; } }
+  @keyframes tr-glint { from { stroke-dashoffset: 5; } to { stroke-dashoffset: -95; } }
+  @keyframes tr-flick { 50% { opacity: 0.15; } }
+  @keyframes tr-blink { 50% { opacity: 0.25; } }
+  @keyframes tr-scan { from { opacity: 0.9; transform: scale(0.92); } to { opacity: 0; transform: scale(1.12); } }
+  @keyframes tr-shake { 0% { transform: translate(-1.4px, 0.6px); } 100% { transform: translate(1.4px, -0.6px); } }
+  @keyframes tr-hum { 0%, 100% { transform: translate(0, 0); } 25% { transform: translate(0.5px, -0.4px); } 75% { transform: translate(-0.5px, 0.3px); } }
+  @keyframes tr-spin { to { transform: rotate(360deg); } }
+  @keyframes tr-puff { 0% { opacity: 0; transform: translate(0, 0) scale(0.6); } 20% { opacity: 0.9; } 100% { opacity: 0; transform: translate(-26px, -44px) scale(1.8); } }
+  @keyframes tr-step { from { transform: rotate(-22deg); } to { transform: rotate(22deg); } }
+  @keyframes tr-bob { from { transform: translateY(0); } to { transform: translateY(-2px); } }
+  @keyframes tr-burst { 0% { opacity: 0; transform: scale(0.35); } 14% { opacity: 1; transform: scale(1); } 100% { opacity: 0; transform: scale(1.5); } }
+  @keyframes tr-brown { 0%, 100% { opacity: 1; } 10% { opacity: 0.35; } 22% { opacity: 1; } 34% { opacity: 0.5; } 48% { opacity: 1; } 60% { opacity: 0.8; } }
+  @keyframes tr-sweep { from { transform: translate3d(-115%, 0, 0) rotate(-14deg); } to { transform: translate3d(115%, 0, 0) rotate(-14deg); } }
+  @keyframes tr-track { from { transform: translate3d(0, -100%, 0); } to { transform: translate3d(0, 800%, 0); } }
+  @keyframes tr-pop { from { opacity: 0; transform: scale(0.9); } }
+  @keyframes tr-rewind { to { transform: rotate(-360deg); } }
+
+  /* the rewind overlay (live figure only): shown for the whole data-rw band, its sweep plays once in time */
+  .tr__rw {
+    position: absolute; inset: 0; overflow: hidden; pointer-events: none; display: grid; place-items: center;
+    background: repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.05) 0 2px, transparent 2px 5px), rgba(6, 13, 31, 0.58);
+    opacity: 0; visibility: hidden; transition: opacity 0.3s, visibility 0s 0.3s;
+  }
+  .tr__rw::after { content: ''; position: absolute; left: 0; right: 0; top: 0; height: 12%; background: linear-gradient(transparent, rgba(255, 255, 255, 0.1), transparent); }
+  [data-rw='on'] .tr__rw { opacity: 1; visibility: visible; transition: opacity 0.2s; }
+  [data-rw='on'] .tr__rw::after { animation: tr-track 1.1s linear infinite; }
+  .tr__rw-streak { position: absolute; left: -10%; top: 50%; width: 120%; height: 38%; margin-top: -19%; transform: translate3d(-115%, 0, 0) rotate(-14deg); background: linear-gradient(90deg, transparent, rgba(255, 156, 92, 0.25) 30%, rgba(255, 215, 154, 0.85) 50%, rgba(255, 125, 51, 0.3) 70%, transparent); }
+  [data-rw='on'] .tr__rw-streak { animation: tr-sweep 1.1s cubic-bezier(0.6, 0, 0.3, 1) both; }
+  .tr__rw-label { position: relative; display: inline-flex; align-items: center; gap: 8px; padding: 8px 14px; border-radius: var(--r-pill); background: rgba(6, 13, 31, 0.88); border: 1px solid rgba(255, 215, 154, 0.6); color: var(--live); font-size: 0.8rem; letter-spacing: 0.1em; text-transform: uppercase; white-space: nowrap; box-shadow: 0 0 30px -6px rgba(255, 150, 60, 0.6); }
+  [data-rw='on'] .tr__rw-label { animation: tr-pop 0.5s var(--ease-out) 0.25s both; }
+  [data-rw='on'] .tr__rw-label :global(.icon) { animation: tr-rewind 0.8s linear infinite; }
+</style>

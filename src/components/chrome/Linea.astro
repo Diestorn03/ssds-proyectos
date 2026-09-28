@@ -1,0 +1,31 @@
+---
+/**
+ * La Línea: one current down the left margin of <main> (≥1024px, fine pointer), drawn by scroll, orange → gold.
+ * Rendered once by Base as the first child of <main>. chrome.js builds the path from main's height on every
+ * page load and ScrollTrigger refresh; reduced motion shows it fully drawn. Decorative only.
+ */
+---
+<div class="linea" aria-hidden="true">
+  <svg class="linea__svg" width="48" height="1" viewBox="0 0 48 1" preserveAspectRatio="none" focusable="false">
+    <defs>
+      <linearGradient id="linea-grad" class="linea__grad" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#ffd79a" /><stop offset=".35" stop-color="#ff9c5c" /><stop offset=".7" stop-color="#f26a1b" /><stop offset="1" stop-color="#ffb454" />
+      </linearGradient>
+    </defs>
+    <path class="linea__ghost" d="" />
+    <path class="linea__line" d="" pathLength="1" stroke="url(#linea-grad)" />
+    <circle class="linea__tip" r="3" cx="24" cy="0" />
+  </svg>
+</div>
+
+<style>
+  .linea { display: none; position: absolute; top: 0; left: 0; width: 48px; height: 100%; z-index: 3; pointer-events: none; }
+  .linea.is-on { display: block; }
+  .linea__svg { display: block; overflow: visible; }
+  .linea path { fill: none; stroke-linecap: round; }
+  .linea__ghost { stroke: rgba(255, 255, 255, 0.1); stroke-width: 1; }
+  :global([data-theme='light']) .linea__ghost { stroke: rgba(11, 26, 58, 0.1); }
+  .linea__line { stroke-width: 1.5; stroke-dasharray: 1 1; stroke-dashoffset: 1; opacity: 0.85; filter: drop-shadow(0 0 4px rgba(255, 140, 60, 0.45)); }
+  .linea__tip { fill: #fff; filter: drop-shadow(0 0 4px #ffd79a) drop-shadow(0 0 10px rgba(255, 125, 51, 0.8)); opacity: 0; transition: opacity 0.3s; }
+  .linea.is-drawing .linea__tip { opacity: 1; }
+</style>

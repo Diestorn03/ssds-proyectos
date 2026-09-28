@@ -1,0 +1,111 @@
+---
+// /diagnostico/ — landing for the Instagram bio link: compact dark hero → <Diagnostico /> → the three services.
+import Base from '../layouts/Base.astro';
+import Diagnostico from '../components/home/Diagnostico.astro';
+import Icon from '../components/ui/Icon.astro';
+import { services, wa } from '../data/site.js';
+import { questions } from '../data/diagnostico.js';
+
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+const svcIcon: Record<string, any> = { 'potencia-electrica': 'transformer', 'respaldo-energetico': 'generator', climatizacion: 'snowflake' };
+// decorative gauge outline in the hero (drawn by the engine's [data-draw])
+const pt = (v: number, r: number) => { const a = ((v - 50) * 1.3 * Math.PI) / 180; return [+(300 + r * Math.sin(a)).toFixed(1), +(330 - r * Math.cos(a)).toFixed(1)]; };
+const ticks = Array.from({ length: 21 }, (_, i) => { const v = i * 5; const [x1, y1] = pt(v, i % 2 ? 250 : 236); const [x2, y2] = pt(v, 262); return { x1, y1, x2, y2 }; });
+const [ax, ay] = pt(0, 276), [bx, by] = pt(100, 276);
+---
+<Base title="Diagnóstico rápido" description="Responde 4 preguntas y recibe una orientación de SSD&S: el servicio que necesitas, si te conviene un tablero de transferencia automática (ATS) y qué esquema de tensión evaluar. El mensaje de WhatsApp queda listo para enviar.">
+  <section class="dgl-hero section" data-theme="dark" aria-labelledby="dgl-title">
+    <div class="dgl-hero__bg" aria-hidden="true">
+      <span class="streak streak--thick" style="top: 36%; --angle: -11deg"></span>
+      <span class="streak" style="top: 74%; --angle: -11deg; --streak-opacity: .5"></span>
+      <span class="streak" style="top: 14%; --angle: -11deg; --streak-opacity: .22"></span>
+      <svg class="dgl-hero__gauge" viewBox="0 0 600 360" data-draw>
+        <path d={`M${ax} ${ay}A276 276 0 0 1 ${bx} ${by}`} class="dgl-g-arc" />
+        {ticks.map((t) => <line x1={t.x1} y1={t.y1} x2={t.x2} y2={t.y2} class="dgl-g-tick" />)}
+        <line x1="300" y1="330" x2="400" y2="118" class="dgl-g-needle" />
+        <circle cx="300" cy="330" r="12" class="dgl-g-cap" />
+      </svg>
+    </div>
+    <div class="container dgl-hero__inner">
+      <p class="eyebrow">Diagnóstico rápido · {questions.length} preguntas</p>
+      <h1 id="dgl-title" data-split="words">¿Qué necesita tu <span class="accent">instalación</span> eléctrica?</h1>
+      <p class="lead" data-reveal="up" data-delay=".15">Responde cuatro preguntas y te orientamos: qué servicio necesitas, si te conviene un tablero de transferencia automática (ATS) y qué esquema de tensión evaluar. Al final, el mensaje de WhatsApp queda listo para enviar a nuestro equipo técnico.</p>
+      <div class="btn-row" data-reveal="up" data-delay=".3">
+        <a class="btn btn--primary" href="#diagnostico" data-magnetic="0.25"><Icon name="gauge" size={20} />Empezar el diagnóstico</a>
+        <a class="btn btn--ghost" href={wa('Hola SSD&S, quiero hablar con el equipo técnico.')} target="_blank" rel="noopener"><Icon name="whatsapp" size={18} />Prefiero escribir directo</a>
+      </div>
+      <ol class="dgl-steps" data-stagger="0.08" aria-label="Los pasos del diagnóstico">
+        {questions.map((q, i) => <li><span class="mono">0{i + 1}</span>{q.step}</li>)}
+      </ol>
+    </div>
+  </section>
+
+  <Diagnostico head={false} />
+
+  <section class="section section--tight dgl-svcs" data-theme="dark" aria-labelledby="dgl-svcs-title">
+    <div class="container">
+      <div class="dgl-svcs__head">
+        <p class="eyebrow">Servicios</p>
+        <h2 id="dgl-svcs-title" data-split="words">¿Ya sabes lo que necesitas?</h2>
+      </div>
+      <ul class="dgl-svcs__list" role="list" data-stagger="0.1">
+        {services.map((s) => (
+          <li>
+            <a class="dgl-svc" href={`${base}/servicios/${s.slug}/`} data-glow>
+              <span class="dgl-svc__top">
+                <span class="dgl-svc__ic"><Icon name={svcIcon[s.slug]} size={26} /></span>
+                <Icon name="arrowUpRight" size={20} class="dgl-svc__arrow" />
+              </span>
+              <span class="dgl-svc__code mono">{s.code} · {s.kicker}</span>
+              <span class="dgl-svc__name">{s.name}</span>
+              <span class="dgl-svc__sum">{s.summary}</span>
+            </a>
+          </li>
+        ))}
+      </ul>
+    </div>
+  </section>
+</Base>
+
+<style>
+  .dgl-hero {
+    overflow: hidden; padding-top: calc(var(--header-h) + clamp(32px, 5vw, 72px)); padding-bottom: clamp(48px, 6vw, 80px);
+    background: radial-gradient(90% 120% at 100% 0%, rgba(242, 106, 27, 0.28), transparent 55%), linear-gradient(160deg, var(--navy-800), var(--navy-950));
+  }
+  .dgl-hero__bg { position: absolute; inset: 0; pointer-events: none; }
+  .dgl-hero__gauge { position: absolute; right: -6%; bottom: -8%; width: min(62vw, 820px); opacity: 0.5; overflow: visible; }
+  .dgl-g-arc, .dgl-g-tick, .dgl-g-needle { fill: none; stroke-linecap: round; }
+  .dgl-g-arc { stroke: rgba(255, 215, 154, 0.4); stroke-width: 2; }
+  .dgl-g-tick { stroke: rgba(244, 246, 251, 0.35); stroke-width: 2; }
+  .dgl-g-needle { stroke: var(--orange-400); stroke-width: 4; filter: drop-shadow(0 0 8px rgba(255, 125, 51, 0.8)); }
+  .dgl-g-cap { fill: var(--navy-900); stroke: var(--glow); stroke-width: 2; }
+  .dgl-hero__inner { position: relative; }
+  .dgl-hero h1 { font-size: clamp(2.2rem, 1.2rem + 3.6vw, 4.4rem); max-width: 17ch; }
+  .dgl-hero .lead { margin: 20px 0 28px; max-width: 58ch; }
+  .dgl-hero h1 .accent { padding-right: 0.12em; }
+  .dgl-steps { list-style: none; display: flex; flex-wrap: wrap; gap: 10px; margin-top: clamp(24px, 3vw, 36px); }
+  .dgl-steps li {
+    display: inline-flex; align-items: center; gap: 10px; min-height: 40px; padding: 0 16px 0 12px; border-radius: var(--r-pill);
+    border: 1px solid var(--line); background: rgba(255, 255, 255, 0.04); font-size: 0.9rem; color: var(--fg);
+  }
+  .dgl-steps .mono { font-size: 0.75rem; color: var(--accent-text); }
+  @media (max-width: 767px) { .dgl-hero__gauge { width: 120vw; right: -40%; bottom: -4%; opacity: 0.28; } }
+
+  .dgl-svcs { border-top: 1px solid var(--line); background: linear-gradient(180deg, var(--navy-900), var(--navy-950)); }
+  .dgl-svcs__head { margin-bottom: clamp(24px, 4vw, 40px); }
+  .dgl-svcs__head h2 { font-size: var(--step-3); }
+  .dgl-svcs__list { list-style: none; display: grid; gap: 14px; }
+  @media (min-width: 860px) { .dgl-svcs__list { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+  .dgl-svc {
+    position: relative; display: grid; align-content: start; gap: 10px; height: 100%; padding: clamp(20px, 2.4vw, 28px); border-radius: var(--radius-lg);
+    background: var(--card); border: 1px solid var(--line); transition: transform 0.6s var(--ease-out), border-color 0.4s, background-color 0.4s;
+  }
+  .dgl-svc:hover { transform: translateY(-4px); border-color: color-mix(in srgb, var(--accent) 50%, var(--line)); background: rgba(255, 255, 255, 0.06); }
+  .dgl-svc__top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 6px; }
+  .dgl-svc__ic { width: 52px; height: 52px; border-radius: 14px; display: grid; place-items: center; color: var(--glow); background: rgba(242, 106, 27, 0.12); box-shadow: inset 0 0 0 1px rgba(255, 156, 92, 0.3); }
+  .dgl-svc :global(.dgl-svc__arrow) { color: var(--muted); transition: transform 0.5s var(--ease-out), color 0.3s; }
+  .dgl-svc:hover :global(.dgl-svc__arrow) { transform: translate(3px, -3px); color: var(--glow); }
+  .dgl-svc__code { font-size: 0.75rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--accent-text); }
+  .dgl-svc__name { font-family: var(--font-display); font-weight: 700; font-size: var(--step-1); letter-spacing: -0.02em; line-height: 1.2; }
+  .dgl-svc__sum { color: var(--muted); font-size: 0.95rem; line-height: 1.5; }
+</style>

@@ -1,0 +1,31 @@
+/* ==========================================================
+   "El Arco": page transitions (Astro ClientRouter + View Transitions API).
+   The new page opens as a circle from the click point (--vt-x/--vt-y, set on pointerdown / Enter of internal
+   links by src/scripts/chrome.js and re-applied after the swap); the old page settles back (opacity .6, scale .98).
+   The header, the FAB and the mobile bar keep their own groups, so they do not get swept by the circle.
+   Reduced motion: 150 ms crossfade. No View Transitions support: Astro's fallback.
+   ========================================================== */
+::view-transition-old(root) {
+  animation: ssds-arc-old 0.65s cubic-bezier(0.65, 0, 0.35, 1) both;
+  transform-origin: var(--vt-x, 50%) var(--vt-y, 50%);
+}
+::view-transition-new(root) {
+  animation: ssds-arc-new 0.65s cubic-bezier(0.65, 0, 0.35, 1) both;
+  mix-blend-mode: normal;
+}
+@keyframes ssds-arc-old { to { opacity: 0.6; transform: scale(0.98); } }
+@keyframes ssds-arc-new {
+  from { clip-path: circle(0 at var(--vt-x, 50%) var(--vt-y, 50%)); }
+  to { clip-path: circle(150vmax at var(--vt-x, 50%) var(--vt-y, 50%)); }
+}
+/* chrome that sits still while the page changes underneath */
+::view-transition-group(site-header),
+::view-transition-group(ssds-fab),
+::view-transition-group(ssds-bar) { animation-duration: 0.3s; }
+
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-old(root),
+  ::view-transition-new(root) { animation: ssds-fade 0.15s linear both !important; transform: none; clip-path: none; }
+  ::view-transition-old(root) { animation-direction: reverse !important; }
+}
+@keyframes ssds-fade { from { opacity: 0; } to { opacity: 1; } }
