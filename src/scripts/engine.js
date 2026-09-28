@@ -350,7 +350,17 @@ function boot() {
   emit('ssds:ready');
 }
 
-document.addEventListener('astro:page-load', boot);
+// First visit: the intro loader plays on the compositor; booting every scene (SplitText, ScrollTriggers, canvases)
+// meanwhile would steal the main thread right when its curtain lifts. Boot once it is done (it removes itself).
+function start() {
+  const loader = document.getElementById('loader');
+  if (loader && !loader.classList.contains('is-done') && document.documentElement.classList.contains('ssds-intro')) {
+    document.addEventListener('ssds:loader-done', () => boot(), { once: true });
+    return;
+  }
+  boot();
+}
+document.addEventListener('astro:page-load', start);
 document.addEventListener('astro:before-swap', teardown);
 // ClientRouter swaps <html> attributes: restore the `js` class the head script set on the first load
 document.addEventListener('astro:after-swap', () => { document.documentElement.classList.add('js'); window.scrollTo(0, 0); lenis?.scrollTo(0, { immediate: true }); });
