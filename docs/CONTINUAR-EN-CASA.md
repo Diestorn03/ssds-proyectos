@@ -43,6 +43,12 @@ No terminado:
 - La auditoría profunda de 10 agentes se lanzó a las 16:05 y se detuvo a las 16:57 **sin que ningún auditor entregara su informe**. Sus notas parciales, extraídas de sus transcripciones, están en `docs/auditoria/notas-parciales.md`. Úsalas como pistas, no como resultados.
 - Faltan las 4 fases completas: auditoría, corrección, verificación y regresión.
 
+## Bug visto en el video de presentación (prioridad alta)
+
+- **Recorrido horizontal (`#recorrido`) en pantallas bajas.** En la grabación del usuario el área visible del navegador medía unos 1266×606 px: laptop de 1280×720 menos las pestañas de Chrome y la barra de tareas de Windows. Las tarjetas quedaron empujadas al fondo, con un gran espacio vacío arriba, y la transición hacia "POTENCIA" se vio cruzada. Hubo que recortar ese tramo del video.
+- **Cómo reproducirlo:** `node tools/qa/shoot.mjs --port=9790 desktop --w=1266 --h=606 http://127.0.0.1:4321/ "#recorrido@6"`.
+- **Qué revisar:** las alturas en `vh` de `--tall`, `--under` y `--branch` en `Recorrido.astro`. Las tarjetas deben quedar centradas y completas en alturas de 560 a 700 px. Prueba también 1366×657 y 1536×730, que son altos típicos de ventana con barra de tareas.
+
 ## Hallazgos ya medidos (úsalos como punto de partida)
 
 | Sección | fps a 1366×768 | Peor frame | Nota |
