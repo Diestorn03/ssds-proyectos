@@ -170,7 +170,7 @@ export function initTablero({ gsap, env, scrollTo, onRefresh }) {
   };
   tl = gsap.timeline({
     defaults: { ease: 'none' },
-    scrollTrigger: { trigger: root, start: 'top top', end: '+=220%', pin: true, scrub: true, anticipatePin: 1, invalidateOnRefresh: true },
+    scrollTrigger: { trigger: root, start: 'top top', end: '+=220%', pin: true, pinType: 'transform', scrub: true, anticipatePin: 1, invalidateOnRefresh: true },
     onUpdate: sync,
   });
   Object.entries(LABELS).forEach(([k, v]) => tl.addLabel(k, v));
@@ -191,6 +191,8 @@ export function initTablero({ gsap, env, scrollTo, onRefresh }) {
     tl.fromTo([spark[i], comet[i]], { opacity: 1 }, { opacity: 0, duration: 0.014, immediateRender: false }, t0 + RUN - 0.004);
     tl.fromTo(needle, { rotation: deg(LOAD[i]), svgOrigin: '50 72' }, { rotation: deg(LOAD[i + 1]), svgOrigin: '50 72', duration: RUN * 0.9, ease: 'back.out(2.4)', immediateRender: i === 0 }, t0 + 0.01);
   });
+  // pre-warm: initialise every tween now (DrawSVG lengths, MotionPath caches) instead of on the first scroll into each stage
+  tl.progress(1, true).progress(0, true);
   sync();
 
   // after every refresh (ScrollTrigger rewinds and restores the timeline with events suppressed): re-measure; new paths

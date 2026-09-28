@@ -107,7 +107,8 @@ onPage(({ gsap, env, scrollTo }) => {
     ease: 'none',
     scrollTrigger: {
       trigger: root,
-      pin: true,
+      pin: root.querySelector('.rc__stage'),
+      pinType: 'transform', // stays in flow (Lenis drives the scroll on this gate): no fixed↔static flips, no layout shift
       start: 'top top',
       end: () => `+=${D}`,
       scrub: 1,

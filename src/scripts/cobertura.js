@@ -210,6 +210,8 @@ onPage(({ gsap, ScrollTrigger, env, onRefresh }) => {
     tl = build();
     shown = -1; status();
     if (c.conditions.wide) {
+      // pre-warm: initialise every tween now (DrawSVG lengths, MotionPath caches) instead of on the first scroll into each stage
+      tl.progress(1, true).progress(0, true);
       ScrollTrigger.create({ trigger: $('.cob__grid'), start: 'top 72%', end: 'bottom bottom', scrub: 0.9, animation: tl, invalidateOnRefresh: true });
       const off = tilt();
       return () => { off(); tl.eventCallback('onUpdate', null); };

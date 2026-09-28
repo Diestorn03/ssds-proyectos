@@ -462,7 +462,8 @@ const field = [-9, -6, -4, -3, -2, -1, 1, 2, 3, 5, 7, 10].map((i) => {
       gsap.set(rows, { autoAlpha: 0, x: (i: number) => (i ? -90 : 90) });
       gsap.set(streaks, { drawSVG: '0%' });
       let started = false;
-      const finish = () => { split?.revert(); split = null; root.classList.remove('is-intro'); root.classList.add('is-live'); lensOn(); introDone(); };
+      // the split stays until teardown: reverting here would re-create the H1 text and push LCP to the end of the intro
+      const finish = () => { root.classList.remove('is-intro'); root.classList.add('is-live'); lensOn(); introDone(); };
       // watchdog: the intro normally starts ≤ 3 s after init (loader gate timeout); if it has not by 4.5 s (a stalled
       // promise, a background tab), show the final state instead of leaving the hero hidden
       const dog = setTimeout(() => {

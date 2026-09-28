@@ -157,6 +157,8 @@ onPage(({ gsap, ScrollTrigger, env, scrollTo }) => {
   let player = null, auto = null;
   if (env.desktop) {
     /* ---------- desktop: pinned scrub (a short scrub lag so a flick still shows the states it crosses) ---------- */
+    // pre-warm: initialise every tween now (DrawSVG lengths, MotionPath caches) instead of on the first scroll into each stage
+    tl.progress(1, true).progress(0, true);
     const st = ScrollTrigger.create({ trigger: stage, start: 'top top', end: '+=200%', pin: true, scrub: 0.4, anticipatePin: 1, invalidateOnRefresh: true, animation: tl });
     ScrollTrigger.create({ trigger: stage, start: 'top 75%', once: true, onEnter: () => boot.play() });
     segs.forEach((b) => on(b, 'click', () => scrollTo(st.labelToScroll(b.dataset.sc), { offset: 0 })));
