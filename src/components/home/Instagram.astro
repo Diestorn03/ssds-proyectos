@@ -24,6 +24,7 @@ const fmt = (d: string) => new Date(d + 'T12:00:00').toLocaleDateString('es-VE',
         <li class="ig__item">
           <a class="ig__card" href={postUrl(p.code)} target="_blank" rel="noopener" aria-label={`${p.title} — ver publicación en Instagram`} data-tilt="4">
             <img src={`${base}/ig/${p.code}.webp`} width="640" height="811" alt={p.title} loading={i < 4 ? 'eager' : 'lazy'} decoding="async" />
+            {p.reel && <span class="ig__reel mono" aria-label="Reel"><Icon name="play" size={12} />Reel</span>}
             <span class="ig__meta">
               <span class="ig__date mono">{fmt(p.date)}</span>
               <strong class="ig__title">{p.title}</strong>
@@ -40,8 +41,9 @@ const fmt = (d: string) => new Date(d + 'T12:00:00').toLocaleDateString('es-VE',
 <style>
   .ig { background: var(--navy-950); overflow: hidden; }
   .ig__head { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 20px; margin-bottom: clamp(28px, 4vw, 48px); }
-  .ig__head h2 { max-width: 18ch; }
-  .ig__grid { list-style: none; margin: 0; padding: 0; display: grid; gap: 14px; grid-template-columns: repeat(2, 1fr); }
+  .ig__head h2 { max-width: 18ch; overflow-wrap: anywhere; }
+  @media (max-width: 599px) { .ig__head h2 { font-size: clamp(1.7rem, 7.6vw, 2.4rem); } } /* the handle is one 21-char word */
+  .ig__grid { list-style: none; margin-block: 0; padding: 0; display: grid; gap: 14px; grid-template-columns: repeat(2, 1fr); } /* margin-block only: keep .container's margin-inline:auto */
   @media (min-width: 720px) { .ig__grid { grid-template-columns: repeat(4, 1fr); gap: 18px; } }
   .ig__card { position: relative; display: block; overflow: hidden; border-radius: var(--radius); aspect-ratio: 4 / 5; background: var(--navy-800); isolation: isolate; }
   .ig__card img { width: 100%; height: 100%; object-fit: cover; transition: transform 1s var(--ease-out), filter 0.6s; }
@@ -51,6 +53,7 @@ const fmt = (d: string) => new Date(d + 'T12:00:00').toLocaleDateString('es-VE',
   .ig__date { font-size: 0.7rem; color: var(--amber-400); text-transform: uppercase; }
   .ig__title { font-family: var(--font-display); font-size: 1rem; line-height: 1.2; }
   .ig__text { font-size: 0.82rem; color: rgba(255, 255, 255, 0.78); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .ig__reel { position: absolute; top: 12px; left: 12px; display: inline-flex; align-items: center; gap: 5px; padding: 5px 9px; border-radius: 999px; background: rgba(6, 13, 31, 0.7); backdrop-filter: blur(6px); color: #fff; font-size: 0.66rem; text-transform: uppercase; }
   .ig__icon { position: absolute; top: 12px; right: 12px; display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; background: rgba(255, 255, 255, 0.12); backdrop-filter: blur(6px); color: #fff; opacity: 0; transform: scale(0.6); transition: opacity 0.3s, transform 0.5s var(--ease-out); }
   .ig__card:hover .ig__icon { opacity: 1; transform: none; }
   @media (hover: none) { .ig__meta { transform: none; opacity: 1; } .ig__text { display: none; } }

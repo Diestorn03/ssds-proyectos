@@ -147,16 +147,29 @@ export const faqs = [
   },
 ];
 
-/** Real Instagram posts (newest first). Images live in /public/ig/<code>.webp (640px). */
+/** Brand phrases seen on Instagram, used in marquees. */
+export const claims = [
+  'Energía confiable para tu negocio',
+  'Soluciones dinámicas en electricidad y potencia',
+  'Precisión en redes de media tensión',
+  'Ingeniería integral para mantener tu empresa en movimiento',
+  'Cobertura en todo el territorio nacional',
+  'Rigor técnico · Respuesta oportuna · Máxima seguridad',
+];
+
+/** Real Instagram posts (newest first), all 14 of them. Images live in /public/ig/<code>.webp (640×811). `reel: true` = video post (cover frame). */
 export const posts = [
   { code: 'DdwubTgvotH', date: '2026-09-26', title: 'Climatización estable y continua', text: 'Diseño, instalación y mantenimiento preventivo para aire acondicionado central, chillers y unidades de precisión.' },
   { code: 'Ddt6o2VkdoJ', date: '2026-09-25', title: 'Protege la inversión de tu planta', text: 'El rendimiento de una planta eléctrica depende directamente de la calidad de sus consumibles.' },
   { code: 'DdmM5JnRQUK', date: '2026-09-22', title: 'Precisión en redes de media tensión', text: 'Montaje, conexión y mantenimiento preventivo para asegurar estabilidad en tu instalación industrial.' },
   { code: 'DdeXN0Ckbm8', date: '2026-09-19', title: 'Transferencia manual o automática', text: '¿Cuál es la correcta para tu negocio? Las ATS de SSD&S garantizan un cambio de fuente inmediato y seguro.' },
+  { code: 'DdaPUa2RhWr', date: '2026-09-17', title: '¿Tu planta responderá cuando la necesites?', text: 'El peor momento para descubrir que una planta no funciona es durante un corte. Banco de carga, calibración y consumibles originales.', reel: true },
   { code: 'DdXQ8czuyU9', date: '2026-09-16', title: 'Sin fronteras dentro de Venezuela', text: 'Cuadrillas especializadas para redes, transformadores y plantas eléctricas en cualquier estado del país.' },
   { code: 'DdMYUkREepK', date: '2026-09-12', title: '¿Baja o media tensión?', text: 'Elegir el esquema equivocado te cuesta dinero y paradas de producción. Te enseñamos a identificar el tuyo.' },
   { code: 'DdE0DxZxTWX', date: '2026-09-09', title: 'Cuatro consumibles esenciales', text: 'Los consumibles que alargan la vida de tu planta eléctrica.' },
+  { code: 'DdCgdr8vwtx', date: '2026-09-08', title: '¿Tu tablero ATS necesita revisión?', text: 'Un fallo en la transferencia automática durante un corte se traduce en horas de parada y pérdidas económicas.', reel: true },
   { code: 'Dc6O1Six9md', date: '2026-09-05', title: 'Ingeniería integral', text: 'Un portafolio especializado para mantener tu empresa en movimiento.' },
+  { code: 'Dc1GSfqRgiC', date: '2026-09-03', title: 'Soluciones integrales de ingeniería', text: 'Alta ingeniería, energía y clima para el sector comercial e industrial.', reel: true },
   { code: 'DcvrYafR3sN', date: '2026-09-01', title: 'Soluciones dinámicas', text: 'La ingeniería no es solo suministrar energía; es saber distribuirla, automatizarla y protegerla.' },
   { code: 'Dcvr-LNRMDe', date: '2026-09-01', title: 'Bienvenidos a SSD&S', text: 'Potencia e ingeniería industrial: rigor técnico con ejecución segura.' },
   { code: 'DcvqQuZRWqb', date: '2026-09-01', title: 'Conecta con nuestro equipo técnico', text: 'Datos de contacto directos ante cualquier proyecto o emergencia técnica.' },

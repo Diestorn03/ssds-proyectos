@@ -68,7 +68,8 @@ export function onPage(fn) {
 function runInit(fn) {
   try {
     let cleanup;
-    ctx.add(() => { cleanup = fn(api()); });
+    const run = () => { cleanup = fn(api()); };
+    ctx ? ctx.add(run) : run(); // during boot we are already inside the context callback (ctx not yet assigned)
     if (typeof cleanup === 'function') cleanups.push(cleanup);
   } catch (e) { console.error('[engine] section init failed', e); }
   queueRefresh();

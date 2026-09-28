@@ -1,0 +1,152 @@
+---
+/*
+  Home hero: headline + CTAs on the left, a "wall" of the real Instagram pieces drifting in three columns on the
+  right (3D-tilted, pointer-reactive on desktop), the brand's diagonal light streaks drawn in with DrawSVG, and a
+  claims marquee at the bottom. All images are the company's own posts (public/ig).
+*/
+import Icon from '../ui/Icon.astro';
+import { brand, claims, posts, wa } from '../../data/site.js';
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+const cols = [posts.slice(0, 5), posts.slice(5, 10), posts.slice(10, 14)];
+const speeds = [46, 58, 40];
+---
+<section class="hero" id="hero" aria-labelledby="hero-title">
+  <div class="hero__bg" aria-hidden="true">
+    <div class="hero__grid"></div>
+    <div class="hero__glow hero__glow--a"></div>
+    <div class="hero__glow hero__glow--b"></div>
+    <svg class="hero__streaks" viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid slice" data-draw data-delay=".35" focusable="false">
+      <defs>
+        <linearGradient id="hero-g" x1="0" x2="1" y1="0" y2="0">
+          <stop offset="0" stop-color="#ff7d33" stop-opacity="0" />
+          <stop offset=".45" stop-color="#ffd79a" />
+          <stop offset=".6" stop-color="#ff9c5c" />
+          <stop offset="1" stop-color="#ff7d33" stop-opacity="0" />
+        </linearGradient>
+        <filter id="hero-f" x="-10%" y="-300%" width="120%" height="700%"><feGaussianBlur stdDeviation="7" /></filter>
+      </defs>
+      <g fill="none" stroke="url(#hero-g)" stroke-linecap="round">
+        <line x1="-100" y1="720" x2="1700" y2="160" stroke-width="12" filter="url(#hero-f)" opacity=".75" />
+        <line x1="-100" y1="720" x2="1700" y2="160" stroke-width="2.5" />
+        <line x1="120" y1="960" x2="1760" y2="450" stroke-width="1.5" opacity=".55" />
+      </g>
+    </svg>
+  </div>
+
+  <div class="container hero__inner">
+    <div class="hero__copy">
+      <p class="eyebrow" data-reveal="up">{brand.tagline}</p>
+      <h1 id="hero-title" data-split="chars" data-delay=".1">Energía confiable para tu negocio.</h1>
+      <p class="lead" data-reveal="up" data-delay=".55">{brand.description}</p>
+      <div class="btn-row" data-reveal="up" data-delay=".7">
+        <a class="btn btn--primary" href={wa()} target="_blank" rel="noopener" data-magnetic="0.25"><Icon name="whatsapp" size={20} />Cotizar por WhatsApp</a>
+        <a class="btn btn--ghost" href={`${base}/servicios/`}>Ver servicios<Icon name="arrow" size={18} /></a>
+      </div>
+      <ul class="hero__facts" data-stagger="0.1" data-start="top 100%">
+        <li><Icon name="pin" size={16} />{brand.city}, {brand.region}</li>
+        <li><Icon name="shield" size={16} />Cobertura nacional</li>
+        <li><Icon name="clock" size={16} />Respuesta oportuna</li>
+      </ul>
+    </div>
+
+    <div class="hero__wall" data-reveal="right" data-delay=".45" aria-hidden="true">
+      <div class="hero__wall-inner" data-parallax="0.25">
+        {cols.map((col, i) => (
+          <div class="hero__col" data-dir={i === 1 ? 'down' : 'up'} data-speed={speeds[i]}>
+            <div class="hero__track">
+              {col.map((p) => (
+                <img src={`${base}/ig/${p.code}.webp`} width="320" height="405" alt="" loading="eager" decoding="async" draggable="false" />
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  </div>
+
+  <a class="hero__scroll mono" href="#servicios" data-reveal="up" data-delay="1.1"><span class="hero__scroll-line"></span>Explorar</a>
+
+  <div class="marquee hero__marquee" data-speed="42" aria-hidden="true">
+    <div class="marquee__track">
+      {claims.map((c) => <span class="hero__mq">{c}<i></i></span>)}
+    </div>
+  </div>
+</section>
+
+<style>
+  .hero { position: relative; overflow: hidden; min-height: 100svh; display: flex; flex-direction: column; justify-content: flex-end; padding-top: calc(var(--header-h) + 40px); background: var(--navy-900); color: #fff; isolation: isolate; }
+  .hero__bg { position: absolute; inset: 0; z-index: -1; pointer-events: none; }
+  .hero__grid { position: absolute; inset: 0; opacity: 0.35; background-image: linear-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 255, 255, 0.05) 1px, transparent 1px); background-size: 72px 72px; -webkit-mask-image: radial-gradient(70% 70% at 60% 40%, #000, transparent); mask-image: radial-gradient(70% 70% at 60% 40%, #000, transparent); }
+  .hero__glow { position: absolute; border-radius: 50%; opacity: 0.6; } /* soft radial gradients instead of filter:blur — same look, no rasterization cost */
+  .hero__glow--a { width: 70vw; height: 70vw; max-width: 1000px; max-height: 1000px; right: -25vw; top: -30vw; background: radial-gradient(circle, rgba(242, 106, 27, 0.5) 0%, rgba(242, 106, 27, 0.18) 35%, transparent 70%); }
+  .hero__glow--b { width: 50vw; height: 50vw; left: -20vw; bottom: -15vw; background: radial-gradient(circle, rgba(37, 72, 138, 0.75) 0%, rgba(37, 72, 138, 0.25) 40%, transparent 70%); }
+  .hero__streaks { position: absolute; inset: 0; width: 100%; height: 100%; }
+
+  .hero__inner { position: relative; display: grid; gap: 40px; align-items: center; flex: 1; padding-block: clamp(16px, 2.5vw, 40px); }
+  @media (min-width: 900px) { .hero__inner { grid-template-columns: 1.15fr 0.85fr; gap: clamp(32px, 5vw, 80px); } }
+  .hero__copy h1 { max-width: 11ch; font-size: clamp(2.6rem, 0.8rem + 4.6vw, 6rem); line-height: 0.96; letter-spacing: -0.04em; }
+  .hero__copy .lead { margin: 22px 0 28px; max-width: 46ch; color: rgba(255, 255, 255, 0.78); }
+  .hero__facts { list-style: none; margin: 28px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 10px 26px; font-family: var(--font-mono); font-size: 0.78rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+  .hero__facts li { display: inline-flex; align-items: center; gap: 8px; }
+  .hero__facts svg { color: var(--accent); }
+
+  /* the Instagram wall */
+  .hero__wall { position: relative; height: clamp(300px, 46vw, 660px); perspective: 1400px; -webkit-mask-image: linear-gradient(180deg, transparent, #000 14%, #000 86%, transparent); mask-image: linear-gradient(180deg, transparent, #000 14%, #000 86%, transparent); }
+  .hero__wall-inner { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; height: 100%; transform-style: preserve-3d; will-change: transform; }
+  .hero__col { height: 100%; overflow: hidden; }
+  .hero__col:nth-child(2) { transform: translateY(-14%); }
+  .hero__col:nth-child(3) { transform: translateY(-6%); }
+  .hero__track { will-change: transform; }
+  .hero__track img { width: 100%; aspect-ratio: 4 / 5; object-fit: cover; border-radius: 12px; margin-bottom: 14px; background: var(--navy-800); box-shadow: 0 20px 40px -20px rgba(0, 0, 0, 0.8); user-select: none; }
+
+  .hero__scroll { position: relative; display: inline-flex; align-items: center; gap: 12px; width: max-content; margin: 8px auto 26px; font-size: 0.72rem; letter-spacing: 0.18em; text-transform: uppercase; color: var(--muted); }
+  .hero__scroll-line { position: relative; width: 44px; height: 1px; background: rgba(255, 255, 255, 0.25); overflow: hidden; }
+  .hero__scroll-line::after { content: ''; position: absolute; inset: 0; background: linear-gradient(90deg, transparent, var(--glow), transparent); animation: hero-scan 1.8s var(--ease-in-out) infinite; }
+  @keyframes hero-scan { 0% { transform: translateX(-100%); } 100% { transform: translateX(100%); } }
+
+  .hero__marquee { position: relative; border-top: 1px solid rgba(255, 255, 255, 0.08); background: rgba(6, 13, 31, 0.55); backdrop-filter: blur(8px); padding-block: 16px; }
+  .hero__mq { display: inline-flex; align-items: center; padding-right: 36px; font-family: var(--font-display); font-weight: 600; font-size: 0.95rem; letter-spacing: -0.01em; white-space: nowrap; color: rgba(255, 255, 255, 0.75); }
+  .hero__mq i { width: 8px; height: 8px; margin-left: 36px; border-radius: 50%; background: linear-gradient(135deg, var(--orange-500), var(--glow)); box-shadow: 0 0 12px rgba(255, 140, 60, 0.9); }
+
+  @media (max-width: 899px) {
+    .hero { justify-content: flex-start; }
+    .hero__copy h1 { font-size: var(--step-5); }
+    .hero__wall { height: 280px; }
+    .hero__scroll { display: none; }
+  }
+</style>
+
+<script>
+  import { onPage } from '../../scripts/engine.js';
+  onPage(({ gsap, env }) => {
+    const root = document.querySelector<HTMLElement>('#hero');
+    if (!root) return;
+
+    // endless vertical drift, one loop per column (content duplicated once for a seamless wrap)
+    root.querySelectorAll<HTMLElement>('.hero__col').forEach((col) => {
+      const track = col.querySelector<HTMLElement>('.hero__track');
+      if (!track) return;
+      if (!track.dataset.ready) { track.dataset.ready = '1'; track.innerHTML += track.innerHTML; }
+      if (env.reduced) return;
+      const down = col.dataset.dir === 'down';
+      gsap.fromTo(track, { yPercent: down ? -50 : 0 }, { yPercent: down ? 0 : -50, duration: +(col.dataset.speed || 50), ease: 'none', repeat: -1 });
+    });
+
+    if (!env.desktop) return;
+    const inner = root.querySelector<HTMLElement>('.hero__wall-inner');
+    if (!inner) return;
+    gsap.set(inner, { rotationY: -14, rotationX: 5, transformPerspective: 1400 });
+    const xTo = gsap.quickTo(inner, 'x', { duration: 1.4, ease: 'power3.out' });
+    const yTo = gsap.quickTo(inner, 'y', { duration: 1.4, ease: 'power3.out' });
+    const ryTo = gsap.quickTo(inner, 'rotationY', { duration: 1.4, ease: 'power3.out' });
+    const rxTo = gsap.quickTo(inner, 'rotationX', { duration: 1.4, ease: 'power3.out' });
+    const move = (e: MouseEvent) => {
+      const r = root.getBoundingClientRect();
+      const px = (e.clientX - r.left) / r.width - 0.5;
+      const py = (e.clientY - r.top) / r.height - 0.5;
+      xTo(px * -30); yTo(py * -22); ryTo(-14 + px * -8); rxTo(5 + py * 6);
+    };
+    root.addEventListener('mousemove', move);
+    return () => root.removeEventListener('mousemove', move);
+  });
+</script>
