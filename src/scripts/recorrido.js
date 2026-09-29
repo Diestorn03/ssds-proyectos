@@ -1,7 +1,9 @@
 /*
   #recorrido · El Recorrido (components/home/Recorrido.astro).
-  Desktop gate: pin + one linear tween slides the track; everything hangs off its progress p:
-    · cable: clip-path reveal whose tip leads at LEAD of the viewport and plugs into the last card's junction
+  Desktop gate: the stage is a CSS sticky pin (height set from --d); one linear scrubbed tween slides the track
+  over the first D px of that range, the last HOLD viewport heights are a dwell on "Circuito completo" so the
+  hand-off to #valores never starts while the track is still sliding. Everything hangs off the tween's progress p:
+    · cable: a sliding mask (transform only) whose tip leads at LEAD of the viewport and plugs into the last card
     · branches: scaleY fills as the tip reaches each card's junction → the card gets .is-on ("se conecta":
       CSS flickers the ring, lights the LED, charges the number, sweeps the brand ray over the photo)
     · HUD "Etapa 0X / 04" = stations connected so far; .is-complete when "tu proyecto" lights up
@@ -13,8 +15,9 @@ import { onPage } from './engine.js';
 
 const LEAD = 0.62; // tip position in the viewport at p = 0 (drifts right as p grows)
 const FILL = 70;   // px of tip travel for a branch to fill, ending at the junction
+const HOLD = 0.6;  // end dwell, in viewport heights of scroll ("Circuito completo" reads before the hand-off)
 
-onPage(({ gsap, env, scrollTo }) => {
+onPage(({ gsap, ScrollTrigger, env, scrollTo }) => {
   const root = document.getElementById('recorrido');
   if (!root || env.reduced) return;
 
@@ -33,6 +36,7 @@ onPage(({ gsap, env, scrollTo }) => {
   };
   const reset = () => {
     root.classList.remove('rc--live', 'rc--pin', 'is-flowing', 'is-complete', 'is-swiped');
+    root.style.removeProperty('--d');
     cards.forEach((c) => c.classList.remove('is-on'));
     hud.removeAttribute('style');
     delete hud.dataset.on;
@@ -65,17 +69,23 @@ onPage(({ gsap, env, scrollTo }) => {
   const intro = root.querySelector('.rc__intro');
   const bleed = root.querySelector('.rc__bleed');
   const cable = root.querySelector('.rc__cable');
+  const reveal = root.querySelector('.rc__reveal');
   const fill = root.querySelector('.rc__fill');
   const tip = root.querySelector('.rc__tip');
+  const src = root.querySelector('.rc__src');
   const branches = cards.map((c) => c.querySelector('.rc__branch'));
 
-  const src = root.querySelector('.rc__src');
-  let W = 0, D = 0, END = 0, centres = [], ks = [];
+  // layout is read here only (refresh), never while scrolling. VW = clientWidth: innerWidth counts the classic
+  // 17px Windows scrollbar, which would park the last card under it
+  let W = 0, D = 0, END = 0, VW = 0, centres = [], ks = [];
   const measure = () => {
+    VW = document.documentElement.clientWidth;
     W = track.scrollWidth;
-    D = Math.max(0, W - innerWidth);
+    D = Math.max(0, W - VW);
+    root.style.setProperty('--d', `${Math.round(D + innerHeight * HOLD)}px`); // sticky range = travel + dwell
     centres = cards.map((c) => c.offsetLeft + c.offsetWidth / 2); // track coordinates, untransformed
     END = centres[last];
+    src.style.left = `${intro.offsetLeft - src.offsetWidth / 2}px`; // the source sits on the intro's left edge
     const x0 = src.offsetLeft + src.offsetWidth / 2; // the cable is born at the source hexagon
     cable.style.left = `${x0}px`;
     cable.style.right = 'auto';
@@ -83,8 +93,10 @@ onPage(({ gsap, env, scrollTo }) => {
     ks = cards.map(() => -1);
   };
   const render = (p) => {
-    const tipX = Math.min(END, p * D + innerWidth * (LEAD + (1 - LEAD) * p));
-    fill.style.clipPath = `inset(-14px ${Math.max(0, END - tipX)}px -14px 0)`;
+    const tipX = Math.min(END, p * D + VW * (LEAD + (1 - LEAD) * p));
+    const s = Math.max(0, END - tipX); // unlit length at the right end of the cable
+    reveal.style.transform = `translate3d(${-s}px,0,0)`;
+    fill.style.transform = `translate3d(${s}px,0,0)`;
     tip.style.transform = `translate3d(${tipX}px,0,0)`;
     let lit = 0;
     cards.forEach((card, i) => {
@@ -102,24 +114,29 @@ onPage(({ gsap, env, scrollTo }) => {
 
   measure();
   let street = null;
+  // past either end of the travel the scrub's catch-up runs 4× faster: after a fast fling the track lands
+  // (in ~0.15 s) during the dwell, never while the stage is already scrolling away into #valores / the Tablero
+  const catchUp = (k) => () => street?.scrollTrigger?.getTween()?.timeScale(k);
   street = gsap.to([track, intro], {
     x: (i) => (i ? -D * 1.12 : -D), // the intro leaves a touch faster: depth
     ease: 'none',
     scrollTrigger: {
       trigger: root,
-      pin: root.querySelector('.rc__stage'),
-      pinType: 'transform', // stays in flow (Lenis drives the scroll on this gate): no fixed↔static flips, no layout shift
       start: 'top top',
-      end: () => `+=${D}`,
-      scrub: 1,
+      end: () => `+=${D}`, // the sticky range is D + dwell: the track lands before the stage lets go
+      scrub: 0.6,
       invalidateOnRefresh: true,
-      anticipatePin: 1,
       onRefreshInit: measure,
       onRefresh: () => render(street ? street.progress() : 0),
-      onToggle: (s) => root.classList.toggle('is-flowing', s.isActive),
+      onEnter: catchUp(1),
+      onEnterBack: catchUp(1),
+      onLeave: catchUp(4),
+      onLeaveBack: catchUp(4),
     },
     onUpdate() { render(this.progress()); },
   });
+  // idle loops (tip crackle, current, waves) only while the stage is stuck on screen, dwell included
+  const flow = ScrollTrigger.create({ trigger: root, start: 'top top', end: 'bottom bottom', onToggle: (s) => root.classList.toggle('is-flowing', s.isActive) });
   render(0);
 
   cards.forEach((card) => {
@@ -143,21 +160,26 @@ onPage(({ gsap, env, scrollTo }) => {
     });
   });
 
-  // keyboard: a focused card must not scroll the clipped stage sideways; move the page to where it is in view instead
+  // keyboard: a focused card must not scroll the clipped stage sideways; move the page to where it is in view instead.
+  // Next frame: the browser's own focus scroll-into-view runs after focusin and would undo a scroll made here.
+  // immediate: a running Lenis animation would in turn override the native scroll-into-view of the next tab stops
   const onFocus = (e) => {
     const i = cards.indexOf(e.target.closest('.rc__card'));
     if (i < 0 || !e.target.matches(':focus-visible')) return; // a mouse click must not move the page
     const unscroll = () => { stage.scrollLeft = 0; };
-    unscroll(); requestAnimationFrame(unscroll);
-    const st = street.scrollTrigger;
-    const p = gsap.utils.clamp(0, 1, (centres[i] - innerWidth / 2) / (D || 1));
-    scrollTo(st.start + p * (st.end - st.start), { offset: 0 });
+    unscroll();
+    requestAnimationFrame(() => {
+      unscroll();
+      const p = gsap.utils.clamp(0, 1, (centres[i] - VW / 2) / (D || 1));
+      scrollTo(street.scrollTrigger.start + p * D, { offset: 0, immediate: true });
+    });
   };
   root.addEventListener('focusin', onFocus);
 
   return () => {
     root.removeEventListener('focusin', onFocus);
+    flow.kill();
     reset();
-    [fill, tip, bleed, cable, ...branches].forEach((el) => el.removeAttribute('style'));
+    [reveal, fill, tip, bleed, cable, src, ...branches].forEach((el) => el.removeAttribute('style'));
   };
 });

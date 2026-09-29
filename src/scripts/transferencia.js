@@ -82,8 +82,15 @@ onPage(({ gsap, ScrollTrigger, env, scrollTo }) => {
   const tl = gsap.timeline({ paused: true, defaults: { ease: 'none' }, onUpdate: render });
   tl.to({}, { duration: END }, 0);
   Object.entries(LABELS).forEach(([k, t]) => tl.addLabel(k, t));
-  // camera: zoom s around the point (fx %, fy %) of the diagram — transform only
-  const shot = (t, s, fx, fy, d) => tl.to(cam, { scale: s, xPercent: (1 - s) * (fx - 50), yPercent: (1 - s) * (fy - 50), duration: d, ease: 'power2.inOut' }, t);
+  // camera: zoom s around the point (fx %, fy %) of the diagram — transform only. On small frames (phones, short laptop
+  // windows) the labels are big next to the drawing: a softer push-in, pulled towards the centre, keeps them inside the frame
+  const k = $('.tr__frame', fig).clientWidth < 520 ? 0.5 : 1;
+  const shot = (t, s, fx, fy, d) => {
+    s = 1 + (s - 1) * k; fx = 50 + (fx - 50) * k; fy = 50 + (fy - 50) * k;
+    tl.to(cam, { scale: s, xPercent: (1 - s) * (fx - 50), yPercent: (1 - s) * (fy - 50), duration: d, ease: 'power2.inOut' }, t);
+  };
+  // one stable compositor layer for the camera while it can move (no layer churn at every shot boundary)
+  const camLayer = (onOff) => { cam.style.willChange = onOff ? 'transform' : ''; };
   shot(0.6, 1.14, 16, 36, 0.6);   // onto the pylon, the fault lands at 1.2
   shot(2.4, 1.1, 30, 62, 0.9);    // follow the operator's route
   shot(4.6, 1.14, 42, 52, 0.8);   // onto the board as he gets there
@@ -138,6 +145,7 @@ onPage(({ gsap, ScrollTrigger, env, scrollTo }) => {
   }
   tl.time(0);
   render();
+  root.classList.add('is-live'); // CSS keeps the moving parts hidden until the first story state is written
 
   // boot: the blueprint draws itself, then the power comes on (removing .is-boot lets the CSS transitions cascade)
   fig.classList.add('is-boot');
@@ -159,7 +167,7 @@ onPage(({ gsap, ScrollTrigger, env, scrollTo }) => {
     /* ---------- desktop: pinned scrub (a short scrub lag so a flick still shows the states it crosses) ---------- */
     // pre-warm: initialise every tween now (DrawSVG lengths, MotionPath caches) instead of on the first scroll into each stage
     tl.progress(1, true).progress(0, true);
-    const st = ScrollTrigger.create({ trigger: stage, start: 'top top', end: '+=200%', pin: true, scrub: 0.4, anticipatePin: 1, invalidateOnRefresh: true, animation: tl });
+    const st = ScrollTrigger.create({ trigger: stage, start: 'top top', end: '+=200%', pin: true, scrub: 0.4, anticipatePin: 1, invalidateOnRefresh: true, animation: tl, onToggle: (s) => camLayer(s.isActive) });
     ScrollTrigger.create({ trigger: stage, start: 'top 75%', once: true, onEnter: () => boot.play() });
     segs.forEach((b) => on(b, 'click', () => scrollTo(st.labelToScroll(b.dataset.sc), { offset: 0 })));
   } else {
@@ -168,7 +176,8 @@ onPage(({ gsap, ScrollTrigger, env, scrollTo }) => {
       auto?.disconnect();
       player?.kill();
       if (boot.progress() < 1) { boot.play(); delay = Math.max(delay, BOOT - boot.time()); }
-      player = tl.tweenFromTo(a, b, { duration: (b - a) / SPEED, ease: 'none', delay });
+      camLayer(true);
+      player = tl.tweenFromTo(a, b, { duration: (b - a) / SPEED, ease: 'none', delay, onComplete: () => camLayer(false) });
     };
     auto = new IntersectionObserver(([e]) => { if (e.isIntersecting) play(0, END, 0.2); }, { threshold: 0.5 });
     auto.observe($('.tr__frame', fig));
@@ -185,7 +194,8 @@ onPage(({ gsap, ScrollTrigger, env, scrollTo }) => {
     ATTRS.forEach((k) => { if (k in saved.data) fig.dataset[k] = saved.data[k]; else delete fig.dataset[k]; });
     Object.assign(root.dataset, saved.root);
     delete root.dataset.load;
-    root.classList.remove('is-off');
+    root.classList.remove('is-off', 'is-live');
+    camLayer(false);
     fig.classList.remove('is-boot');
     opRest.setAttribute('transform', saved.op);
     [lcd, srcEl, actorEl, clockEl].forEach((el, i) => { el.textContent = saved.texts[i]; });

@@ -63,6 +63,7 @@ const items = [{ href: '/', label: 'Inicio', nav: 'home' }, ...nav.map((n) => ({
   .hdr.is-scrolled { background: rgba(6, 13, 31, 0.72); -webkit-backdrop-filter: blur(14px) saturate(140%); backdrop-filter: blur(14px) saturate(140%); box-shadow: 0 1px 0 rgba(255, 255, 255, 0.06); }
   .hdr.is-scrolled::before { opacity: 0; }
   .hdr.is-hidden { transform: translateY(-100%); }
+  .hdr.is-hidden:focus-within { transform: none; } /* keyboard focus never lands on an off-screen header link */
   :global(html.menu-open) .hdr { transform: none; }
   /* over a light section the header turns to ink (tokens cascade into the logo) */
   .hdr[data-theme='light'] { color: var(--ink); --fg: var(--ink); --muted: var(--ink-2); --logo-b: var(--ink); }
@@ -70,7 +71,7 @@ const items = [{ href: '/', label: 'Inicio', nav: 'home' }, ...nav.map((n) => ({
   .hdr[data-theme='light'].is-scrolled { background: rgba(244, 246, 251, 0.82); box-shadow: 0 1px 0 rgba(11, 26, 58, 0.08); }
 
   .hdr__bar { position: relative; display: flex; align-items: center; justify-content: space-between; gap: 16px; height: 100%; }
-  .hdr__brand { display: inline-flex; }
+  .hdr__brand { display: inline-flex; align-items: center; min-height: 44px; }
   .hdr__nav ul { display: none; gap: 6px; list-style: none; }
   .hdr__nav li a { position: relative; display: inline-block; padding: 10px 14px; font-family: var(--font-display); font-weight: 600; font-size: 0.95rem; letter-spacing: -0.01em; color: currentColor; opacity: 0.82; transition: opacity 0.3s; }
   .hdr__nav li a::after { content: ''; position: absolute; left: 14px; right: 14px; bottom: 6px; height: 2px; border-radius: 2px; background: var(--grad-brand); transform: scaleX(0); transform-origin: left; transition: transform 0.5s var(--ease-out); }
@@ -97,7 +98,7 @@ const items = [{ href: '/', label: 'Inicio', nav: 'home' }, ...nav.map((n) => ({
   .menu.is-open .menu__list a { opacity: 1; transform: none; }
   .menu__list a[aria-current='page'] { color: var(--glow); }
   .menu__list .mono { font-size: 0.72rem; color: var(--accent); }
-  .menu__foot { display: grid; gap: 14px; justify-items: start; padding-top: 24px; border-top: 1px solid var(--line); }
-  .menu__line { display: inline-flex; align-items: center; gap: 10px; color: var(--muted); font-family: var(--font-mono); font-size: 0.85rem; }
+  .menu__foot { display: grid; gap: 4px; justify-items: start; padding-top: 24px; border-top: 1px solid var(--line); }
+  .menu__line { display: inline-flex; align-items: center; gap: 10px; min-height: 44px; color: var(--muted); font-family: var(--font-mono); font-size: 0.85rem; }
   .menu__line svg { color: var(--accent); }
 </style>

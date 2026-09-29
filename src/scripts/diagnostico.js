@@ -29,7 +29,7 @@ export function initDiagnostico({ gsap, ScrollTrigger, env, scrollTo }) {
   const last = steps.length - 1;
   let cur = 0, done = false, needleTw = null, stepTl = null;
   const m = { v: 0 };   // needle value, 0..100 (may overshoot while springing)
-  root.classList.add('is-ready');
+  let shown = -1;       // number on the LCD: rewritten only when the rounded value changes (each write is a text layout)
 
   /* ---------- meter ---------- */
   function renderMeter() {
@@ -37,7 +37,8 @@ export function initDiagnostico({ gsap, ScrollTrigger, env, scrollTo }) {
     needle.setAttribute('transform', `rotate(${(v - 50).toFixed(2)} ${PIVOT})`);
     const off = String(100 - clamp(m.v, 0, 100));
     arcs.forEach((a) => { a.style.strokeDashoffset = off; });
-    val.textContent = Math.round(clamp(m.v, 0, 100));
+    const n = Math.round(clamp(m.v, 0, 100));
+    if (n !== shown) { shown = n; val.textContent = n; }
   }
   function setMeter(p, { sweep = false } = {}) {
     needleTw?.kill();
@@ -64,7 +65,8 @@ export function initDiagnostico({ gsap, ScrollTrigger, env, scrollTo }) {
     const on = anyAnswer();
     const zone = on ? zoneOf(r.priority) : '';
     meter.dataset.zone = ZONE_KEY[zone] || '';
-    zoneEl.textContent = zone || 'En espera';
+    const zoneTxt = zone || 'En espera';
+    if (zoneEl.textContent !== zoneTxt) zoneEl.textContent = zoneTxt;   // its <p> is aria-live: speak only real changes
     zoneArcs.forEach((z) => z.classList.toggle('is-on', z.dataset.dgZ === ZONE_KEY[zone]));
     const slugs = new Set(r.services.map((s) => s.slug));
     leds.forEach((l) => l.classList.toggle('is-on', slugs.has(l.dataset.dgLed)));
@@ -246,6 +248,10 @@ export function initDiagnostico({ gsap, ScrollTrigger, env, scrollTo }) {
   const onRestart = () => restart();
 
   /* ---------- wiring ---------- */
+  // the engine pauses CSS loops more than a viewport away; this also pauses them (hum, glint, ring, flow, REC)
+  // while the section is merely off screen next door, so neighbouring scenes get the whole frame
+  const awayIO = new IntersectionObserver(([e]) => root.classList.toggle('is-away', !e.isIntersecting));
+  awayIO.observe(root);
   form.addEventListener('change', onChange);
   form.addEventListener('submit', onSubmit);
   form.addEventListener('keydown', onKey);
@@ -283,6 +289,7 @@ export function initDiagnostico({ gsap, ScrollTrigger, env, scrollTo }) {
     form.removeEventListener('keydown', onKey);
     back.removeEventListener('click', onBack);
     restartBtn.removeEventListener('click', onRestart);
-    root.classList.remove('is-ready');
+    awayIO.disconnect();
+    root.classList.remove('is-away');
   };
 }

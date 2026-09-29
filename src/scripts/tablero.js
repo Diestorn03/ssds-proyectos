@@ -14,7 +14,7 @@ const LABELS = { intro: 0, s1: A[0] + 0.15, s2: A[1] + 0.15, s3: A[2] + 0.15, on
 const LOAD = [0, 0.3, 0.58, 0.84]; // illustrative load after n circuits (the UI says "Simulación ilustrativa")
 const deg = (f) => -45 + 90 * f;  // meter scale: -45° … 45°
 
-export function initTablero({ gsap, env, scrollTo, onRefresh }) {
+export function initTablero({ gsap, ScrollTrigger, env, scrollTo, onRefresh }) {
   const root = document.getElementById('tablero');
   if (!root) return;
   const $$ = (s) => [...root.querySelectorAll(s)];
@@ -48,7 +48,7 @@ export function initTablero({ gsap, env, scrollTo, onRefresh }) {
   const cur = { n: -1, c: -1, fin: null };
   function state(n, c, fin) {
     if (n !== cur.n) {
-      brks.forEach((b, i) => b.setAttribute('aria-pressed', String(i < n)));
+      brks.forEach((b, i) => { b.dataset.on = String(i < n); }); // visual only: a breaker is a link to its stage/card, not a toggle
       root.classList.toggle('is-live', n > 0);
       root.style.setProperty('--load', LOAD[n]);
     }
@@ -68,7 +68,7 @@ export function initTablero({ gsap, env, scrollTo, onRefresh }) {
   const reset = () => {
     clearTimeout(flashT);
     off.forEach((f) => f());
-    brks.forEach((b) => { b.setAttribute('aria-pressed', 'true'); b.classList.remove('is-hover'); });
+    brks.forEach((b) => { b.dataset.on = 'true'; b.classList.remove('is-hover'); });
     cards.forEach((el) => { el.classList.remove('is-active', 'is-past', 'is-hover', 'is-flash'); el.style.removeProperty('--depth'); });
     wires.forEach((w) => w.classList.remove('is-live'));
     bars.forEach((b) => b.classList.remove('is-on'));
@@ -100,8 +100,14 @@ export function initTablero({ gsap, env, scrollTo, onRefresh }) {
     ioFin.observe(foot);
     gsap.set(needle, { rotation: deg(0), svgOrigin: '50 72' });
     state(0, 0, false);
-    // a breaker brings its card just under the sticky board
-    brks.forEach((b, i) => on(b, 'click', () => { scrollTo(cards[i], { offset: -(panel.offsetHeight + 12) }); flash(i); }));
+    // a breaker brings its card just under the sticky board. The column's padding-top is the header's room: scrolling
+    // down hides the header and the board follows it up (CSS), so the board ends that much higher (read at click time)
+    brks.forEach((b, i) => on(b, 'click', () => {
+      const h = panel.offsetHeight, hdr = parseFloat(getComputedStyle(panel).paddingTop) || 0;
+      const down = cards[i].getBoundingClientRect().top > h - hdr + 12;
+      scrollTo(cards[i], { offset: -(h - (down ? hdr : 0) + 12) });
+      flash(i);
+    }));
     return () => { io.disconnect(); ioFin.disconnect(); reset(); };
   }
 
@@ -154,10 +160,16 @@ export function initTablero({ gsap, env, scrollTo, onRefresh }) {
   }
   measure();
 
+  // the transform pin rewrites the section's translate every scroll frame: on its own compositor layer that is a
+  // compositor-only update, otherwise the whole viewport-sized section is repainted into the page layer each frame.
+  // Promoted from the entrance (so the layer is rastered before the pin starts) to the end of the pin, never elsewhere.
+  const lift = { in: false, pin: false };
+  const promote = (k, v) => { lift[k] = v; root.style.willChange = lift.in || lift.pin ? 'transform' : ''; };
+
   // entrance (before the pin): the board rises and settles back from a slight tilt
   gsap.fromTo(panel, { y: 70, rotateX: 12, transformPerspective: 1400, transformOrigin: '50% 100%' }, {
     y: 0, rotateX: 0, ease: 'power2.out',
-    scrollTrigger: { trigger: root, start: 'top bottom', end: 'top top', scrub: true },
+    scrollTrigger: { trigger: root, start: 'top bottom', end: 'top top', scrub: true, onToggle: (st) => promote('in', st.isActive) },
   });
 
   let tl = null;
@@ -170,7 +182,7 @@ export function initTablero({ gsap, env, scrollTo, onRefresh }) {
   };
   tl = gsap.timeline({
     defaults: { ease: 'none' },
-    scrollTrigger: { trigger: root, start: 'top top', end: '+=220%', pin: true, pinType: 'transform', scrub: true, anticipatePin: 1, invalidateOnRefresh: true },
+    scrollTrigger: { trigger: root, start: 'top top', end: '+=220%', pin: true, pinType: 'transform', scrub: true, anticipatePin: 1, invalidateOnRefresh: true, onToggle: (st) => promote('pin', st.isActive) },
     onUpdate: sync,
   });
   Object.entries(LABELS).forEach(([k, v]) => tl.addLabel(k, v));
@@ -197,17 +209,28 @@ export function initTablero({ gsap, env, scrollTo, onRefresh }) {
 
   // after every refresh (ScrollTrigger rewinds and restores the timeline with events suppressed): re-measure; new paths
   // → DrawSVG / MotionPath must re-read them (render through 0 so every tween re-initialises); then re-sync the classes
+  // a refresh also swaps the pinned section out of / back into its pin-spacer (DOM re-parenting), which drops keyboard
+  // focus inside it (resize while a breaker or card link is focused): remember it and put it back
+  let held = null;
+  const hold = () => { held = root.contains(document.activeElement) ? document.activeElement : null; };
+  ScrollTrigger.addEventListener('refreshInit', hold);
+  off.push(() => ScrollTrigger.removeEventListener('refreshInit', hold));
   onRefresh(() => {
     if (measure()) { const p = tl.progress(); tl.invalidate(); tl.progress(0, true); tl.progress(p, true); }
     sync();
+    if (held && held.isConnected && document.activeElement !== held) held.focus({ preventScroll: true });
+    held = null;
   });
 
-  // breakers jump to their stage; focusing a card that is not on top (or the final CTA) brings it into view
+  // breakers jump to their stage; focusing a breaker behind the closed door, a card that is not on top (or the final
+  // CTA) brings it into view
   const jump = (label, immediate) => tl.scrollTrigger && scrollTo(tl.scrollTrigger.labelToScroll(label), { offset: 0, immediate });
   brks.forEach((b, i) => on(b, 'click', () => jump(`s${i + 1}`)));
+  // keyboard focus only (:focus-visible): a mouse click focuses the button too, and its jump must stay a smooth scrub
+  brks.forEach((b, i) => on(b, 'focusin', () => { if (cur.c < i + 1 && b.matches(':focus-visible')) jump(`s${i + 1}`, true); }));
   on(deck, 'focusin', (e) => { const i = cards.indexOf(e.target.closest('.tb-card')); if (i >= 0 && cur.c !== i + 1) jump(`s${i + 1}`, true); });
   on(root.querySelector('.tb-final'), 'focusin', () => { if (!cur.fin) jump('on', true); });
   on(root.querySelector('.tb__intro'), 'focusin', () => { if (cur.c !== 0) jump('intro', true); });
 
-  return () => { reset(); };
+  return () => { reset(); root.style.willChange = ''; };
 }

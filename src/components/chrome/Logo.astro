@@ -35,8 +35,8 @@ const { variant = 'full', size = 40, tagline = false, class: cls = '' } = Astro.
   .logo__mark { flex: none; height: var(--mark); width: var(--mark); }
   .logo__text { display: flex; flex-direction: column; gap: 0.25em; }
   .logo__word { font-family: var(--font-display); font-weight: 800; font-style: italic; letter-spacing: -0.04em; font-size: calc(var(--mark) * 0.62); white-space: nowrap; }
-  .logo__word small { font-size: 0.42em; font-weight: 600; letter-spacing: 0.08em; font-style: normal; margin-left: 0.15em; vertical-align: 0.15em; opacity: 0.85; }
+  .logo__word small { font-size: max(0.42em, 12px); font-weight: 600; letter-spacing: 0.08em; font-style: normal; margin-left: 0.15em; vertical-align: 0.15em; opacity: 0.85; }
   .logo__amp { color: var(--accent); }
-  .logo__tag { font-family: var(--font-mono); font-size: calc(var(--mark) * 0.2); letter-spacing: 0.18em; text-transform: uppercase; color: var(--muted); white-space: nowrap; }
+  .logo__tag { font-family: var(--font-mono); font-size: max(calc(var(--mark) * 0.2), 12px); letter-spacing: 0.18em; text-transform: uppercase; color: var(--muted); white-space: nowrap; }
   :global(.on-light) .logo, :global([data-theme='light']) .logo { --logo-b: var(--ink); }
 </style>

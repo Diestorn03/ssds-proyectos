@@ -82,12 +82,16 @@ const { bleed, tone = 'a' } = Astro.props;
   .hfx__bleed { position: absolute; left: -1vw; bottom: -0.16em; margin: 0; -webkit-text-stroke-color: rgba(255, 255, 255, 0.08); }
   .hfx__bleed::after { content: attr(data-text); position: absolute; inset: 0; -webkit-text-stroke: 0; background: var(--grad-brand); -webkit-background-clip: text; background-clip: text; color: transparent; opacity: 0.07; clip-path: inset(0 100% 0 0); animation: hfx-charge 2.8s cubic-bezier(0.65, 0, 0.35, 1) 0.8s forwards; }
   @keyframes hfx-charge { to { clip-path: inset(0 0 0 0); } }
+  /* desktop scrubbed exit: the scrubbed blocks and the rays get their own layers, so every scroll frame is a compositor
+     transform/opacity change instead of a repaint of the copy and of the filtered beams */
+  :global(html.is-desktop-fx [data-hfx-exit]) { will-change: transform, opacity; }
+  :global(html.is-desktop-fx) .hfx__rays { will-change: transform; }
   @media (prefers-reduced-motion: reduce) { .hfx__pulse { display: none; } .hfx__bleed::after { animation: none; clip-path: none; } }
 </style>
 
 <script>
   import { onPage } from '../../scripts/engine.js';
-  onPage(({ gsap, env }) => {
+  onPage(({ gsap, env, onRefresh }) => {
     const fx = document.querySelector<HTMLElement>('.hfx');
     if (!fx) return;
     const hero = fx.closest('section') as HTMLElement;
@@ -107,10 +111,14 @@ const { bleed, tone = 'a' } = Astro.props;
     if (!glow) return;
     const xTo = gsap.quickTo(glow, 'x', { duration: 1.6, ease: 'power3.out' });
     const yTo = gsap.quickTo(glow, 'y', { duration: 1.6, ease: 'power3.out' });
+    // hero box cached in page coordinates on refresh: no layout read in the pointer hot path
+    let cx = 0, cy = 0;
+    const measure = () => { const r = hero.getBoundingClientRect(); cx = r.left + r.width / 2; cy = r.top + window.scrollY + r.height / 2; };
+    measure();
+    onRefresh(measure);
     const move = (e: PointerEvent) => {
-      const r = hero.getBoundingClientRect();
-      xTo((e.clientX - r.left - r.width / 2) * 0.45);
-      yTo((e.clientY - r.top - r.height / 2) * 0.45);
+      xTo((e.clientX - cx) * 0.45);
+      yTo((e.pageY - cy) * 0.45);
     };
     hero.addEventListener('pointermove', move);
     return () => hero.removeEventListener('pointermove', move);

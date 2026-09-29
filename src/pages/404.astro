@@ -11,12 +11,12 @@ import HeroFx from '../components/pages/HeroFx.astro';
 import { wa } from '../data/site.js';
 const base = import.meta.env.BASE_URL.replace(/\/$/, '');
 ---
-<Base title="Página no encontrada" description="La página que buscas no existe.">
+<Base title="Página no encontrada" description="La página que buscas no existe." noindex>
   <section id="no-encontrada" class="nf section" data-theme="dark" aria-labelledby="nf-title">
     <HeroFx tone="b" />
     <p class="nf__404" aria-hidden="true">404</p>
     <div class="container nf__grid">
-      <a class="nf-reset" href={`${base}/`} data-nf-reset data-reveal="up" data-start="top 100%">
+      <a class="nf-reset" href={`${base}/`} data-nf-reset>
         <svg class="nf-brk" viewBox="0 0 220 360" aria-hidden="true" focusable="false">
           <path class="nf-brk__wire" d="M110 0v70" />
           <path class="nf-brk__flow" d="M110 0v70" />
@@ -48,10 +48,10 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
       </a>
 
       <div class="nf__copy" data-hfx-exit>
-        <p class="eyebrow" data-reveal="up" data-start="top 100%">Error 404 · circuito abierto</p>
-        <h1 id="nf-title" data-split="lines" data-delay=".1">Aquí no llega <span class="nf__accent">la corriente.</span></h1>
-        <p class="lead" data-reveal="up" data-delay=".25" data-start="top 100%">La página que buscas no existe o cambió de dirección. Volvamos al tablero principal.</p>
-        <div class="btn-row nf__actions" data-reveal="up" data-delay=".4" data-start="top 100%">
+        <p class="eyebrow">Error 404 · circuito abierto</p>
+        <h1 id="nf-title">Aquí no llega <span class="nf__accent">la corriente.</span></h1>
+        <p class="lead">La página que buscas no existe o cambió de dirección. Volvamos al tablero principal.</p>
+        <div class="btn-row nf__actions">
           <a class="btn btn--primary" href={`${base}/`}><Icon name="arrow" size={18} />Ir al inicio</a>
           <a class="btn btn--ghost" href={wa()} target="_blank" rel="noopener"><Icon name="whatsapp" size={18} />Escríbenos</a>
         </div>
@@ -68,6 +68,17 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
   .nf__copy h1 { font-size: min(clamp(2.3rem, 1rem + 4.6vw, 5.4rem), 11vh); line-height: 0.98; letter-spacing: -0.04em; max-width: 12ch; }
   .nf__accent { background: linear-gradient(90deg, #f26a1b 0%, #ff9c5c 45%, #ffd79a 100%); -webkit-background-clip: text; background-clip: text; color: transparent; -webkit-text-fill-color: transparent; padding-right: 0.06em; }
   .nf__copy .lead { margin: 22px 0 30px; max-width: 44ch; color: rgba(244, 246, 251, 0.8); }
+
+  /* entrance: CSS only, so the page shows on the first paint (no wait for JS, fonts or SplitText) */
+  @media (prefers-reduced-motion: no-preference) {
+    .nf__copy > *, .nf-reset { animation: nf-in 0.95s var(--ease-out) backwards; animation-delay: calc(var(--d, 0) * 1s); }
+    .nf__copy > h1 { --d: 0.1; animation-name: nf-drop; animation-duration: 1.2s; }
+    .nf__copy > .lead { --d: 0.25; }
+    .nf__copy > .nf__actions { --d: 0.4; }
+    .nf-reset { --d: 0.15; }
+  }
+  @keyframes nf-in { from { opacity: 0; transform: translateY(26px); } }
+  @keyframes nf-drop { from { transform: translateY(0.3em); clip-path: inset(-0.2em -0.1em 100% -0.1em); } to { transform: none; clip-path: inset(-0.2em -0.1em -0.3em -0.1em); } }
 
   /* the breaker link */
   .nf-reset { justify-self: center; display: grid; justify-items: center; gap: 14px; padding: 10px 18px 14px; border-radius: var(--radius-lg); }

@@ -88,7 +88,7 @@ export function introGate() {
   if (!loader || loader.classList.contains('is-done')) return Promise.resolve();
   return Promise.race([
     new Promise((r) => document.addEventListener('ssds:loader-done', r, { once: true })),
-    new Promise((r) => setTimeout(r, 3000)),
+    new Promise((r) => setTimeout(r, 3700)), // Loader.astro: exit starts by 2.8 s after page start, done ≤ 1 s later
   ]);
 }
 const fontsReady = () => Promise.race([document.fonts?.ready ?? Promise.resolve(), new Promise((r) => setTimeout(r, 900))]);
@@ -153,7 +153,8 @@ function initReveals() {
     const type = el.dataset.reveal || 'up';
     const from = REVEALS[type] || REVEALS.up;
     const clip = ['clip', 'drop', 'iris'].includes(type);
-    const to = { x: 0, y: 0, scale: 1, opacity: 1, filter: 'blur(0px)', duration: clip ? 1.2 : 0.95, ease: 'expo.out', delay: +(el.dataset.delay || 0), clearProps: 'filter,transform' };
+    // [data-tilt] cards keep GSAP's transform cache: clearing it would drop the tilt's transformPerspective (flat squash)
+    const to = { x: 0, y: 0, scale: 1, opacity: 1, filter: 'blur(0px)', duration: clip ? 1.2 : 0.95, ease: 'expo.out', delay: +(el.dataset.delay || 0), clearProps: el.hasAttribute('data-tilt') ? 'filter' : 'filter,transform' };
     if (type === 'clip') to.clipPath = 'inset(0 0% 0 0)';
     if (type === 'drop') to.clipPath = 'inset(0 0 0% 0)';
     if (type === 'iris') to.clipPath = 'circle(75% at 50% 50%)';
@@ -243,11 +244,14 @@ function initStack() {
   });
 }
 
-/* ---------------- Marquee (scroll-speed reactive, one ticker per page) ---------------- */
-let marqueeTick;
+/* ---------------- Marquee (scroll-speed reactive) ---------------- */
+// The loop is a Web Animation, so it runs on the compositor: no main-thread work per frame while the page is idle.
+// Scrolling only boosts its playbackRate through a short-lived ticker that removes itself once the boost has decayed.
+// (The old ticker wrote style.transform every frame, which forced a full re-layerize of the page on every frame,
+// ~3 ms per frame at idle on a modest laptop.) data-speed keeps its meaning: px per frame at 60 fps.
+let mq = null;
 function initMarquee() {
-  if (marqueeTick) gsap.ticker.remove(marqueeTick);
-  marqueeTick = null;
+  mq?.stop(); mq = null;
   const items = gsap.utils.toArray('.marquee').map((m) => {
     const track = m.querySelector('.marquee__track');
     if (!track) return null;
@@ -255,27 +259,42 @@ function initMarquee() {
       [...track.children].forEach((c) => { const k = c.cloneNode(true); k.setAttribute('aria-hidden', 'true'); k.querySelectorAll('a, button').forEach((f) => f.setAttribute('tabindex', '-1')); track.appendChild(k); });
       track.dataset.cloned = '1';
     }
-    const dir = m.dataset.direction === 'right' ? -1 : 1;
-    const it = { track, x: 0, half: track.scrollWidth / 2, visible: false, dir, speed: +(m.dataset.speed || 0.6) };
-    new IntersectionObserver(([e]) => { it.visible = e.isIntersecting; }).observe(m);
-    if (dir < 0) it.x = -it.half;
-    return it;
+    return { m, track, dir: m.dataset.direction === 'right' ? -1 : 1, speed: +(m.dataset.speed || 0.6), anim: null, half: 0, dur: 1, rate: 1, visible: false };
   }).filter(Boolean);
-  if (!items.length || env.reduced) return;
-  onRefresh(() => items.forEach((it) => { it.half = it.track.scrollWidth / 2; }));
-  let vel = 0, last = window.scrollY;
-  marqueeTick = () => {
-    const dy = window.scrollY - last; last = window.scrollY;
-    vel = Math.min(14, Math.abs(dy) * 0.3 + vel * 0.9);
-    items.forEach((it) => {
-      if (!it.visible) return;
-      it.x -= (it.speed + vel) * it.dir;
-      if (-it.x >= it.half) it.x += it.half;
-      if (it.x > 0) it.x -= it.half;
-      it.track.style.transform = `translate3d(${it.x}px,0,0)`;
-    });
+  if (!items.length || env.reduced || typeof Element.prototype.animate !== 'function') return;
+  // (re)build when the track width changes (fonts, resize); keeps the loop's phase
+  const build = (it) => {
+    const half = it.track.scrollWidth / 2;
+    if (!half || Math.abs(half - it.half) < 0.5) return;
+    const phase = it.anim ? ((it.anim.currentTime || 0) % it.dur) / it.dur : 0;
+    it.anim?.cancel();
+    it.half = half; it.dur = (half / (it.speed * 60)) * 1000;
+    const a = it.dir > 0 ? 0 : -half, b = it.dir > 0 ? -half : 0;
+    it.anim = it.track.animate([{ transform: `translate3d(${a}px,0,0)` }, { transform: `translate3d(${b}px,0,0)` }], { duration: it.dur, iterations: Infinity });
+    it.anim.currentTime = phase * it.dur;
+    it.anim.playbackRate = it.rate;
+    if (!it.visible) it.anim.pause();
   };
-  gsap.ticker.add(marqueeTick);
+  const io = new IntersectionObserver((entries) => entries.forEach((e) => {
+    const it = items.find((x) => x.m === e.target);
+    if (!it) return;
+    it.visible = e.isIntersecting;
+    if (it.anim) { if (it.visible) it.anim.play(); else it.anim.pause(); }
+  }));
+  items.forEach((it) => { build(it); io.observe(it.m); });
+  onRefresh(() => items.forEach(build));
+  let vel = 0, last = window.scrollY, ticking = false;
+  const setRate = (it, r) => { if (!it.anim || Math.abs(r - it.rate) < 0.05 && r !== 1) return; it.rate = r; it.anim.updatePlaybackRate(r); };
+  const tick = () => {
+    const y = window.scrollY, dy = y - last; last = y;
+    vel = Math.min(14, Math.abs(dy) * 0.3 + vel * 0.9);
+    const idle = vel < 0.03;
+    if (idle) { vel = 0; gsap.ticker.remove(tick); ticking = false; }
+    items.forEach((it) => { if (it.visible || idle) setRate(it, idle ? 1 : 1 + vel / it.speed); });
+  };
+  const onScroll = () => { if (ticking) return; ticking = true; gsap.ticker.add(tick); };   // `last` is kept by tick: the first delta is real
+  window.addEventListener('scroll', onScroll, { passive: true });
+  mq = { stop: () => { window.removeEventListener('scroll', onScroll); gsap.ticker.remove(tick); io.disconnect(); items.forEach((it) => it.anim?.cancel()); } };
 }
 
 /* ---------------- Pointer effects (desktop gate only; listeners dropped on teardown) ---------------- */
@@ -289,6 +308,7 @@ function initPointerFx() {
     const setX = gsap.quickTo(card, 'rotationY', { duration: 0.5, ease: 'power3' });
     const setY = gsap.quickTo(card, 'rotationX', { duration: 0.5, ease: 'power3' });
     gsap.set(card, { transformPerspective: 1000 });
+    card.addEventListener('pointerenter', () => gsap.set(card, { transformPerspective: 1000 }), { signal }); // survives any later clearProps
     card.addEventListener('pointermove', (e) => { const r = card.getBoundingClientRect(); setX(((e.clientX - r.left) / r.width - 0.5) * max * 2); setY(-((e.clientY - r.top) / r.height - 0.5) * max * 2); }, { signal });
     card.addEventListener('pointerleave', () => { setX(0); setY(0); }, { signal });
   });
@@ -299,8 +319,13 @@ function initPointerFx() {
     el.addEventListener('pointermove', (e) => { const r = el.getBoundingClientRect(); mx(gsap.utils.clamp(-8, 8, (e.clientX - r.left - r.width / 2) * strength)); my(gsap.utils.clamp(-8, 8, (e.clientY - r.top - r.height / 2) * strength)); }, { signal });
     el.addEventListener('pointerleave', () => { mx(0); my(0); }, { signal });
   });
+  // --gx/--gy are registered as non-inherited (base.css @property), so a write restyles the element and its ::before
+  // only, not every descendant; writes are batched to one per frame
   gsap.utils.toArray('[data-glow]').forEach((el) => {
-    el.addEventListener('pointermove', (e) => { const r = el.getBoundingClientRect(); el.style.setProperty('--gx', `${e.clientX - r.left}px`); el.style.setProperty('--gy', `${e.clientY - r.top}px`); }, { signal });
+    let cx = 0, cy = 0, id = 0;
+    const write = () => { id = 0; const r = el.getBoundingClientRect(); el.style.setProperty('--gx', `${Math.round(cx - r.left)}px`); el.style.setProperty('--gy', `${Math.round(cy - r.top)}px`); };
+    el.addEventListener('pointermove', (e) => { cx = e.clientX; cy = e.clientY; if (!id) id = requestAnimationFrame(write); }, { signal });
+    signal.addEventListener('abort', () => cancelAnimationFrame(id));
   });
 }
 
@@ -338,6 +363,7 @@ function boot() {
   syncLenis();
   document.documentElement.classList.toggle('is-desktop-fx', env.desktop);
   document.documentElement.classList.toggle('is-lite', env.lite);
+  document.documentElement.classList.add('fx-booted');
   ctx = gsap.context(() => {});
   // section modules first (they create the pins), then the declarative built-ins; sort() fixes creation order
   registry.forEach(runInit);
@@ -346,22 +372,27 @@ function boot() {
   fontsReady().then(() => { if (!ctx) return; ctx.add(() => { initSplits(); initLit(); }); queueRefresh(); });
   booted = true;
   queueRefresh();
-  window.addEventListener('load', () => ScrollTrigger.refresh(), { once: true });
+  // no extra refresh on window 'load': ScrollTrigger already refreshes on it (autoRefreshEvents), and a second forced
+  // one cost a full re-measure of every pin (~250 ms on the dev build) right while the hero intro plays
   emit('ssds:ready');
 }
 
-// First visit: the intro loader plays on the compositor; booting every scene (SplitText, ScrollTriggers, canvases)
-// meanwhile would steal the main thread right when its curtain lifts. Boot once it is done (it removes itself).
+// First visit: the intro loader runs only on the compositor (transform/opacity keyframes), so main-thread work cannot
+// make it stutter. Boot underneath it: once its first frame is on screen (animations handed to the compositor), the
+// whole boot (SplitText, ScrollTriggers, canvases) runs while the curtain is still down, and the page is ready when it
+// lifts. Scenes that must wait for the curtain await introGate() (the hero intro does).
+let startGen = 0;
 function start() {
+  const gen = ++startGen;
   const loader = document.getElementById('loader');
   if (loader && !loader.classList.contains('is-done') && document.documentElement.classList.contains('ssds-intro')) {
-    document.addEventListener('ssds:loader-done', () => boot(), { once: true });
+    requestAnimationFrame(() => setTimeout(() => { if (gen === startGen) boot(); }, 0));
     return;
   }
   boot();
 }
 document.addEventListener('astro:page-load', start);
-document.addEventListener('astro:before-swap', teardown);
+document.addEventListener('astro:before-swap', () => { startGen++; teardown(); });
 // ClientRouter swaps <html> attributes: restore the `js` class the head script set on the first load
 document.addEventListener('astro:after-swap', () => { document.documentElement.classList.add('js'); window.scrollTo(0, 0); lenis?.scrollTo(0, { immediate: true }); });
 let bpTimer;

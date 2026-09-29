@@ -4,10 +4,12 @@
  * Pure CSS timeline that runs ONLY on the compositor (transform + opacity), so it stays perfectly smooth while the
  * main thread is busy parsing/booting the page underneath: the two halves of the hexagonal mark swing in, the S
  * strokes slide into place, a spark travels the outline (translate keyframes), the wordmark wipes in behind a
- * sliding cover, the tagline rises, the brand ray crosses and the curtain lifts (translateY). ~1.3 s in total.
- * The engine does not boot the page until 'ssds:loader-done' (see engine.js), so nothing competes with the exit.
- * The inline script removes #loader when it must not run, so introGate() resolves at once; otherwise it dispatches
- * 'ssds:loader-done' (detail {x, y}).
+ * sliding cover, the tagline rises, the brand ray crosses and the curtain lifts (translateY). ~1.5 s in total.
+ * The engine boots the page UNDERNEATH the loader (engine.js start()); the exit (.is-go) waits until the mark has
+ * played (1 s) AND the engine is ready ('ssds:ready' + the refresh it queues), capped at 2.8 s, so the curtain never
+ * lifts on a page that is about to freeze while it boots. The inline script removes #loader when it must not run, so
+ * introGate() resolves at once; otherwise it dispatches 'ssds:loader-done' (detail {x, y}, also left in
+ * window.__ssdsDrop for late listeners).
  */
 ---
 <div id="loader" class="loader" data-theme="dark">
@@ -39,21 +41,34 @@
     window.__ssdsIntro = 1;
     if (!show) { l.remove(); return; }
     root.classList.add('ssds-intro');
-    var finished = false;
+    var finished = false, played = false, ready = false;
     function done() {
       if (finished) return; finished = true;
       l.classList.add('is-done');
       root.classList.remove('ssds-intro');
       document.removeEventListener('keydown', onKey);
-      document.dispatchEvent(new CustomEvent('ssds:loader-done', { detail: { x: innerWidth * 0.5, y: innerHeight * 0.45 } }));
+      var drop = { x: innerWidth * 0.5, y: innerHeight * 0.45 };
+      window.__ssdsDrop = drop;
+      document.dispatchEvent(new CustomEvent('ssds:loader-done', { detail: drop }));
       setTimeout(function () { l.remove(); }, 60);
     }
-    function skip() { l.classList.add('is-skip'); }
+    // exit once the mark has played and the page underneath is booted (its queued ScrollTrigger refresh included)
+    // the safety net counts from the exit, not from page start: when a long boot task delays both timers they would
+    // otherwise fire together and the curtain would vanish instead of lifting
+    function go() { if (l.classList.contains('is-go')) return; l.classList.add('is-go'); setTimeout(done, 1000); }
+    function maybeGo() { if (played && ready) go(); }
+    // (timed from the first frame: that is when the CSS timeline actually starts)
+    requestAnimationFrame(function () { setTimeout(function () { played = true; maybeGo(); }, 1000); });
+    document.addEventListener('ssds:ready', function () {
+      requestAnimationFrame(function () { requestAnimationFrame(function () { ready = true; maybeGo(); }); });
+    }, { once: true });
+    setTimeout(go, 2800); // never hold the curtain longer than this
+    function skip() { l.classList.add('is-skip'); setTimeout(done, 800); }
     function onKey(e) { if (e.key === 'Escape') skip(); }
     l.addEventListener('animationend', function (e) { if (e.target === l) done(); });
     l.querySelector('.loader__skip').addEventListener('click', skip);
     document.addEventListener('keydown', onKey);
-    setTimeout(done, 3000); // safety net
+    // safety net: go() and skip() arm done() (animationend normally fires ~0.55 s after .is-go)
   })();
 </script>
 
@@ -64,13 +79,14 @@
     background: radial-gradient(70% 55% at 50% 45%, #10244f 0%, var(--navy-950) 70%);
     color: #fff;
     will-change: transform;
-    animation: loader-exit 0.5s cubic-bezier(0.76, 0, 0.24, 1) 1.05s forwards;
   }
+  :global(html.ssds-intro) .loader.is-go { animation: loader-exit 0.5s cubic-bezier(0.76, 0, 0.24, 1) 0.05s forwards; }
   :global(html.ssds-intro) .loader.is-skip { animation: loader-exit 0.32s cubic-bezier(0.76, 0, 0.24, 1) forwards; }
   /* the curtain lifts (transform only: never janks, whatever the main thread is doing) */
   @keyframes loader-exit { to { transform: translate3d(0, -100%, 0); } }
 
-  .loader__stage { display: grid; justify-items: center; gap: 14px; will-change: transform, opacity; animation: stage-out 0.45s cubic-bezier(0.65, 0, 0.35, 1) 1s forwards; }
+  .loader__stage { display: grid; justify-items: center; gap: 14px; will-change: transform, opacity; }
+  .loader.is-go .loader__stage, .loader.is-skip .loader__stage { animation: stage-out 0.45s cubic-bezier(0.65, 0, 0.35, 1) forwards; }
   @keyframes stage-out { to { transform: translate3d(0, -8vh, 0) scale(0.96); opacity: 0; } }
 
   /* ---------- the mark: the two halves swing in, then the S strokes slide into place ---------- */

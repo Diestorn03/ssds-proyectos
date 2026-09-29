@@ -73,7 +73,7 @@ const previews: Record<string, string> = { 'potencia-electrica': 'DdmM5JnRQUK', 
       </ol>
     </div>
     <div class="sv-float" aria-hidden="true">
-      {services.map((s) => <img src={`${base}/ig/${previews[s.slug]}.webp`} data-slug={s.slug} width="640" height="811" alt="" loading="lazy" decoding="async" />)}
+      {services.map((s) => <img src={`${base}/ig/${previews[s.slug]}.webp`} srcset={`${base}/ig/${previews[s.slug]}-320.webp 320w, ${base}/ig/${previews[s.slug]}.webp 640w`} sizes="160px" data-slug={s.slug} width="640" height="811" alt="" loading="lazy" decoding="async" />)}
     </div>
   </section>
 
@@ -103,7 +103,7 @@ const previews: Record<string, string> = { 'potencia-electrica': 'DdmM5JnRQUK', 
   .sv-bus__rail i { top: 0; left: 0; width: 14%; height: 100%; animation: sv-run-x 3.2s cubic-bezier(0.45, 0, 0.55, 1) 1.2s infinite; transform: translateX(-100%); }
   @keyframes sv-run-x { to { transform: translateX(720%); } }
   .sv-bus__list { list-style: none; margin: 0; padding: 0; display: grid; gap: 16px; }
-  @media (min-width: 760px) { .sv-bus__list { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: clamp(14px, 2vw, 24px); } }
+  @media (min-width: 1024px) { .sv-bus__list { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: clamp(14px, 2vw, 24px); } }
   .sv-bus__item { position: relative; display: flex; }
   .sv-bus__drop { position: absolute; left: 34px; top: -64px; width: 3px; height: 64px; border-radius: 3px; overflow: visible; background: color-mix(in srgb, var(--orange-400) 55%, transparent); transform-origin: 50% 0; transition: background-color 0.4s, box-shadow 0.4s; }
   .sv-bus__drop i { left: 0; top: 0; width: 100%; height: 30%; overflow: hidden; background: linear-gradient(180deg, transparent, #fff, transparent); animation: sv-run-y 3.2s cubic-bezier(0.45, 0, 0.55, 1) infinite; animation-delay: calc(1.6s + var(--i) * 0.45s); transform: translateY(-100%); opacity: 0; }
@@ -114,7 +114,7 @@ const previews: Record<string, string> = { 'potencia-electrica': 'DdmM5JnRQUK', 
   .sv-bus__card {
     position: relative; flex: 1; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 14px; min-height: 76px;
     padding: 14px 16px 14px 14px; border-radius: 18px; border: 1px solid rgba(255, 255, 255, 0.12);
-    background: linear-gradient(160deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.02)); color: var(--fg);
+    background: linear-gradient(160deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.02)), rgba(11, 26, 58, 0.92); color: var(--fg); /* opaque base: the hero rays pass behind, never through the text */
     transition: border-color 0.4s, transform 0.6s var(--ease-out), background-color 0.4s, box-shadow 0.6s var(--ease-out);
   }
   .sv-bus__card:hover { border-color: rgba(255, 180, 84, 0.6); transform: translateY(-4px); box-shadow: 0 22px 44px -22px rgba(242, 106, 27, 0.6); }
@@ -122,11 +122,14 @@ const previews: Record<string, string> = { 'potencia-electrica': 'DdmM5JnRQUK', 
   .sv-bus__card:hover .sv-bus__icon { background: var(--orange-500); color: #fff; }
   .sv-bus__txt { display: grid; gap: 2px; min-width: 0; }
   .sv-bus__code { font-size: 0.75rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--accent-text); }
-  .sv-bus__name { font-family: var(--font-display); font-weight: 700; font-size: 1.1rem; line-height: 1.2; letter-spacing: -0.01em; }
+  .sv-bus__name { font-family: var(--font-display); font-weight: 700; font-size: 1.1rem; line-height: 1.2; letter-spacing: -0.01em; overflow-wrap: break-word; hyphens: auto; }
   .sv-bus__go { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 50%; border: 1px solid rgba(255, 255, 255, 0.16); transition: background-color 0.3s, border-color 0.3s, transform 0.5s var(--ease-out); }
   .sv-bus__card:hover .sv-bus__go { background: var(--orange-500); border-color: var(--orange-500); transform: rotate(-35deg); }
-  /* narrow screens: the busbar runs down the left edge and each circuit tees off to the right */
-  @media (max-width: 759px) {
+  /* three cards on a small laptop / iPad Pro: the decorative arrow circle gives its width to the text */
+  @media (min-width: 1024px) and (max-width: 1199px) { .sv-bus__card { grid-template-columns: auto minmax(0, 1fr); } .sv-bus__go { display: none; } }
+  /* narrow screens and tablets (three cards side by side would leave ~90px for the text below 1024px):
+     the busbar runs down the left edge and each circuit tees off to the right */
+  @media (max-width: 1023px) {
     .sv-bus__grid { padding-top: 0; padding-left: 36px; }
     .sv-bus__rail { top: 0; bottom: 38px; left: 0; right: auto; width: 3px; height: auto; background: linear-gradient(180deg, #f26a1b, #ff9c5c 50%, #ffd79a); transform-origin: 50% 0; }
     .sv-bus__rail i { width: 100%; height: 20%; background: linear-gradient(180deg, transparent, #fff, transparent); animation-name: sv-run-down; transform: translateY(-100%); }
@@ -182,7 +185,7 @@ const previews: Record<string, string> = { 'potencia-electrica': 'DdmM5JnRQUK', 
 
 <script>
   import { onPage } from '../../scripts/engine.js';
-  onPage(({ gsap, env, ScrollTrigger }) => {
+  onPage(({ gsap, env, ScrollTrigger, onRefresh }) => {
     const bus = document.querySelector<HTMLElement>('[data-sv-bus]');
     const lines = document.querySelector<HTMLElement>('[data-sv-lines]');
     if (!bus || !lines) return;
@@ -194,7 +197,7 @@ const previews: Record<string, string> = { 'potencia-electrica': 'DdmM5JnRQUK', 
 
     if (!env.reduced) {
       // the busbar energises, the drops fall to each breaker, the circuits light up
-      const narrow = window.matchMedia('(max-width: 759px)').matches;
+      const narrow = window.matchMedia('(max-width: 1023px)').matches;
       const tl = gsap.timeline({ scrollTrigger: { trigger: bus, start: 'top 95%', once: true } });
       tl.set(bus, { opacity: 1 })
         .from(bus.querySelector('.sv-bus__src'), { opacity: 0, x: -20, duration: 0.6, ease: 'expo.out' })
@@ -214,9 +217,16 @@ const previews: Record<string, string> = { 'potencia-electrica': 'DdmM5JnRQUK', 
     gsap.set(float, { xPercent: -50, yPercent: -50, scale: 0.6 });
     let lastX = 0;
     const list = lines.querySelector<HTMLElement>('.sv-lines__list')!;
+    // section box (page coordinates) and preview size cached on refresh: no layout read per pointer event
+    let bl = 0, bt = 0, bw = 0, bh = 0, fw = 0, fh = 0;
+    const measure = () => { const r = lines.getBoundingClientRect(); bl = r.left; bt = r.top + window.scrollY; bw = r.width; bh = r.height; fw = float.offsetWidth; fh = float.offsetHeight; };
+    measure();
+    onRefresh(measure);
     const move = (e: PointerEvent) => {
-      const r = lines.getBoundingClientRect();
-      const x = e.clientX - r.left + 150, y = e.clientY - r.top;
+      const px = e.clientX - bl;
+      // beside the pointer, flipped to its left over the right part of a row, and always fully inside the section
+      const x = gsap.utils.clamp(fw / 2 + 16, bw - fw / 2 - 16, px + (px > bw * 0.6 ? -150 : 150));
+      const y = gsap.utils.clamp(fh / 2 + 16, bh - fh / 2 - 16, e.pageY - bt);
       xTo(x); yTo(y); rTo(gsap.utils.clamp(-10, 10, (e.clientX - lastX) * 0.6)); lastX = e.clientX;
     };
     const show = (slug: string) => {

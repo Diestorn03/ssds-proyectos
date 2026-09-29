@@ -7,8 +7,9 @@
   (the stage scrolls), prev · counter · next in a bottom bar. Without JS the links simply open Instagram.
 */
 import Icon from './Icon.astro';
-interface Props { id?: string; handle?: string }
-const { id = 'lightbox', handle = '' } = Astro.props;
+interface Props { id?: string; handle?: string; src?: string }
+// src: a real placeholder (an <img> needs one); lazy inside the closed dialog, so it is not fetched before opening
+const { id = 'lightbox', handle = '', src } = Astro.props;
 ---
 <dialog class="lb" id={id} aria-labelledby={`${id}-title`} data-theme="dark" data-lenis-prevent>
   <div class="lb__scrim" data-lb-close aria-hidden="true"></div>
@@ -16,7 +17,7 @@ const { id = 'lightbox', handle = '' } = Astro.props;
   <div class="lb__stage">
     <figure class="lb__figure">
       <div class="lb__frame">
-        <img class="lb__img" width="640" height="811" alt="" decoding="async" draggable="false" />
+        <img class="lb__img" src={src} width="640" height="811" alt="" loading="lazy" decoding="async" draggable="false" />
         <span class="lb__glint" aria-hidden="true"></span>
       </div>
     </figure>
@@ -57,6 +58,8 @@ const { id = 'lightbox', handle = '' } = Astro.props;
 
 <style>
   .lb {
+    /* html.lb-lock keeps a stable (empty) scrollbar gutter; current Chrome sizes both 100vw and 100% to stop at it
+       (the gutter then shows html.lb-lock's scrim-coloured background, see the global style below) */
     position: fixed; inset: 0; width: 100vw; height: 100%; max-width: none; max-height: none;
     margin: 0; padding: 0; border: 0; background: transparent; color: var(--fg); overflow: hidden;
     overscroll-behavior: contain;
@@ -163,6 +166,7 @@ const { id = 'lightbox', handle = '' } = Astro.props;
 </style>
 
 <style is:global>
-  /* page under the open lightbox must not scroll; the gutter keeps the layout from shifting */
-  html.lb-lock { overflow: hidden; scrollbar-gutter: stable; }
+  /* page under the open lightbox must not scroll; the gutter keeps the layout from shifting. The fixed dialog stops
+     at that (empty) gutter with classic scrollbars, so the canvas behind it takes the scrim's colour, not a navy strip */
+  html.lb-lock { overflow: hidden; scrollbar-gutter: stable; background: #040916; }
 </style>

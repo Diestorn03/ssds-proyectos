@@ -18,16 +18,16 @@ const aside = Astro.slots.has('aside');
   <div class:list={['container phero__inner', aside && 'phero__inner--aside']}>
     <div class="phero__copy" data-hfx-exit>
       {crumbs.length > 0 && (
-        <nav class="phero__crumbs mono" aria-label="Ruta de navegación" data-reveal="up" data-start="top 100%">
+        <nav class="phero__crumbs mono" aria-label="Ruta de navegación">
           <ol>
             <li><a href={`${base}/`}>Inicio</a></li>
             {crumbs.map((c) => <li>{c.href ? <a href={`${base}${c.href}`}>{c.label}</a> : <span aria-current="page">{c.label}</span>}</li>)}
           </ol>
         </nav>
       )}
-      <p class="eyebrow" data-reveal="up" data-delay=".05" data-start="top 100%">{kicker}</p>
-      <h1 id={`${id}-title`} class:list={['phero__title', size === 'lg' && 'phero__title--lg']} data-split="lines" data-delay=".1">{pre}{at >= 0 && <span class="phero__accent">{accent}</span>}{post}</h1>
-      {lead && <p class="lead phero__lead" data-reveal="up" data-delay=".35" data-start="top 100%">{lead}</p>}
+      <p class="eyebrow phero__kicker">{kicker}</p>
+      <h1 id={`${id}-title`} class:list={['phero__title', size === 'lg' && 'phero__title--lg']}>{pre}{at >= 0 && <span class="phero__accent">{accent}</span>}{post}</h1>
+      {lead && <p class="lead phero__lead">{lead}</p>}
       <slot name="actions" />
     </div>
     {aside && <div class="phero__aside" data-hfx-exit><slot name="aside" /></div>}
@@ -54,4 +54,16 @@ const aside = Astro.slots.has('aside');
   .phero :global(.phero__actions) { margin-top: clamp(24px, 3vw, 36px); }
   @media (max-width: 560px) { .phero :global(.phero__actions > .btn) { flex: 1 1 100%; white-space: normal; } }
   @media (prefers-reduced-motion: reduce) { .phero__accent { animation: none; } }
+
+  /* entrance: CSS only, so it starts on the first paint (no wait for JS, fonts or SplitText; the hero is the LCP) */
+  @media (prefers-reduced-motion: no-preference) {
+    .phero__copy > :global(*) { animation: phero-in 0.95s var(--ease-out) backwards; animation-delay: calc(var(--d, 0) * 1s); }
+    .phero__kicker { --d: 0.06; }
+    .phero__copy > .phero__title { --d: 0.12; animation-name: phero-drop; animation-duration: 1.2s; }
+    .phero__lead { --d: 0.3; }
+    .phero__copy > :global(.phero__actions) { --d: 0.42; }
+  }
+  @keyframes phero-in { from { opacity: 0; transform: translateY(26px); } }
+  /* the title drops in behind a mask while it rises (the look of the old SplitText line reveal, no JS) */
+  @keyframes phero-drop { from { transform: translateY(0.3em); clip-path: inset(-0.2em -0.1em 100% -0.1em); } to { transform: none; clip-path: inset(-0.2em -0.1em -0.3em -0.1em); } }
 </style>

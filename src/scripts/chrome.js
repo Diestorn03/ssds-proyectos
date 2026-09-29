@@ -122,7 +122,7 @@ onPage(() => {
 });
 
 /* ---------- Floating WhatsApp + mobile action bar ---------- */
-onPage(() => {
+onPage(({ env, onRefresh }) => {
   const fab = document.querySelector('.fab');
   const bar = document.querySelector('.abar');
   if (!fab && !bar) return;
@@ -130,35 +130,41 @@ onPage(() => {
   const blocking = new Set();
   let menuIsOpen = menuOpen();
 
-  const pastHero = () => {
-    if (!hero) return window.scrollY > 200;
+  // no layout reads per scroll: the hero's end is measured once per ScrollTrigger refresh (pins, resize, load) and
+  // compared with scrollY. Pinned hero: show at ~75% of the pin, when its CTAs have faded; otherwise once most of it
+  // has gone.
+  let heroEnd = 200;
+  const measure = () => {
+    if (!hero) return;
     const spacer = hero.parentElement?.classList.contains('pin-spacer') ? hero.parentElement : null;
-    // pinned hero: show at ~75% of the pin, when its CTAs have faded; otherwise once most of the hero has gone
-    return (spacer || hero).getBoundingClientRect().bottom < window.innerHeight * (spacer ? 1.25 : 0.75);
+    heroEnd = (spacer || hero).getBoundingClientRect().bottom + window.scrollY - window.innerHeight * (spacer ? 1.25 : 0.75);
   };
+  measure();
+  onRefresh(() => { measure(); update(); });
+  const pastHero = () => window.scrollY > heroEnd;
   const update = raf(() => {
     const show = pastHero() && !blocking.size && !menuIsOpen;
     fab?.classList.toggle('is-shown', show);
     bar?.classList.toggle('is-shown', show);
   });
-  // hidden over blocks that carry their own WhatsApp buttons ([data-fab-hide])
+  // hidden over blocks that carry their own WhatsApp buttons ([data-fab-hide]) and, on the desktop gate, over the
+  // pinned Transferencia instrument (the FAB would sit on its frame for the whole pin)
   const io = new IntersectionObserver((entries) => {
     entries.forEach((e) => (e.isIntersecting ? blocking.add(e.target) : blocking.delete(e.target)));
     update();
   }, { rootMargin: '-15% 0px -15% 0px' });
   document.querySelectorAll('[data-fab-hide]').forEach((el) => io.observe(el));
+  if (env.desktop) document.querySelectorAll('#transferencia').forEach((el) => io.observe(el));
 
   const onMenu = (e) => { menuIsOpen = e.detail.open; update(); };
   document.addEventListener('ssds:menu', onMenu);
   window.addEventListener('scroll', update, { passive: true });
-  window.addEventListener('resize', update);
   update();
 
   return () => {
     io.disconnect(); update.cancel();
     document.removeEventListener('ssds:menu', onMenu);
     window.removeEventListener('scroll', update);
-    window.removeEventListener('resize', update);
   };
 });
 
@@ -178,11 +184,25 @@ onPage(({ gsap, env }) => {
   const tip = linea.querySelector('.linea__tip');
   let total = 1, height = 0, top = 0;
   const state = { p: env.reduced ? 1 : 0 };
+  // arc-length lookup table of the path, computed from its own Bézier maths in build(): SVGPathElement
+  // .getPointAtLength walks a ~20 000 px path from the start on every call (≈3 ms per frame on a modest laptop)
+  const PER_SEG = 32;
+  let lx = new Float32Array([24]), ly = new Float32Array([0]), ll = new Float32Array([0]);
+  let lastTip = '';
+  const pointAt = (s) => {
+    let lo = 0, hi = ll.length - 1;
+    if (s <= 0 || hi === 0) return [lx[0], ly[0]];
+    if (s >= ll[hi]) return [lx[hi], ly[hi]];
+    while (hi - lo > 1) { const mid = (lo + hi) >> 1; if (ll[mid] <= s) lo = mid; else hi = mid; }
+    const f = (s - ll[lo]) / (ll[hi] - ll[lo] || 1);
+    return [lx[lo] + (lx[hi] - lx[lo]) * f, ly[lo] + (ly[hi] - ly[lo]) * f];
+  };
 
   const draw = () => {
     line.style.strokeDashoffset = `${1 - state.p}`;
-    const pt = line.getPointAtLength(state.p * total);
-    tip.setAttribute('transform', `translate(${(pt.x - 24).toFixed(1)} ${pt.y.toFixed(1)})`);
+    const [x, y] = pointAt(state.p * total);
+    const t = `translate(${(x - 24).toFixed(1)} ${y.toFixed(1)})`;
+    if (t !== lastTip) { tip.setAttribute('transform', t); lastTip = t; }
     linea.classList.toggle('is-drawing', state.p > 0.002 && state.p < 0.998);
   };
   // the drawn tip sits at 70% of the viewport; progress comes straight from the scroll position, so pins and
@@ -198,16 +218,26 @@ onPage(({ gsap, env }) => {
       // gentle S-curves every ~820px; the tangent keeps its sign so the joins are smooth
       const n = Math.max(1, Math.round(H / 820)), L = H / n;
       let d = 'M24 0';
+      lx = new Float32Array(n * PER_SEG + 1); ly = new Float32Array(n * PER_SEG + 1); ll = new Float32Array(n * PER_SEG + 1);
+      lx[0] = 24;
+      let k = 0, px = 24, py = 0, acc = 0;
       for (let i = 0; i < n; i++) {
         const y = i * L, a = 7 + 3 * Math.sin(i * 1.7);
         d += `C${(24 + a).toFixed(1)} ${(y + L * 0.35).toFixed(1)} ${(24 - a).toFixed(1)} ${(y + L * 0.65).toFixed(1)} 24 ${(y + L).toFixed(1)}`;
+        for (let j = 1; j <= PER_SEG; j++) {
+          const t = j / PER_SEG, m = 1 - t, b1 = 3 * m * m * t, b2 = 3 * m * t * t, b3 = t * t * t;
+          const bx = 24 * (m * m * m + b3) + (24 + a) * b1 + (24 - a) * b2;
+          const by = y + L * (0.35 * b1 + 0.65 * b2 + b3);
+          acc += Math.hypot(bx - px, by - py);
+          k++; lx[k] = bx; ly[k] = by; ll[k] = acc; px = bx; py = by;
+        }
       }
       svg.setAttribute('height', H);
       svg.setAttribute('viewBox', `0 0 48 ${H}`);
       grad.setAttribute('y2', H);
       line.setAttribute('d', d);
       ghost.setAttribute('d', d);
-      total = line.getTotalLength();
+      total = acc || 1;
     }
     if (follow) { state.p = target(); follow(state.p); }
     draw();

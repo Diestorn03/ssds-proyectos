@@ -3,14 +3,19 @@
  * Floating WhatsApp (tablets and up) and the mobile action bar "Llamar · WhatsApp" (phones).
  * Both stay hidden until the reader is past the hero and hide again over blocks marked [data-fab-hide]
  * (they carry their own WhatsApp buttons). Visibility is driven by scripts/chrome.js (.is-shown).
+ * Hidden = visibility:hidden (after the slide-out), so a hidden button is neither clickable nor in the Tab order.
+ * The magnetic pull (GSAP inline transform) lives on the inner .fab__in: the outer .fab keeps the CSS show/hide
+ * transform, so the two never write the same property.
  */
 import Icon from '../ui/Icon.astro';
 import { wa, contact } from '../../data/site.js';
 ---
-<a class="fab" href={wa()} target="_blank" rel="noopener" aria-label="Escríbenos por WhatsApp" data-magnetic="0.3" transition:name="ssds-fab">
-  <span class="fab__ring" aria-hidden="true"></span>
-  <Icon name="whatsapp" size={24} stroke={2} />
-  <span class="fab__label">WhatsApp</span>
+<a class="fab" href={wa()} target="_blank" rel="noopener" aria-label="Escríbenos por WhatsApp" transition:name="ssds-fab">
+  <span class="fab__in" data-magnetic="0.3">
+    <span class="fab__ring" aria-hidden="true"></span>
+    <Icon name="whatsapp" size={24} stroke={2} />
+    <span class="fab__label">WhatsApp</span>
+  </span>
 </a>
 <div class="abar" transition:name="ssds-bar">
   <a class="abar__btn" href={`tel:${contact.phoneE164}`}><Icon name="phone" size={18} />Llamar</a>
@@ -18,16 +23,20 @@ import { wa, contact } from '../../data/site.js';
 </div>
 
 <style>
-  .fab { position: fixed; right: max(16px, env(safe-area-inset-right)); bottom: max(16px, env(safe-area-inset-bottom)); z-index: var(--z-fab); display: none; align-items: center; gap: 10px; padding: 12px 18px 12px 14px; border-radius: var(--r-pill); background: var(--wa); color: #062a16; font-family: var(--font-display); font-weight: 700; font-size: 0.92rem; box-shadow: 0 14px 34px -10px rgba(37, 211, 102, 0.7); transform: translateY(140%); opacity: 0; transition: transform 0.6s var(--ease-out), opacity 0.4s, box-shadow 0.5s var(--ease-out); }
-  .fab.is-shown { transform: none; opacity: 1; }
-  .fab:hover { box-shadow: 0 20px 40px -10px rgba(37, 211, 102, 0.8); }
+  .fab { position: fixed; right: max(16px, env(safe-area-inset-right)); bottom: max(16px, env(safe-area-inset-bottom)); z-index: var(--z-fab); display: none; border-radius: var(--r-pill); transform: translateY(140%); opacity: 0; visibility: hidden; pointer-events: none; transition: transform 0.6s var(--ease-out), opacity 0.4s, visibility 0s linear 0.6s; }
+  .fab.is-shown { transform: none; opacity: 1; visibility: visible; pointer-events: auto; transition-delay: 0s; }
+  .fab__in { position: relative; display: inline-flex; align-items: center; gap: 10px; padding: 12px 18px 12px 14px; border-radius: inherit; background: var(--wa); color: #062a16; font-family: var(--font-display); font-weight: 700; font-size: 0.92rem; box-shadow: 0 14px 34px -10px rgba(37, 211, 102, 0.7); transition: box-shadow 0.5s var(--ease-out); }
+  .fab:hover .fab__in { box-shadow: 0 20px 40px -10px rgba(37, 211, 102, 0.8); }
   .fab svg { width: 24px; height: 24px; }
-  .fab__ring { position: absolute; inset: 0; border-radius: inherit; border: 2px solid var(--wa); animation: fab-pulse 2.4s ease-out infinite; pointer-events: none; }
+  .fab__ring { position: absolute; inset: 0; border-radius: inherit; border: 2px solid var(--wa); pointer-events: none; }
+  /* only while shown: on a visibility:hidden element the pulse cannot run on the compositor, so it forced a full
+     main-thread re-layerize of the page on every frame (~3 ms per frame at idle, measured) */
+  .fab.is-shown .fab__ring { animation: fab-pulse 2.4s ease-out infinite; }
   @keyframes fab-pulse { 0% { transform: scale(1); opacity: 0.8; } 100% { transform: scale(1.35); opacity: 0; } }
-  @media (min-width: 600px) { .fab { display: inline-flex; } }
+  @media (min-width: 600px) { .fab { display: flex; } }
 
-  .abar { position: fixed; left: 0; right: 0; bottom: 0; z-index: var(--z-fab); display: grid; grid-template-columns: 1fr 1fr; gap: 1px; padding-bottom: env(safe-area-inset-bottom); background: rgba(6, 13, 31, 0.86); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); border-top: 1px solid rgba(255, 255, 255, 0.08); transform: translateY(110%); transition: transform 0.5s var(--ease-out); }
-  .abar.is-shown { transform: none; }
+  .abar { position: fixed; left: 0; right: 0; bottom: 0; z-index: var(--z-fab); display: grid; grid-template-columns: 1fr 1fr; gap: 1px; padding-bottom: env(safe-area-inset-bottom); background: rgba(6, 13, 31, 0.86); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); border-top: 1px solid rgba(255, 255, 255, 0.08); transform: translateY(110%); visibility: hidden; transition: transform 0.5s var(--ease-out), visibility 0s linear 0.5s; }
+  .abar.is-shown { transform: none; visibility: visible; transition-delay: 0s; }
   .abar__btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: var(--bar-h); font-family: var(--font-display); font-weight: 600; font-size: 0.95rem; color: #fff; }
   .abar__btn svg { color: var(--glow); }
   .abar__btn--wa { color: #062a16; background: var(--wa); }

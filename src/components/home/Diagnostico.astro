@@ -101,7 +101,7 @@ const rays = Array.from({ length: 7 }, (_, i) => {
             <div class="dg-nav">
               <button type="button" class="btn btn--ghost dg-back" data-dg-back disabled>
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5M11 6l-6 6 6 6" /></svg>
-                Atrás
+                <span class="dg-back__t">Atrás</span>
               </button>
               <button type="submit" class="btn btn--primary dg-next" data-dg-next disabled data-magnetic="0.2">
                 <span data-dg-next-lbl>Siguiente</span><Icon name="arrow" size={20} class="arrow" />
@@ -162,12 +162,6 @@ const rays = Array.from({ length: 7 }, (_, i) => {
               <linearGradient id="dg-val-grad" x1="30" y1="0" x2="370" y2="0" gradientUnits="userSpaceOnUse">
                 <stop offset="0" stop-color="#f26a1b" /><stop offset=".55" stop-color="#ff9c5c" /><stop offset="1" stop-color="#ffd79a" />
               </linearGradient>
-              <linearGradient id="dg-needle-grad" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0" stop-color="#ffd79a" /><stop offset=".3" stop-color="#ff7d33" /><stop offset=".31" stop-color="#f4f6fb" /><stop offset="1" stop-color="#c9d3e6" />
-              </linearGradient>
-              <radialGradient id="dg-cap-grad" cx=".4" cy=".35" r=".7">
-                <stop offset="0" stop-color="#3a5896" /><stop offset="1" stop-color="#060d1f" />
-              </radialGradient>
             </defs>
             <g class="dg-g-zones">
               {zoneArcs.map((z) => <path class={`dg-g-zone dg-g-zone--${z.k}`} data-dg-z={z.k} d={z.d} />)}
@@ -181,11 +175,21 @@ const rays = Array.from({ length: 7 }, (_, i) => {
             <g class="dg-g-nums">
               {nums.map((n) => <text class="dg-g-num" x={n.x} y={n.y}>{n.v}</text>)}
             </g>
+          </svg>
+          {/* The needle sits in its own HTML-level <svg> so its endless hum (a CSS rotate on this box) runs on the
+              compositor; an animated SVG child would repaint the dial every frame. The value is set on the inner <g>. */}
+          <svg class="dg-needle-layer" viewBox="0 0 400 232" aria-hidden="true" focusable="false">
+            <defs>
+              <linearGradient id="dg-needle-grad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0" stop-color="#ffd79a" /><stop offset=".3" stop-color="#ff7d33" /><stop offset=".31" stop-color="#f4f6fb" /><stop offset="1" stop-color="#c9d3e6" />
+              </linearGradient>
+              <radialGradient id="dg-cap-grad" cx=".4" cy=".35" r=".7">
+                <stop offset="0" stop-color="#3a5896" /><stop offset="1" stop-color="#060d1f" />
+              </radialGradient>
+            </defs>
             <g data-dg-needle transform={`rotate(-50 ${CX} ${CY})`}>
-              <g class="dg-needle__j">
-                <line class="dg-needle__glow" x1={CX} y1={CY} x2={CX} y2={CY - R + 6} />
-                <path class="dg-needle" d={`M${CX - 3.4} ${CY} L${CX - 0.9} ${CY - R - 2} L${CX + 0.9} ${CY - R - 2} L${CX + 3.4} ${CY} L${CX + 5} ${CY + 24} L${CX - 5} ${CY + 24} Z`} />
-              </g>
+              <line class="dg-needle__glow" x1={CX} y1={CY} x2={CX} y2={CY - R + 6} />
+              <path class="dg-needle" d={`M${CX - 3.4} ${CY} L${CX - 0.9} ${CY - R - 2} L${CX + 0.9} ${CY - R - 2} L${CX + 3.4} ${CY} L${CX + 5} ${CY + 24} L${CX - 5} ${CY + 24} Z`} />
             </g>
             <circle class="dg-cap" cx={CX} cy={CY} r="14" />
             <circle class="dg-cap__dot" cx={CX} cy={CY} r="4" />
@@ -194,7 +198,7 @@ const rays = Array.from({ length: 7 }, (_, i) => {
         </div>
         <div class="dg-read">
           <p class="dg-read__num"><span class="dg-lcd" data-dg-val>0</span><span class="dg-read__of mono">/100</span></p>
-          <p class="dg-read__zone"><span class="sr-only">Prioridad sugerida: </span><span data-dg-zone>En espera</span></p>
+          <p class="dg-read__zone" aria-live="polite" aria-atomic="true"><span class="sr-only">Prioridad sugerida: </span><span data-dg-zone>En espera</span></p>
         </div>
         <div class="dg-leds">
           <span class="dg-leds__lbl mono">Circuitos sugeridos</span>
@@ -235,7 +239,7 @@ const rays = Array.from({ length: 7 }, (_, i) => {
   @media (min-width: 960px) { .dg-head { grid-template-columns: 1.05fr 0.95fr; align-items: end; } }
 
   /* ---------- layout ---------- */
-  .dg-grid { display: grid; gap: 14px; align-items: start; }
+  .dg-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; align-items: start; }   /* minmax(0): the card can never outgrow the screen */
   .dg-main { position: relative; min-width: 0; }
   @media (min-width: 960px) {
     .dg-grid { grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: clamp(24px, 3vw, 44px); }
@@ -245,7 +249,7 @@ const rays = Array.from({ length: 7 }, (_, i) => {
   .dg-card {
     position: relative; border-radius: var(--radius-lg); background: var(--white); border: 1px solid var(--line);
     box-shadow: 0 34px 70px -44px rgba(11, 26, 58, 0.45), 0 1px 0 rgba(11, 26, 58, 0.04);
-    padding: clamp(18px, 3vw, 32px); display: grid; gap: 18px; transform-origin: 50% 50%;
+    padding: clamp(18px, 3vw, 32px); display: grid; grid-template-columns: minmax(0, 1fr); gap: 18px; transform-origin: 50% 50%;
   }
   .dg-card[hidden] { display: none; }
   .dg-card::after {
@@ -290,15 +294,21 @@ const rays = Array.from({ length: 7 }, (_, i) => {
   }
 
   /* steps: stacked in one cell so the card never changes height between questions */
-  .dg-form { display: grid; gap: 22px; }
-  .dg-steps { display: grid; }
-  :global(.js) .dg.is-ready .dg-step:not(.is-active):not(.is-leaving) { display: none; }
+  .dg-form { display: grid; grid-template-columns: minmax(0, 1fr); gap: 22px; }
+  .dg-steps { display: grid; grid-template-columns: minmax(0, 1fr); }
+  /* keyed to html.js (set inline before first paint), not to the script: the page lays out the same before and after
+     initDiagnostico runs, so nothing below jumps (step 0 carries .is-active in the markup) */
+  :global(.js) .dg-step:not(.is-active):not(.is-leaving) { display: none; }
   @media (min-width: 560px) {
-    :global(.js) .dg.is-ready .dg-step { grid-area: 1 / 1; }
-    :global(.js) .dg.is-ready .dg-step:not(.is-active):not(.is-leaving) { display: grid; visibility: hidden; }
+    :global(.js) .dg-step { grid-area: 1 / 1; }
+    :global(.js) .dg-step:not(.is-active):not(.is-leaving) { display: grid; visibility: hidden; }
   }
   :global(html:not(.js)) .dg-steps { gap: 32px; }
   .dg-step { border: 0; margin: 0; padding: 0; min-width: 0; align-content: start; display: grid; }
+  /* base.css's reduced-motion rule gives every element a 0.01ms `all` transition: visibility would then still read
+     'hidden' at the instant go() moves focus into the new step, and focus fell to <body>. Nothing on the chain
+     fieldset → .dg-opts → label (explicit list) → input may transition. */
+  .dg-step, .dg-opts, .dg-step input { transition-property: none; }
   .dg-legend { display: flex; gap: 12px; align-items: baseline; padding: 0; font-family: var(--font-display); font-weight: 700; font-size: clamp(1.3rem, 1.05rem + 0.9vw, 1.75rem); letter-spacing: -0.025em; line-height: 1.15; color: var(--ink); }
   .dg-legend__n { font-size: 0.8rem; font-weight: 600; color: var(--ink-accent); letter-spacing: 0.1em; flex: none; }
   .dg-help { color: var(--muted); font-size: 0.9rem; margin: 6px 0 16px; }
@@ -369,12 +379,19 @@ const rays = Array.from({ length: 7 }, (_, i) => {
   .dg-nojs { display: none; }
   :global(html:not(.js)) .dg-nojs { display: block; }
   :global(html:not(.js)) :is(.dg-nav, .dg-track, .dg-count) { display: none; }
-  @media (max-width: 400px) { .dg-nav .btn { padding: 0 18px; } .dg-next { min-width: 0; flex: 1; } }
+  /* phones: Back becomes a round 48px arrow (its label stays in the accessible name), so 'Ver mi diagnóstico'
+     keeps one line; if a very large font still does not fit, the label wraps instead of pushing the card wider */
+  @media (max-width: 400px) {
+    .dg-nav .btn { padding: 0 18px; white-space: normal; }
+    .dg-nav .dg-back { flex: none; width: 48px; padding: 0; }
+    .dg-back__t { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+    .dg-next { min-width: 0; flex: 1; }
+  }
 
   /* ---------- result ---------- */
   .dg-res {
     position: relative; border-radius: var(--radius-lg); background: var(--white); border: 1px solid var(--line);
-    box-shadow: 0 40px 80px -46px rgba(11, 26, 58, 0.55); padding: clamp(18px, 3vw, 32px); display: grid; gap: 18px;
+    box-shadow: 0 40px 80px -46px rgba(11, 26, 58, 0.55); padding: clamp(18px, 3vw, 32px); display: grid; grid-template-columns: minmax(0, 1fr); gap: 18px;
   }
   .dg-res[hidden] { display: none; }
   .dg-res:focus { outline: none; }
@@ -469,7 +486,15 @@ const rays = Array.from({ length: 7 }, (_, i) => {
   .dg-g-num { fill: #b7c3da; font-family: var(--font-mono); font-size: 15px; font-weight: 500; text-anchor: middle; dominant-baseline: middle; }
   .dg-needle { fill: url(#dg-needle-grad); }
   .dg-needle__glow { stroke: #ff8a3d; stroke-width: 10; stroke-linecap: round; opacity: 0.22; }
-  .dg-needle__j { --amp: calc(0.2 + var(--charge, 0) * 0.9); transform-box: view-box; transform-origin: 200px 206px; animation: dg-jitter 2.4s ease-in-out infinite; }
+  /* the hum rotates the whole overlay box around the pivot (206/232 of the face height): a compositor-only animation.
+     Fixed amplitudes per zone (no var() in the keyframes) so Chrome can always run it off the main thread. */
+  .dg-needle-layer {
+    position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none;
+    transform-origin: 50% 88.793%; animation: dg-jitter-0 2.4s ease-in-out infinite;
+  }
+  .dg-meter[data-zone='lo'] .dg-needle-layer { animation-name: dg-jitter-lo; }
+  .dg-meter[data-zone='mid'] .dg-needle-layer { animation-name: dg-jitter-mid; }
+  .dg-meter[data-zone='hi'] .dg-needle-layer { animation-name: dg-jitter-hi; }
   .dg-cap { fill: url(#dg-cap-grad); stroke: rgba(255, 170, 90, 0.7); stroke-width: 1.5; }
   .dg-cap__dot { fill: var(--glow); }
   .dg-face__flash {
@@ -506,13 +531,17 @@ const rays = Array.from({ length: 7 }, (_, i) => {
     .dg-meter::after {   /* covers the gap between the header and the strip */
       content: ''; position: absolute; left: calc(-1 * var(--gutter)); right: calc(-1 * var(--gutter)); bottom: 100%; height: calc(var(--header-h) + 8px); background: var(--paper);
     }
+    /* when the header slides away (chrome.js .is-hidden) the strip follows it up: translate only, same timing as the header */
+    .dg-meter { transition: translate 0.55s var(--ease-out); }
+    /* !important: GSAP (the [data-reveal] tween) leaves an inline `translate: none` on the element */
+    :global(html.js:has(.hdr.is-hidden)) .dg-meter { translate: 0 calc(-1 * var(--header-h)) !important; }
     .dg-meter__plate { display: contents; }
     .dg-meter__title { grid-area: cap; align-self: end; color: var(--muted); letter-spacing: 0.05em; }
     .dg-meter__sim { grid-area: sim; margin-top: 8px; padding-left: 4px; }
     .dg-face { grid-area: face; border-radius: 12px; }
     .dg-read { grid-area: read; flex-direction: column; align-items: flex-start; gap: 2px; padding: 0; align-self: start; }
     .dg-read__zone { text-align: left; font-size: 1.05rem; }
-    .dg-lcd { font-size: 2.1rem; text-align: left; min-width: 0; }
+    .dg-lcd { font-size: 2.1rem; }   /* keeps min-width 3ch + right-aligned digits: '/100' never moves as the value counts (CLS 0) */
     .dg-leds { grid-area: leds; padding: 0 2px 0 0; border: 0; }
     .dg-leds__lbl { display: none; }
     .dg-leds ul { flex-direction: column; gap: 12px; }
@@ -553,9 +582,14 @@ const rays = Array.from({ length: 7 }, (_, i) => {
   @keyframes dg-blink { 0%, 70% { opacity: 1; } 71%, 100% { opacity: 0.25; } }
   @keyframes dg-glint { 0%, 78% { transform: translateX(-150%) skewX(-18deg); } 100% { transform: translateX(650%) skewX(-18deg); } }
   /* the needle hums a little more the higher it reads */
-  @keyframes dg-jitter { 0%, 100% { rotate: 0deg; } 18% { rotate: calc(var(--amp) * 1deg); } 40% { rotate: calc(var(--amp) * -0.7deg); } 62% { rotate: calc(var(--amp) * 0.5deg); } 84% { rotate: calc(var(--amp) * -0.9deg); } }
-  :global(html.is-lite) .dg-face::after, :global(html.is-lite) .dg-needle__j { animation: none; }
+  @keyframes dg-jitter-0 { 0%, 100% { transform: rotate(0deg); } 18% { transform: rotate(0.2deg); } 40% { transform: rotate(-0.14deg); } 62% { transform: rotate(0.1deg); } 84% { transform: rotate(-0.18deg); } }
+  @keyframes dg-jitter-lo { 0%, 100% { transform: rotate(0deg); } 18% { transform: rotate(0.4deg); } 40% { transform: rotate(-0.28deg); } 62% { transform: rotate(0.2deg); } 84% { transform: rotate(-0.36deg); } }
+  @keyframes dg-jitter-mid { 0%, 100% { transform: rotate(0deg); } 18% { transform: rotate(0.7deg); } 40% { transform: rotate(-0.49deg); } 62% { transform: rotate(0.35deg); } 84% { transform: rotate(-0.63deg); } }
+  @keyframes dg-jitter-hi { 0%, 100% { transform: rotate(0deg); } 18% { transform: rotate(1deg); } 40% { transform: rotate(-0.7deg); } 62% { transform: rotate(0.5deg); } 84% { transform: rotate(-0.9deg); } }
+  .dg.is-away *, .dg.is-away *::before, .dg.is-away *::after { animation-play-state: paused; }   /* off screen (scripts/diagnostico.js) */
+  /* !important: the per-zone animation-name rules above are more specific */
+  :global(html.is-lite) .dg-face::after, :global(html.is-lite) .dg-needle-layer { animation: none !important; }
   @media (prefers-reduced-motion: reduce) {
-    .dg-face::after, .dg-needle__j, .dg-bus__flow, .dg-node.is-current .dg-node__dot::after, .dg-rec { animation: none; }
+    .dg-face::after, .dg-needle-layer, .dg-bus__flow, .dg-node.is-current .dg-node__dot::after, .dg-rec { animation: none !important; }
   }
 </style>

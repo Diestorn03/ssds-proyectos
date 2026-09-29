@@ -29,19 +29,19 @@ const next = [
     <HeroFx tone="b" />
     <div class="container contact__grid">
       <div class="contact__copy">
-        <nav class="contact__crumbs mono" aria-label="Ruta de navegación" data-reveal="up" data-start="top 100%">
+        <nav class="contact__crumbs mono" aria-label="Ruta de navegación">
           <ol><li><a href={`${base}/`}>Inicio</a></li><li><span aria-current="page">Contacto</span></li></ol>
         </nav>
-        <p class="eyebrow" data-reveal="up" data-delay=".05" data-start="top 100%">Contacto</p>
-        <h1 id="contacto-title" data-split="lines" data-delay=".1">Conecta con nuestro <span class="contact__accent">equipo técnico.</span></h1>
-        <p class="lead" data-reveal="up" data-delay=".3" data-start="top 100%">Para cotizaciones, consultas o emergencias técnicas. Respondemos por WhatsApp y coordinamos la visita en Maracay o en cualquier estado del país.</p>
+        <p class="eyebrow">Contacto</p>
+        <h1 id="contacto-title">Conecta con nuestro <span class="contact__accent">equipo técnico.</span></h1>
+        <p class="lead">Para cotizaciones, consultas o emergencias técnicas. Respondemos por WhatsApp y coordinamos la visita en Maracay o en cualquier estado del país.</p>
 
-        <ul class="contact__channels" data-stagger="0.08" data-start="top 100%">
+        <ul class="contact__channels">
           {channels.map((c) => (
             <li>
               <a href={c.href} class:list={['channel', 'wa' in c && 'channel--wa']} data-glow target={'ext' in c ? '_blank' : undefined} rel={'ext' in c ? 'noopener' : undefined}>
                 <span class="channel__icon" aria-hidden="true"><Icon name={c.icon} size={22} /></span>
-                <span class="channel__txt"><strong>{c.t}</strong><span class="channel__v">{c.v}</span></span>
+                <span class="channel__txt"><strong>{c.t}</strong><span class="channel__v">{c.icon === 'mail' ? <Fragment>{c.v.split('@')[0]}<wbr />@{c.v.split('@')[1]}</Fragment> : c.v}</span></span>
                 <Icon name="arrowUpRight" size={18} class="channel__arrow" />
                 <span class="channel__wire" aria-hidden="true"></span>
               </a>
@@ -56,7 +56,7 @@ const next = [
         </ul>
       </div>
 
-      <form class="qform" id="qform" data-reveal="up" data-delay=".2" data-start="top 100%" novalidate>
+      <form class="qform" id="qform" novalidate>
         <span class="qform__wire" aria-hidden="true"><i></i></span>
         <div class="qform__circuit" aria-hidden="true">
           <span class="qform__led"></span>
@@ -77,7 +77,7 @@ const next = [
         </label>
         <label class="field"><span>Ubicación</span><input name="ubicacion" type="text" placeholder="Ciudad y estado" /></label>
         <label class="field"><span>Mensaje <em aria-hidden="true">*</em></span><textarea name="mensaje" rows="4" required placeholder="Describe la instalación, el equipo o la falla"></textarea></label>
-        <p class="qform__error" role="alert" hidden>Completa nombre, servicio y mensaje.</p>
+        <p class="qform__error" id="qform-error" role="alert" hidden>Completa nombre, servicio y mensaje.</p>
         <div class="btn-row qform__actions">
           <button class="btn btn--primary qform__send" type="submit"><Icon name="whatsapp" size={20} />Enviar por WhatsApp</button>
           <button class="btn btn--ghost" type="button" data-mail><Icon name="mail" size={18} />Enviar por correo</button>
@@ -113,16 +113,33 @@ const next = [
   .contact__accent { background: linear-gradient(90deg, #f26a1b 0%, #ff9c5c 45%, #ffd79a 100%); -webkit-background-clip: text; background-clip: text; color: transparent; -webkit-text-fill-color: transparent; padding-right: 0.06em; }
   .contact__copy .lead { margin: 22px 0 32px; max-width: 46ch; color: rgba(244, 246, 251, 0.8); }
 
+  /* entrance: CSS only, so the hero shows on the first paint (no wait for JS, fonts or SplitText) */
+  @media (prefers-reduced-motion: no-preference) {
+    .contact__copy > :not(.contact__channels), .contact__channels > li, .qform { animation: co-in 0.95s var(--ease-out) backwards; animation-delay: calc(var(--d, 0) * 1s); }
+    .contact__copy > .eyebrow { --d: 0.06; }
+    .contact__copy > h1 { --d: 0.12; animation-name: co-drop; animation-duration: 1.2s; }
+    .contact__copy > .lead { --d: 0.3; }
+    .qform { --d: 0.25; }
+    .contact__channels > li:nth-child(1) { --d: 0.4; }
+    .contact__channels > li:nth-child(2) { --d: 0.47; }
+    .contact__channels > li:nth-child(3) { --d: 0.54; }
+    .contact__channels > li:nth-child(4) { --d: 0.61; }
+    .contact__channels > li:nth-child(5) { --d: 0.68; }
+  }
+  @keyframes co-in { from { opacity: 0; transform: translateY(26px); } }
+  @keyframes co-drop { from { transform: translateY(0.3em); clip-path: inset(-0.2em -0.1em 100% -0.1em); } to { transform: none; clip-path: inset(-0.2em -0.1em -0.3em -0.1em); } }
+
   /* channels */
   .contact__channels { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
   @media (min-width: 560px) and (max-width: 999px) { .contact__channels { grid-template-columns: 1fr 1fr; } .contact__channels > li:last-child { grid-column: 1 / -1; } }
-  .channel { position: relative; overflow: hidden; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 14px; min-height: 72px; padding: 12px 16px 12px 12px; border-radius: var(--radius); border: 1px solid var(--line); background: linear-gradient(160deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.02)); transition: border-color 0.4s, transform 0.5s var(--ease-out), box-shadow 0.5s var(--ease-out); }
+  .channel { position: relative; overflow: hidden; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 14px; min-height: 72px; padding: 12px 16px 12px 12px; border-radius: var(--radius); border: 1px solid var(--line); background: linear-gradient(160deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.02)), rgba(11, 26, 58, 0.92); transition: border-color 0.4s, transform 0.5s var(--ease-out), box-shadow 0.5s var(--ease-out); }
   .channel:not(.channel--static):hover { border-color: color-mix(in srgb, var(--accent) 55%, var(--line)); transform: translateX(4px); box-shadow: 0 18px 40px -24px rgba(242, 106, 27, 0.55); }
-  .channel--wa { border-color: rgba(37, 211, 102, 0.35); background: linear-gradient(160deg, rgba(37, 211, 102, 0.12), rgba(255, 255, 255, 0.02) 70%); }
+  .channel--wa { border-color: rgba(37, 211, 102, 0.35); background: linear-gradient(160deg, rgba(37, 211, 102, 0.12), rgba(255, 255, 255, 0.02) 70%), rgba(11, 26, 58, 0.92); }
+  /* opaque base (no blur): the hero rays and their pulses never cross the text */
   .channel--wa:hover { border-color: rgba(37, 211, 102, 0.7) !important; box-shadow: 0 18px 40px -22px rgba(37, 211, 102, 0.5) !important; }
   .channel__txt { display: grid; min-width: 0; }
   .channel strong { font-family: var(--font-display); font-size: 1rem; line-height: 1.3; }
-  .channel__v { color: var(--muted); font-size: 0.95rem; overflow-wrap: anywhere; }
+  .channel__v { color: var(--muted); font-size: 0.95rem; overflow-wrap: break-word; } /* the e-mail wraps at its <wbr> before the @ */
   .channel__note { color: var(--amber-400); font-family: var(--font-mono); font-size: 0.75rem; letter-spacing: 0.06em; text-transform: uppercase; margin-top: 4px; }
   .channel__icon { position: relative; display: grid; place-items: center; width: 48px; height: 48px; border-radius: 13px; background: rgba(255, 255, 255, 0.07); color: var(--orange-400); transition: background-color 0.4s, color 0.4s; }
   .channel__icon::after { content: ''; position: absolute; inset: 0; border-radius: inherit; border: 1.5px solid currentColor; opacity: 0; }
@@ -169,7 +186,7 @@ const next = [
   .field select option { color: #111; }
   .field textarea { resize: vertical; min-height: 116px; }
   .field input:focus, .field select:focus, .field textarea:focus { outline: none; border-color: var(--orange-400); background-color: rgba(255, 255, 255, 0.08); box-shadow: 0 0 0 4px rgba(242, 106, 27, 0.18), 0 0 24px -6px rgba(255, 140, 60, 0.6); }
-  .field input:user-invalid, .field select:user-invalid, .field textarea:user-invalid { border-color: #ff6b6b; }
+  .field input:user-invalid, .field select:user-invalid, .field textarea:user-invalid, .field [aria-invalid='true'] { border-color: #ff6b6b; }
   .qform__error { color: #ffb4b4; font-size: 0.9rem; }
   .qform__actions { margin-top: 4px; }
   .qform__actions > .btn { flex: 1 1 auto; }
@@ -195,10 +212,26 @@ const next = [
     if (!form) return;
     const err = form.querySelector('.qform__error') as HTMLElement;
     const status = form.querySelector('[data-status]') as HTMLElement;
+    const required = [...form.querySelectorAll<HTMLInputElement>('[required]')];
+    const names: Record<string, string> = { nombre: 'nombre', servicio: 'servicio', mensaje: 'mensaje' };
+    const list = (a: string[]) => (a.length > 1 ? `${a.slice(0, -1).join(', ')} y ${a[a.length - 1]}` : a[0]);
+    // each empty required field is flagged and points at the error text (screen readers get the hint on focus)
+    const flag = (el: HTMLInputElement, bad: boolean) => {
+      if (bad) { el.setAttribute('aria-invalid', 'true'); el.setAttribute('aria-describedby', err.id); }
+      else { el.removeAttribute('aria-invalid'); el.removeAttribute('aria-describedby'); }
+    };
     const compose = () => {
       const f = new FormData(form);
       const v = (k: string) => String(f.get(k) || '').trim();
-      if (!v('nombre') || !v('servicio') || !v('mensaje')) { err.hidden = false; form.reportValidity(); return null; }
+      const missing = required.filter((el) => !el.value.trim());
+      required.forEach((el) => flag(el, missing.includes(el)));
+      if (missing.length) {
+        err.textContent = `Falta completar: ${list(missing.map((el) => names[el.name] || el.name))}.`;
+        err.hidden = false;
+        form.reportValidity();
+        missing[0].focus();
+        return null;
+      }
       err.hidden = true;
       return [
         `Hola SSD&S, soy ${v('nombre')}${v('empresa') ? ` de ${v('empresa')}` : ''}.`,
@@ -217,9 +250,9 @@ const next = [
       if (msg) location.href = `mailto:${contact.email}?subject=${encodeURIComponent('Solicitud de servicio — sitio web')}&body=${encodeURIComponent(msg)}`;
     };
     // the request "circuit": one segment per required field filled
-    const required = [...form.querySelectorAll<HTMLInputElement>('[required]')];
     let last = -1;
     const onInput = () => {
+      required.forEach((el) => { if (el.hasAttribute('aria-invalid') && el.value.trim()) flag(el, false); });
       const n = required.filter((el) => el.value.trim()).length;
       if (n === last) return;
       last = n;

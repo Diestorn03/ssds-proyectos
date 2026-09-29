@@ -58,7 +58,7 @@ const arc = (a: number, b: number) => { const [x1, y1] = pt(a, 40); const [x2, y
                 <span class="tb-sys"><i class="tb-sys__led"></i><span class="tb-sys__off">En espera</span><span class="tb-sys__mid">Energizando</span><span class="tb-sys__on">Energizado</span></span>
               </span>
               <p class="tb-load">
-                <span class="tb-load__label">Carga del sistema</span>
+                <span class="tb-load__label">Carga<span class="tb-load__more"> del sistema</span></span>
                 <span class="tb-load__sim">Simulación ilustrativa</span>
                 <span class="tb-load__bar" aria-hidden="true"><i></i></span>
               </p>
@@ -78,7 +78,7 @@ const arc = (a: number, b: number) => { const [x1, y1] = pt(a, 40); const [x2, y
             <div class="tb-rail">
               <span class="tb-rail__din" aria-hidden="true"></span>
               {services.map((s, i) => (
-                <button type="button" class="tb-brk" data-i={i + 1} aria-pressed="true" aria-controls={`tb-card-${s.code}`}>
+                <button type="button" class="tb-brk" data-i={i + 1} data-on="true" aria-controls={`tb-card-${s.code}`}>
                   <span class="tb-brk__body" aria-hidden="true">
                     <span class="tb-brk__screws"><i></i><i class="tb-brk__term"></i><i></i></span>
                     <span class="tb-brk__face">
@@ -89,7 +89,7 @@ const arc = (a: number, b: number) => { const [x1, y1] = pt(a, 40); const [x2, y
                     </span>
                     <span class="tb-brk__screws"><i></i><i></i><i></i></span>
                   </span>
-                  <span class="tb-brk__plate"><span class="tb-brk__code mono"><span class="sr-only">Circuito </span>{s.code}</span><span class="tb-brk__name">{plate(s.short)}</span></span>
+                  <span class="tb-brk__plate"><span class="tb-brk__code mono"><span class="sr-only">Circuito </span>{s.code}</span><span class="tb-brk__name">{plate(s.short)}<span class="sr-only">: ver detalle</span></span></span>
                 </button>
               ))}
             </div>
@@ -230,7 +230,7 @@ const arc = (a: number, b: number) => { const [x1, y1] = pt(a, 40); const [x2, y
   .tb-panel { width: 100%; display: grid; justify-items: center; }
   .tb-cab {
     --cw: min(100% / 1.3, 460px);
-    position: relative; width: var(--cw); aspect-ratio: 25 / 24; container-type: inline-size;
+    position: relative; width: var(--cw); aspect-ratio: 25 / 24; container: tb-cab / inline-size;
     margin-left: calc(var(--cw) * 0.26); /* room for the open door */
     border-radius: 2.6cqw; perspective: 3200px;
     background: linear-gradient(150deg, #f3f5f8 0%, #dde2e9 55%, #cbd2dc 100%);
@@ -256,9 +256,10 @@ const arc = (a: number, b: number) => { const [x1, y1] = pt(a, 40); const [x2, y
   .tb-np { display: grid; gap: 1.2cqw; padding: 1.8cqw 2.8cqw; border-radius: 1cqw; background: linear-gradient(180deg, #13295a, var(--navy-900)); color: #fff; box-shadow: 0 0.6cqw 1.2cqw -0.6cqw rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.15); }
   .tb-np b { font: italic 800 max(14px, 4.6cqw) / 1 var(--font-display); letter-spacing: -0.02em; }
   .tb-np b i, .tb-door__plate b i { color: var(--orange-500); }
-  .tb-sys { display: inline-flex; align-items: center; gap: 1.4cqw; font: 600 max(12px, 2.5cqw) / 1 var(--font-mono); letter-spacing: 0.06em; text-transform: uppercase; color: #c9d3e6; white-space: nowrap; }
-  .tb-sys__led { width: max(8px, 2.2cqw); height: max(8px, 2.2cqw); border-radius: 50%; flex: none; background: var(--led-on); box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.25), 0 0 10px rgba(34, 197, 94, 0.85); transition: background 0.4s, box-shadow 0.4s; }
-  .tb-sys__off, .tb-sys__mid { display: none; }
+  .tb-sys { display: inline-grid; grid-template-columns: auto auto; justify-content: start; align-items: center; column-gap: 1.4cqw; font: 600 max(12px, 2.5cqw) / 1 var(--font-mono); letter-spacing: 0.06em; text-transform: uppercase; color: #c9d3e6; white-space: nowrap; }
+  .tb-sys__led { grid-column: 1; width: max(8px, 2.2cqw); height: max(8px, 2.2cqw); border-radius: 50%; flex: none; background: var(--led-on); box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.25), 0 0 10px rgba(34, 197, 94, 0.85); transition: background 0.4s, box-shadow 0.4s; }
+  .tb-sys__off, .tb-sys__mid, .tb-sys__on { grid-area: 1 / 2; }
+  .tb-sys__off, .tb-sys__mid { visibility: hidden; }
   .tb-load { display: grid; gap: 0.6cqw; margin: 0; min-width: 0; text-align: right; }
   .tb-load__label { font: 600 max(12px, 2.6cqw) / 1.15 var(--font-body); color: var(--ink); }
   .tb-load__sim { font: 500 max(12px, 2.3cqw) / 1.2 var(--font-body); color: var(--ink-2); }
@@ -287,13 +288,13 @@ const arc = (a: number, b: number) => { const [x1, y1] = pt(a, 40); const [x2, y
   }
 
   /* DIN rail + 3 breakers */
-  .tb-rail { position: relative; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 2.6cqw; align-content: center; align-items: start; }
+  .tb-rail { position: relative; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 2.6cqw; align-content: center; align-items: stretch; }
   .tb-rail__din {
     position: absolute; left: -1.6cqw; right: -1.6cqw; top: 11.5cqw; height: 6.4cqw; border-radius: 0.4cqw;
     background: repeating-linear-gradient(90deg, transparent 0 4cqw, rgba(11, 26, 58, 0.18) 4cqw 6.2cqw) 0 50% / 100% 34% no-repeat, linear-gradient(180deg, #f4f6f9, #aab3bf 30%, #e3e7ec 55%, #9aa4b1);
     box-shadow: 0 0.8cqw 1.4cqw -0.6cqw rgba(11, 26, 58, 0.45);
   }
-  .tb-brk { position: relative; display: grid; justify-items: stretch; gap: 2cqw; min-width: 0; border-radius: 1.4cqw; text-align: center; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+  .tb-brk { position: relative; display: grid; grid-template-rows: auto 1fr; justify-items: stretch; gap: 2cqw; min-width: 0; border-radius: 1.4cqw; text-align: center; cursor: pointer; -webkit-tap-highlight-color: transparent; }
   .tb-brk:focus-visible { outline: 3px solid var(--orange-600); outline-offset: 1cqw; }
   .tb-brk__body {
     position: relative; display: grid; grid-template-rows: auto 1fr auto; height: 30cqw;
@@ -328,7 +329,7 @@ const arc = (a: number, b: number) => { const [x1, y1] = pt(a, 40); const [x2, y
   .tb-brk__mk-off { width: 2.4cqw; height: 2.4cqw; border-radius: 50%; border: 0.6cqw solid #1f8f4d; }
   .tb-brk__burst { position: absolute; left: 50%; top: 22%; width: 16cqw; height: 16cqw; margin: -8cqw 0 0 -8cqw; overflow: visible; pointer-events: none; fill: #fff; stroke: #ffb454; stroke-width: 2.4; stroke-linecap: round; opacity: 0; }
   .tb-brk__plate {
-    display: grid; gap: 0.6cqw; padding: 1.4cqw 0.6cqw 1.6cqw; border-radius: 1cqw;
+    display: grid; align-content: center; gap: 0.6cqw; padding: 1.4cqw 0.6cqw 1.6cqw; border-radius: 1cqw;
     background: linear-gradient(180deg, #13295a, var(--navy-900)); color: #fff;
     box-shadow: 0 0.8cqw 1.4cqw -0.8cqw rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.14);
     transition: box-shadow 0.4s;
@@ -338,10 +339,20 @@ const arc = (a: number, b: number) => { const [x1, y1] = pt(a, 40); const [x2, y
   .tb-brk:hover .tb-brk__plate, .tb-brk.is-hover .tb-brk__plate { box-shadow: 0 0 0 2px var(--orange-500), 0 1.2cqw 2.4cqw -0.8cqw rgba(242, 106, 27, 0.6); }
   .tb-brk:hover .tb-brk__lever, .tb-brk.is-hover .tb-brk__lever { transform: translate3d(0, 0, 0) rotateX(16deg) scale(1.05); }
   /* OFF */
-  .tb-brk[aria-pressed='false'] .tb-brk__lever { transform: translate3d(0, 6.4cqw, 0) rotateX(-16deg); }
-  .tb-brk[aria-pressed='false']:hover .tb-brk__lever, .tb-brk[aria-pressed='false'].is-hover .tb-brk__lever { transform: translate3d(0, 5.2cqw, 0) rotateX(-8deg); }
-  .tb-brk[aria-pressed='false'] .tb-brk__lever i { opacity: 0.2; }
-  .tb-brk[aria-pressed='false'] .tb-brk__led { background: var(--led-off); box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.35); transition-delay: 0s; }
+  .tb-brk[data-on='false'] .tb-brk__lever { transform: translate3d(0, 6.4cqw, 0) rotateX(-16deg); }
+  .tb-brk[data-on='false']:hover .tb-brk__lever, .tb-brk[data-on='false'].is-hover .tb-brk__lever { transform: translate3d(0, 5.2cqw, 0) rotateX(-8deg); }
+  .tb-brk[data-on='false'] .tb-brk__lever i { opacity: 0.2; }
+  .tb-brk[data-on='false'] .tb-brk__led { background: var(--led-off); box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.35); transition-delay: 0s; }
+
+  /* small cabinet (desktop pin on short laptop windows, < ~340 px): the 12 px text floor stops scaling, so the breakers
+     get shorter and the top row more compact; the rail then clears both ducts (wires re-measure on refresh) */
+  @container tb-cab (max-width: 340px) {
+    .tb-cab__top { gap: 2cqw; }
+    .tb-np { padding-inline: 2cqw; }
+    .tb-load__more { display: none; }
+    .tb-brk__body { height: 25cqw; }
+    .tb-rail__din { top: 9cqw; }
+  }
 
   /* ---------- door (static: open; desktop pin: swings open with the scroll) ---------- */
   .tb-door { position: absolute; inset: 0; border-radius: inherit; transform-origin: 0 50%; transform-style: preserve-3d; transform: rotateY(-100deg); pointer-events: none; }
@@ -378,9 +389,11 @@ const arc = (a: number, b: number) => { const [x1, y1] = pt(a, 40); const [x2, y
   .tb-card__top { display: flex; align-items: center; justify-content: space-between; gap: 8px 12px; flex-wrap: wrap; }
   .tb-card__kicker { display: inline-flex; align-items: center; gap: 10px; margin: 0; font-size: var(--step--1); font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--tb-ink-orange); }
   .tb-card__code { display: inline-grid; place-items: center; min-width: 32px; height: 26px; padding: 0 6px; border-radius: 6px; background: var(--navy-900); color: var(--orange-300); font-weight: 700; letter-spacing: 0.06em; }
-  .tb-card__state { display: none; align-items: center; gap: 7px; font-size: 0.75rem; letter-spacing: 0.08em; text-transform: uppercase; color: #15803d; }
+  .tb-card__state { display: none; grid-template-columns: auto auto; align-items: center; column-gap: 7px; font-size: 0.75rem; letter-spacing: 0.08em; text-transform: uppercase; color: #15803d; }
   .tb-card__state i { width: 8px; height: 8px; border-radius: 50%; background: var(--led-on); box-shadow: 0 0 8px rgba(34, 197, 94, 0.8); transition: background 0.3s, box-shadow 0.3s; }
-  .tb-card__st-off { display: none; }
+  /* both labels share one cell (the width never changes when a card energizes: no layout shift) */
+  .tb-card__st-off, .tb-card__st-on { grid-area: 1 / 2; }
+  .tb-card__st-off { visibility: hidden; }
   .tb-card__name { font-size: clamp(1.4rem, 1.1rem + 0.9vw, 1.85rem); line-height: 1.1; letter-spacing: -0.025em; max-width: 20ch; }
   .tb-card__sum { color: var(--muted); font-size: 0.98rem; line-height: 1.55; }
   .tb-card__items { list-style: none; display: grid; gap: 8px; font-size: 0.95rem; font-weight: 500; line-height: 1.35; }
@@ -420,7 +433,7 @@ const arc = (a: number, b: number) => { const [x1, y1] = pt(a, 40); const [x2, y
     .tb-brk__win { width: 26px; height: 34px; border-radius: 4px; perspective: 120px; }
     .tb-brk__lever { left: 3px; right: 3px; top: 3px; height: 14px; border-radius: 3px; }
     .tb-brk__lever i { top: 2px; height: 2px; }
-    .tb-brk[aria-pressed='false'] .tb-brk__lever, .tb-brk[aria-pressed='false']:hover .tb-brk__lever { transform: translate3d(0, 14px, 0) rotateX(-16deg); }
+    .tb-brk[data-on='false'] .tb-brk__lever, .tb-brk[data-on='false']:hover .tb-brk__lever { transform: translate3d(0, 14px, 0) rotateX(-16deg); }
     .tb-brk__marks { left: 2px; padding-block: 4px; }
     .tb-brk__mk-on { width: 2px; height: 7px; }
     .tb-brk__mk-off { width: 7px; height: 7px; border-width: 2px; }
@@ -444,7 +457,7 @@ const arc = (a: number, b: number) => { const [x1, y1] = pt(a, 40); const [x2, y
 
   /* =====================================================================
      TOUCH / < 768 (pin mode, motion allowed): compact board sticky on top, cards scroll under it.
-     tablero.js sets aria-pressed / .is-active / .is-past / .is-on; this CSS does the motion.
+     tablero.js sets data-on / .is-active / .is-past / .is-on; this CSS does the motion.
      ===================================================================== */
   @media (max-width: 767px) and (prefers-reduced-motion: no-preference), (pointer: coarse) and (prefers-reduced-motion: no-preference) {
     :global(html.js) .tb--pin .tb__stage { grid-template-columns: minmax(0, 1fr); grid-template-areas: "titles" "intro" "panel" "deck" "foot"; }
@@ -461,15 +474,16 @@ const arc = (a: number, b: number) => { const [x1, y1] = pt(a, 40); const [x2, y
     :global(html.js) .tb--pin .tb__deck { grid-template-columns: minmax(0, 1fr); max-width: 640px; width: 100%; margin-inline: auto; margin-top: 20px; gap: 20px; }
     :global(html.js) .tb--pin .tb-card:last-child { grid-column: auto; }
     :global(html.js) .tb--pin .tb__foot { max-width: 640px; width: 100%; margin-inline: auto; }
+    :global(html.js) .tb--pin .tb__head { max-width: 640px; width: 100%; margin-inline: auto; }
     :global(html.js) .tb--pin .tb-card { scroll-margin-top: 0; }
     /* a closed breaker's plate glows */
-    :global(html.js) .tb--pin .tb-brk[aria-pressed='true'] .tb-brk__plate { box-shadow: 0 0 0 1.5px rgba(255, 140, 60, 0.9), 0 6px 16px -6px rgba(242, 106, 27, 0.8); transition: box-shadow 0.4s 0.2s; }
+    :global(html.js) .tb--pin .tb-brk[data-on='true'] .tb-brk__plate { box-shadow: 0 0 0 1.5px rgba(255, 140, 60, 0.9), 0 6px 16px -6px rgba(242, 106, 27, 0.8); transition: box-shadow 0.4s 0.2s; }
     :global(html.js) .tb--pin .tb-card:not(.is-active):not(.is-past) .tb-card__rail { transform: scaleY(0); }
     :global(html.js) .tb--pin .tb-card:not(.is-active):not(.is-past) .tb-card__chk path { stroke-dashoffset: 1; }
     :global(html.js) .tb--pin .tb-card:not(.is-active):not(.is-past) .tb-card__state { color: var(--ink-2); }
     :global(html.js) .tb--pin .tb-card:not(.is-active):not(.is-past) .tb-card__state i { background: var(--led-off); box-shadow: none; }
-    :global(html.js) .tb--pin .tb-card:not(.is-active):not(.is-past) .tb-card__st-on { display: none; }
-    :global(html.js) .tb--pin .tb-card:not(.is-active):not(.is-past) .tb-card__st-off { display: inline; }
+    :global(html.js) .tb--pin .tb-card:not(.is-active):not(.is-past) .tb-card__st-on { visibility: hidden; }
+    :global(html.js) .tb--pin .tb-card:not(.is-active):not(.is-past) .tb-card__st-off { visibility: visible; }
     :global(html.js) .tb--pin .tb-card.is-active .tb-card__in { border-color: color-mix(in srgb, var(--orange-500) 55%, var(--line)); box-shadow: 0 30px 60px -40px rgba(242, 106, 27, 0.55); }
     :global(html.js) .tb--pin .tb-card__items li:nth-child(2) .tb-card__chk path { transition-delay: 0.12s; }
     :global(html.js) .tb--pin .tb-card__items li:nth-child(3) .tb-card__chk path { transition-delay: 0.24s; }
@@ -477,12 +491,12 @@ const arc = (a: number, b: number) => { const [x1, y1] = pt(a, 40); const [x2, y
 
   /* shared by both pin gates: board states driven by tablero.js */
   @media (prefers-reduced-motion: no-preference) {
-    :global(html.js) .tb--pin .tb-card__state { display: inline-flex; }
+    :global(html.js) .tb--pin .tb-card__state { display: inline-grid; }
     :global(html.js) .tb--pin:not(.is-on) .tb-sys__led { background: #f2a31b; box-shadow: 0 0 8px rgba(242, 163, 27, 0.8); animation: tb-blink 1.6s steps(2, jump-none) infinite; }
-    :global(html.js) .tb--pin:not(.is-on) .tb-sys__on { display: none; }
-    :global(html.js) .tb--pin:not(.is-on):not(.is-live) .tb-sys__off, :global(html.js) .tb--pin.is-live:not(.is-on) .tb-sys__mid { display: inline; }
-    :global(html.js) .tb--pin .tb-brk[aria-pressed='true'] .tb-brk__burst { animation: tb-burst 0.6s var(--ease-out) 0.12s both; }
-    :global(html.js) .tb--pin .tb-brk[aria-pressed='true'] .tb-brk__body { animation: tb-jolt 0.36s ease-out 0.1s; }
+    :global(html.js) .tb--pin:not(.is-on) .tb-sys__on { visibility: hidden; }
+    :global(html.js) .tb--pin:not(.is-on):not(.is-live) .tb-sys__off, :global(html.js) .tb--pin.is-live:not(.is-on) .tb-sys__mid { visibility: visible; }
+    :global(html.js) .tb--pin .tb-brk[data-on='true'] .tb-brk__burst { animation: tb-burst 0.6s var(--ease-out) 0.12s both; }
+    :global(html.js) .tb--pin .tb-brk[data-on='true'] .tb-brk__body { animation: tb-jolt 0.36s ease-out 0.1s; }
     :global(html.js) .tb--pin.is-on .tb-brk__led { animation: tb-led 2.4s ease-in-out infinite; }
     :global(html.js) .tb--pin.is-on .tb-brk:nth-child(3) .tb-brk__led { animation-delay: 0.3s; }
     :global(html.js) .tb--pin.is-on .tb-brk:nth-child(4) .tb-brk__led { animation-delay: 0.6s; }
@@ -535,8 +549,9 @@ const arc = (a: number, b: number) => { const [x1, y1] = pt(a, 40); const [x2, y
     .tb-wire__halo { stroke: rgba(242, 106, 27, 0.16); stroke-width: 10; }
     .tb-wire__live { stroke: url(#tb-grad); stroke-width: 2.8; }
     .tb-wire__comet { stroke: #fff6e0; stroke-width: 4; opacity: 0; }
-    .tb-wire__flow { stroke: #fff4dc; stroke-width: 1.8; stroke-dasharray: 2 16; opacity: 0; transition: opacity 0.5s; animation: tb-flow 0.9s linear infinite; }
-    .tb-wire.is-live .tb-wire__flow { opacity: 0.95; }
+    .tb-wire__flow { stroke: #fff4dc; stroke-width: 1.8; stroke-dasharray: 2 16; opacity: 0; transition: opacity 0.5s; }
+    /* the dash flow (stroke-dashoffset = main-thread paint) only runs on live circuits */
+    .tb-wire.is-live .tb-wire__flow { opacity: 0.95; animation: tb-flow 0.9s linear infinite; }
     :global(html.js) .tb--pin.is-on .tb-wire__flow { animation-duration: 0.45s; stroke: #fff; }
     .tb-wire__term { fill: #f4f6fb; stroke: rgba(11, 26, 58, 0.35); stroke-width: 1.5; transition: fill 0.3s, stroke 0.3s; }
     .tb-wire.is-live .tb-wire__term { fill: var(--orange-500); stroke: #ffd79a; stroke-width: 2.5; }
@@ -554,7 +569,9 @@ const arc = (a: number, b: number) => { const [x1, y1] = pt(a, 40); const [x2, y
     :global(html.js) .tb--pin .tb__skip { display: flex; width: fit-content; margin-top: 1vh; color: var(--muted); font-size: 0.85rem; }
     :global(html.js) .tb--pin:not([data-step='0']) .tb__intro { opacity: 0; transform: translate3d(0, -24px, 0); pointer-events: none; }
 
-    :global(html.js) .tb--pin .tb__deck { grid-area: deck; display: grid; grid-template-columns: minmax(0, 1fr); margin: 0; padding-top: 30px; gap: 0; align-self: center; align-items: start; max-width: 600px; width: 100%; z-index: 3; }
+    /* the deck sits over the intro copy (same cell): it lets clicks through ("Saltar el tablero" at the intro stage);
+       the active / past cards opt back in below */
+    :global(html.js) .tb--pin .tb__deck { grid-area: deck; display: grid; grid-template-columns: minmax(0, 1fr); margin: 0; padding-top: 30px; gap: 0; align-self: center; align-items: start; max-width: 600px; width: 100%; z-index: 3; pointer-events: none; }
     :global(html.js) .tb--pin .tb-card { grid-area: 1 / 1; grid-column: 1; --depth: 0; transform-origin: 50% 0; }
     :global(html.js) .tb--pin .tb-card__in { gap: min(12px, 1.5vh); padding: min(28px, 3.4vh) min(30px, 3.6vh) min(26px, 3.2vh) calc(min(30px, 3.6vh) + 6px); box-shadow: 0 40px 80px -50px rgba(11, 26, 58, 0.55), 0 0 0 1px rgba(11, 26, 58, 0.04); }
     :global(html.js) .tb--pin .tb-card__name { font-size: min(1.85rem, 3.8vh); }
@@ -606,6 +623,7 @@ const arc = (a: number, b: number) => { const [x1, y1] = pt(a, 40); const [x2, y
     .tb-prog__bars i.is-on span { color: var(--tb-ink-orange); }
     :global(html.js) .tb--pin.is-on .tb-prog { opacity: 0; transform: translate3d(0, -12px, 0); }
     :global(html.js) .tb--pin .tb-final { width: 100%; max-width: 520px; flex-wrap: nowrap; padding: 10px 10px 10px 18px; gap: 14px; border-radius: 18px; }
+    :global(html.js) .tb--pin .tb-final::before { top: auto; bottom: 7px; transform: rotate(-2.5deg); opacity: 0.4; }
     :global(html.js) .tb--pin .tb-final__txt { font-size: 0.9rem; gap: 10px; }
     :global(html.js) .tb--pin .tb-final__row { flex: none; }
     :global(html.js) .tb--pin .tb-final__all { display: none; }

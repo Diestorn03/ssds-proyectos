@@ -48,7 +48,16 @@ export function initLightbox(dlg, links, { gsap, env, getLenis }) {
   function fill(k) {
     i = (k + n) % n;
     const a = links[i], d = a.dataset, t = thumb(i);
-    img.src = t?.currentSrc || t?.src || '';
+    // the thumbnail's cached file first (the morph starts at once), then the full file (the src attribute, 640w;
+    // the grid may show the 320w one from its srcset) swapped in once decoded, so it never flashes blank
+    const full = t?.src || '', cur = t?.currentSrc || full;
+    img.src = cur;
+    img.loading = 'eager'; // the markup's placeholder is lazy so that the closed dialog fetches nothing
+    if (full && full !== cur) {
+      const hi = new Image();
+      hi.src = full;
+      hi.decode().then(() => { if (links[i] === a) img.src = full; }, () => {});
+    }
     img.alt = `Publicación de Instagram: ${d.title}`;
     title.textContent = d.title;
     time.textContent = d.date;
@@ -117,7 +126,8 @@ export function initLightbox(dlg, links, { gsap, env, getLenis }) {
   }
 
   function go(d) {
-    if (!isOpen || closing || n < 2) return;
+    if (!isOpen || closing || n < 2 || !d) return;
+    const s = Math.sign(d) * 60; // Home/End jump far, but the slide is always one step long
     nav?.kill();
     dlg.querySelectorAll('.lb__ghost').forEach((g) => g.remove());
     let ghost = null;
@@ -132,8 +142,8 @@ export function initLightbox(dlg, links, { gsap, env, getLenis }) {
     live.textContent = `${i + 1} de ${n}: ${links[i].dataset.title}`;
     if (env.reduced) return;
     nav = gsap.timeline({ defaults: { ease: 'expo.out' }, onComplete: () => ghost.remove() });
-    nav.to(ghost, { x: -d * 60, opacity: 0, duration: 0.4, ease: 'power2.out' }, 0)
-      .fromTo(img, { x: d * 60, opacity: 0 }, { x: 0, opacity: 1, duration: 0.55 }, 0)
+    nav.to(ghost, { x: -s, opacity: 0, duration: 0.4, ease: 'power2.out' }, 0)
+      .fromTo(img, { x: s, opacity: 0 }, { x: 0, opacity: 1, duration: 0.55 }, 0)
       .fromTo(panel.children, { opacity: 0, y: 12 }, { opacity: 1, y: 0, duration: 0.5, stagger: 0.035, clearProps: 'transform' }, 0.05);
   }
 

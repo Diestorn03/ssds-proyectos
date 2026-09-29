@@ -76,7 +76,7 @@ const routeCities = [
   ['Porlamar', 'Nueva Esparta', 10.9577, -63.8697, 'r'],
   ['Maturín', 'Monagas', 9.7457, -63.1832, 'r'],
   ['San Cristóbal', 'Táchira', 7.7669, -72.225, 'r'],
-  ['Ciudad Guayana', 'Bolívar', 8.3, -62.7, 'b'],
+  ['Ciudad Guayana', 'Bolívar', 8.3, -62.7, 'r'], // 'r': a label below ran into San Fernando de Apure's
   ['Puerto Ayacucho', 'Amazonas', 5.6639, -67.6236, 'r'],
 ];
 const cities = [

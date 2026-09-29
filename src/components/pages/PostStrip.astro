@@ -30,7 +30,7 @@ const fmt = (d: string) => new Date(d + 'T12:00:00').toLocaleDateString('es-VE',
       <li class="ps__item">
         <a class="ps__card" href={postUrl(p.code)} target="_blank" rel="noopener" aria-label={`${p.title} — ver publicación en Instagram`} data-tilt="4">
           <span class="ps__media">
-            <img src={`${base}/ig/${p.code}.webp`} width="640" height="811" alt="" loading="lazy" decoding="async" />
+            <img src={`${base}/ig/${p.code}.webp`} srcset={`${base}/ig/${p.code}-320.webp 320w, ${base}/ig/${p.code}.webp 640w`} sizes="(min-width: 900px) 300px, clamp(236px, 72vw, 300px)" width="640" height="811" alt="" loading="lazy" decoding="async" />
             {p.reel && <span class="ps__reel mono"><Icon name="play" size={12} />Reel</span>}
           </span>
           <span class="ps__body">
@@ -113,20 +113,29 @@ const fmt = (d: string) => new Date(d + 'T12:00:00').toLocaleDateString('es-VE',
 
 <script>
   import { onPage } from '../../scripts/engine.js';
-  onPage(({ gsap, env }) => {
+  onPage(({ gsap, env, onRefresh }) => {
     const root = document.querySelector<HTMLElement>('[data-ps]');
     if (!root) return;
     const strip = root.querySelector<HTMLElement>('[data-ps-strip]')!;
     const items = [...strip.children] as HTMLElement[];
     const [prev, next] = [...root.querySelectorAll<HTMLButtonElement>('.ps__btn')];
 
-    // ends reached → disable the matching button; both visible → the row fits, hide the controls
+    // does the row fit without scrolling? Decided from layout math on refresh (load / resize), never from what is
+    // visible: the cards' sweep-in moves them, and flipping the "fits" layout mid-view was a layout shift.
+    const fitCheck = () => {
+      // (same rule the controls use: every card, at its natural width, fully inside the strip's box)
+      const cs = getComputedStyle(strip);
+      const basis = Math.min(300, Math.max(236, window.innerWidth * 0.72)); // .ps__item flex-basis
+      const gap = parseFloat(cs.columnGap) || 16;
+      root.toggleAttribute('data-fits', parseFloat(cs.paddingLeft) + items.length * basis + (items.length - 1) * gap <= strip.clientWidth + 1);
+    };
+    fitCheck();
+    onRefresh(fitCheck);
+    // ends reached → disable the matching button (state only, no layout change)
     const seen = new Set<Element>();
     const io = new IntersectionObserver((entries) => {
       entries.forEach((e) => (e.isIntersecting ? seen.add(e.target) : seen.delete(e.target)));
-      const atStart = seen.has(items[0]), atEnd = seen.has(items[items.length - 1]);
-      prev.disabled = atStart; next.disabled = atEnd;
-      root.toggleAttribute('data-fits', atStart && atEnd);
+      prev.disabled = seen.has(items[0]); next.disabled = seen.has(items[items.length - 1]);
     }, { root: strip, threshold: 0.92 });
     io.observe(items[0]); io.observe(items[items.length - 1]);
 

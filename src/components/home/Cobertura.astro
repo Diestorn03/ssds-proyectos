@@ -144,13 +144,9 @@ const ll = { lat: projection.lat0 - origin.y / projection.k, lon: projection.lon
             <circle class="cob__ping cob__ping--free" r="9" cx="0" cy="0" />
             <g class="cob__target" transform="translate(0 0)">
               <circle class="cob__target-halo" r="16" />
-              <circle class="cob__target-ring" r="16" />
-              <circle class="cob__target-ring cob__target-ring--late" r="16" />
               <circle class="cob__target-dot" r="8" />
             </g>
             <g class="cob__hub" transform={`translate(${origin.x} ${origin.y})`}>
-              <circle class="cob__ring" r="18" />
-              <circle class="cob__ring cob__ring--late" r="18" />
               <polygon class="cob__hex" points={hex(17)} />
               <circle class="cob__core" r="6" />
             </g>
@@ -161,6 +157,15 @@ const ll = { lat: projection.lat0 - origin.y / projection.k, lon: projection.lon
           </svg>
 
           <div class="cob__labels" aria-hidden="true">
+            {/* pulse rings are HTML (not SVG) so their scale/opacity loops run on the compositor, never repainting the map */}
+            <span class="cob__rings" style={`${at(origin)};--s:${pct(40, width)}`}>
+              <i class="cob__ring"><svg viewBox="-20 -20 40 40" focusable="false"><circle r="18" /></svg></i>
+              <i class="cob__ring cob__ring--late"><svg viewBox="-20 -20 40 40" focusable="false"><circle r="18" /></svg></i>
+            </span>
+            <span class="cob__tgt" style={`--s:${pct(40, width)}`}>
+              <i class="cob__tgt-ring"><svg viewBox="-20 -20 40 40" focusable="false"><circle r="16" /></svg></i>
+              <i class="cob__tgt-ring cob__tgt-ring--late"><svg viewBox="-20 -20 40 40" focusable="false"><circle r="16" /></svg></i>
+            </span>
             <div class="cob__callout" style={at(origin)}>
               <span class="cob__callout-box"><span class="cob__callout-k">Oficina principal</span><span class="cob__callout-v">Maracay, Aragua</span></span>
             </div>
@@ -240,7 +245,7 @@ const ll = { lat: projection.lat0 - origin.y / projection.k, lon: projection.lon
 
     <a class="cob__post" href={postUrl(post.code)} target="_blank" rel="noopener">
       <span class="cob__post-media" data-reveal="iris">
-        <img src={`${base}/ig/${post.code}.webp`} width="640" height="811" loading="lazy" decoding="async"
+        <img src={`${base}/ig/${post.code}.webp`} srcset={`${base}/ig/${post.code}-320.webp 320w, ${base}/ig/${post.code}.webp 640w`} sizes="(min-width: 1600px) 240px, 180px" width="640" height="811" loading="lazy" decoding="async"
           alt="Pieza de SSD&S en Instagram: el monumento «Aragua» en Maracay con el texto «La potencia de nuestra ingeniería no tiene fronteras dentro de Venezuela. Para todo el territorio nacional»." />
       </span>
       <span class="cob__post-body">
@@ -269,7 +274,7 @@ const ll = { lat: projection.lat0 - origin.y / projection.k, lon: projection.lon
   .cob__streak--a { top: 5%; --angle: -7deg; }
   .cob__streak--b { top: 94%; --angle: -5deg; --streak-opacity: 0.2; }
 
-  .cob__grid { display: grid; gap: clamp(28px, 5vw, 48px); width: min(100% - 2 * var(--gutter), 1680px); margin-inline: auto; }
+  .cob__grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: clamp(28px, 5vw, 48px); width: min(100% - 2 * var(--gutter), 1680px); margin-inline: auto; }
   .cob__head { order: 1; }
   .cob__stage { order: 2; }
   .cob__cta { order: 3; }
@@ -296,7 +301,10 @@ const ll = { lat: projection.lat0 - origin.y / projection.k, lon: projection.lon
 
   .cob__hud { display: flex; align-items: center; justify-content: space-between; gap: 8px 16px; flex-wrap: wrap;
     font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); line-height: 1.3; }
-  .cob__hud--top { padding: 2px 4px 10px; border-bottom: 1px dashed rgba(255, 255, 255, 0.08); margin-bottom: 6px; }
+  /* one line, always: a picked destination must never wrap the HUD and push the map / the picker down (CLS) */
+  .cob__hud--top { flex-wrap: nowrap; padding: 2px 4px 10px; border-bottom: 1px dashed rgba(255, 255, 255, 0.08); margin-bottom: 6px; }
+  .cob__hud--top > * { flex-shrink: 0; }
+  .cob__hud--top > .cob__dest { flex-shrink: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .cob__hud--bottom { justify-content: flex-start; column-gap: 28px; padding: 10px 4px 2px; border-top: 1px dashed rgba(255, 255, 255, 0.08); margin-top: 6px; }
   .cob__hud-id { display: inline-flex; align-items: center; gap: 8px; }
   .cob__dest { color: var(--orange-300); }
@@ -305,8 +313,13 @@ const ll = { lat: projection.lat0 - origin.y / projection.k, lon: projection.lon
   .cob__hud-hex { width: 10px; height: 11px; background: var(--grad-brand); clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%); }
   .cob__status { display: inline-flex; align-items: center; gap: 8px; color: var(--fg); }
   .cob__status b { color: var(--glow); font-weight: 600; font-variant-numeric: tabular-nums; }
-  .cob__led { width: 8px; height: 8px; border-radius: 50%; background: var(--ok); box-shadow: 0 0 0 3px rgba(61, 220, 132, 0.18), 0 0 10px rgba(61, 220, 132, 0.8); transition: background-color 0.3s, box-shadow 0.3s; }
-  .cob.is-charging .cob__led { background: var(--orange-400); box-shadow: 0 0 0 3px rgba(255, 125, 51, 0.2), 0 0 10px rgba(255, 125, 51, 0.9); }
+  /* LED: green at rest, the orange "charging" state cross-fades on top (opacity only: a compositor transition, no repaint) */
+  .cob__led { position: relative; width: 8px; height: 8px; }
+  .cob__led::before, .cob__led::after { content: ''; position: absolute; inset: 0; border-radius: 50%; transition: opacity 0.3s; }
+  .cob__led::before { background: var(--ok); box-shadow: 0 0 0 3px rgba(61, 220, 132, 0.18), 0 0 10px rgba(61, 220, 132, 0.8); }
+  .cob__led::after { background: var(--orange-400); box-shadow: 0 0 0 3px rgba(255, 125, 51, 0.2), 0 0 10px rgba(255, 125, 51, 0.9); opacity: 0; }
+  .cob.is-charging .cob__led::before { opacity: 0; }
+  .cob.is-charging .cob__led::after { opacity: 1; }
   .cob__caption { color: var(--fg); }
   .cob__caption::before { content: ''; display: inline-block; width: 18px; height: 2px; margin-right: 10px; vertical-align: middle; background: var(--grad-brand); border-radius: 2px; }
   .cob__hud-r { display: inline-flex; align-items: center; gap: 18px; }
@@ -322,7 +335,8 @@ const ll = { lat: projection.lat0 - origin.y / projection.k, lon: projection.lon
   .cob__plane > svg { overflow: visible; }
 
   /* base map */
-  .cob__base { --sweep: 130; clip-path: polygon(0 0, calc(var(--sweep) * 1% + 25%) 0, calc(var(--sweep) * 1%) 100%, 0 100%); }
+  /* own layer: the static map (≈8k pattern dots) rasterises alone and never repaints with the labels / HUD around it */
+  .cob__base { --sweep: 130; clip-path: polygon(0 0, calc(var(--sweep) * 1% + 25%) 0, calc(var(--sweep) * 1%) 100%, 0 100%); will-change: transform; }
   .cob__grat line { stroke: rgba(255, 255, 255, 0.07); stroke-width: 1; stroke-dasharray: 2 6; vector-effect: non-scaling-stroke; }
   .cob__land { fill: rgba(37, 72, 138, 0.28); }
   .cob__dots { opacity: 0.32; }
@@ -340,16 +354,20 @@ const ll = { lat: projection.lat0 - origin.y / projection.k, lon: projection.lon
   .cob__ray { opacity: 0; }
   .cob__ray svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
 
-  /* fx layer */
+  /* fx layer (its own layer; the ray is promoted by GSAP only while it moves) */
   .cob__fx { pointer-events: none; will-change: transform; }
-  .cob__ray { will-change: transform; }
   .cob__state { fill: #6f86b3; opacity: 0.85; transition: fill 0.4s; }
   .cob__state.is-picked { fill: #fff; opacity: 1; }
   .cob__route-line, .cob__route-glow, .cob__route-flow { fill: none; stroke-linecap: round; }
   .cob__route-line { stroke-width: 3.2; }
   .cob__route-glow { stroke-width: 13; opacity: 0.2; }
-  .cob__route-flow { stroke: #fff4dc; stroke-width: 2.6; stroke-dasharray: 3 24; opacity: 0.75; animation: cob-flow 1.4s linear infinite paused; }
+  /* energy dashes: a dash offset can't run on the compositor, so it moves in 1-unit steps (~19 repaints/s, same look).
+     All 11 loops share ONE phase: they only start / pause together with the section (.is-live), so their steps land on the
+     same frames. (Starting each route's loop when it gets drawn put them out of phase: some route stepped on almost every
+     frame, ~60 repaints/s.) Routes not drawn yet (.is-flow, set by the timeline) just hide their dashes. */
+  .cob__route-flow { stroke: #fff4dc; stroke-width: 2.6; stroke-dasharray: 3 24; opacity: 0.75; animation: cob-flow 1.4s steps(27) infinite paused; }
   .cob.is-live .cob__route-flow { animation-play-state: running; }
+  :global(html.js) .cob__routes > .cob__route:not(.is-flow, .cob__route--pick) .cob__route-flow { visibility: hidden; }
   :global(.is-lite) .cob__route-flow { animation: none; }
   @keyframes cob-flow { to { stroke-dashoffset: var(--dash-shift, -27); } }
   .cob__route--pick .cob__route-line { stroke: #fff1d6; stroke-width: 5; }
@@ -363,22 +381,31 @@ const ll = { lat: projection.lat0 - origin.y / projection.k, lon: projection.lon
   .cob__routes > .cob__route, .cob__nodes, .cob__states, .cob__label { transition: opacity 0.4s; }
   .cob.is-picked .cob__route:not(.cob__route--pick), .cob.is-picked .cob__nodes, .cob.is-picked .cob__states { opacity: 0.25; }
   .cob.is-picked .cob__label:not(.is-dest, .cob__label--pick) { opacity: 0.35; }
+  .cob.is-picked .cob__label.is-off { opacity: 0; } /* same state, other city: the pick label names the capital there */
   .cob__label--pick { color: #fff; }
   .cob__label--pick > span { box-shadow: inset 0 0 0 1px rgba(255, 156, 92, 0.65); }
-  .cob__target-ring { fill: none; stroke: #fff1d6; stroke-width: 2.5; transform-box: fill-box; transform-origin: center; animation: cob-ring 1.8s var(--ease-out) infinite; }
-  .cob__target-ring--late { animation-delay: 0.9s; }
   .cob__dot { fill: #ffd79a; stroke: var(--navy-950); stroke-width: 2.5; }
   .cob__ping { fill: none; stroke: #ffd79a; stroke-width: 2.5; opacity: 0; }
   .cob__hex { fill: var(--navy-950); stroke: #ff9c5c; stroke-width: 3.5; stroke-linejoin: round; }
   .cob__core { fill: #ffd79a; }
-  .cob__ring { fill: none; stroke: #ff9c5c; stroke-width: 2; opacity: 0.5; transform-box: fill-box; transform-origin: center; animation: cob-ring 2.6s var(--ease-out) infinite paused; }
+  /* pulse rings (HTML over the map, sized in map units: --s = 40 units): transform/opacity keyframes = compositor only */
+  .cob__rings, .cob__tgt { position: absolute; left: var(--x, 0); top: var(--y, 0); width: var(--s); aspect-ratio: 1; translate: -50% -50%; }
+  .cob__rings i, .cob__tgt i { position: absolute; inset: 0; }
+  .cob__rings svg, .cob__tgt svg { display: block; width: 100%; height: 100%; overflow: visible; }
+  .cob__ring circle { fill: none; stroke: #ff9c5c; stroke-width: 2; }
+  .cob__ring { opacity: 0.5; animation: cob-ring 2.6s var(--ease-out) infinite paused; }
   .cob__ring--late { animation-delay: 1.3s; }
   .cob.is-live .cob__ring { animation-play-state: running; }
+  .cob__tgt { display: none; }
+  .cob__tgt.is-on { display: block; }
+  .cob__tgt-ring circle { fill: none; stroke: #fff1d6; stroke-width: 2.5; }
+  .cob__tgt-ring { opacity: 0; animation: cob-ring 1.8s var(--ease-out) infinite; }
+  .cob__tgt-ring--late { animation-delay: 0.9s; }
   @keyframes cob-ring { from { transform: scale(1); opacity: 0.75; } to { transform: scale(3.4); opacity: 0; } }
   .cob__spark { opacity: 0; }
 
   /* HTML labels over the map (fixed px type: readable at every map size) */
-  .cob__labels { pointer-events: none; }
+  .cob__labels { pointer-events: none; will-change: transform; } /* own layer: label / callout tweens repaint only this text layer */
   .cob__label, .cob__callout, .cob__tick { position: absolute; left: var(--x, 0); top: var(--y, 0); }
   .cob__label { white-space: nowrap; font-family: var(--font-display); font-weight: 600; font-size: clamp(13px, 0.55vw + 6px, 16px); line-height: 1.1; letter-spacing: -0.01em; color: #f4f6fb;
     text-shadow: 0 0 3px var(--navy-950); }
@@ -401,7 +428,8 @@ const ll = { lat: projection.lat0 - origin.y / projection.k, lon: projection.lon
   .cob__tick--lon { top: 2px; transform: translateX(6px); }
 
   .cob__cross { position: absolute; inset: 0; opacity: 0; transition: opacity 0.3s; overflow: hidden; }
-  .cob__cross i { position: absolute; left: 0; top: 0; background: rgba(255, 215, 154, 0.35); will-change: transform; }
+  .cob__cross i { position: absolute; left: 0; top: 0; background: rgba(255, 215, 154, 0.35); }
+  .cob.is-probing .cob__cross i { will-change: transform; }
   .cob__cross-x { width: 1px; height: 100%; }
   .cob__cross-y { height: 1px; width: 100%; }
   .cob.is-probing .cob__cross { opacity: 1; }
@@ -449,7 +477,9 @@ const ll = { lat: projection.lat0 - origin.y / projection.k, lon: projection.lon
   .cob__select select:focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; }
   .cob__select option { background: var(--navy-900); color: var(--fg); }
   .cob__select :global(.icon) { position: absolute; right: 16px; top: 50%; transform: translateY(-50%); pointer-events: none; color: var(--orange-300); }
-  .cob__live { font-size: 0.92rem; line-height: 1.45; color: var(--muted); min-height: 2.9em; }
+  /* reserves the longest route message (3 lines; 4 on the narrowest phones) so a pick never resizes the card (CLS) */
+  .cob__live { font-size: 0.92rem; line-height: 1.45; color: var(--muted); min-height: 4.35em; }
+  @media (max-width: 374px) { .cob__live { min-height: 5.8em; } }
   .cob__live b { color: var(--fg); font-weight: 600; }
   .cob__wa { white-space: normal; justify-self: stretch; text-align: center; text-wrap: balance; }
   @media (max-width: 559px) { .cob__wa { padding-inline: 20px; } }
@@ -482,7 +512,7 @@ const ll = { lat: projection.lat0 - origin.y / projection.k, lon: projection.lon
     .cob__callout-v { font-size: 13px; }
     .cob__route-line { stroke-width: 5; }
     .cob__route-glow { stroke-width: 18; }
-    .cob__route-flow { stroke-width: 4; stroke-dasharray: 4 30; --dash-shift: -34; }
+    .cob__route-flow { stroke-width: 4; stroke-dasharray: 4 30; --dash-shift: -34; animation-timing-function: steps(17); }
     .cob__edge-glow { stroke-width: 5; }
     .cob__state { r: 7px; }
     .cob__dot { r: 10px; }
@@ -490,6 +520,7 @@ const ll = { lat: projection.lat0 - origin.y / projection.k, lon: projection.lon
     .cob__hud-id, .cob__probe { display: none; }
     .cob__hud--top { justify-content: flex-end; }
     .cob.is-picked .cob__hud--top { justify-content: space-between; }
+    .cob.is-picked .cob__hud-r { display: none; } /* the destination gets the whole line on phones */
     .cob__target-dot { r: 11px; }
   }
 
@@ -512,7 +543,7 @@ const ll = { lat: projection.lat0 - origin.y / projection.k, lon: projection.lon
 
   /* reduced motion: no loops (the markup is already the final state) */
   @media (prefers-reduced-motion: reduce) {
-    .cob__ring, .cob__route-flow { animation: none; }
+    .cob__ring, .cob__tgt-ring, .cob__route-flow { animation: none; }
     .cob__sector:hover, .cob__post:hover { translate: none; }
   }
 </style>

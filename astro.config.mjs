@@ -1,9 +1,11 @@
 import { defineConfig } from 'astro/config';
 import sitemap from '@astrojs/sitemap';
 
-// GitHub Pages project site: SITE_URL=https://<user>.github.io  PAGES_BASE=/<repo>
-// Final domain: leave both unset (base "/", site = the future domain).
-const site = process.env.SITE_URL || 'https://ssdsproyectos.com';
+// GitHub Pages project site: SITE_URL=https://<user>.github.io  PAGES_BASE=/<repo> (set by .github/workflows/deploy.yml).
+// Own domain: SITE_URL=https://<domain> and no PAGES_BASE. Whether the client has a domain is unknown (docs/BRIEF.md,
+// "confirm with client"), so there is no default: without SITE_URL the build emits no absolute canonical / og:url /
+// sitemap rather than pointing search engines and share previews at a domain nobody has confirmed.
+const site = process.env.SITE_URL || undefined;
 const base = process.env.PAGES_BASE || '/';
 
 export default defineConfig({

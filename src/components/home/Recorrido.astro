@@ -97,7 +97,7 @@ const sparks = [-160, -118, -72, -28, 18, 64, 110, 152];
             <span class="rc__zap" aria-hidden="true">{sparks.map((r) => <i style={`--r:${r}deg`}></i>)}</span>
           </li>
         </ol>
-        <span class="rc__cable" aria-hidden="true"><span class="rc__fill"><span class="rc__flow"></span></span></span>
+        <span class="rc__cable" aria-hidden="true"><span class="rc__reveal"><span class="rc__fill"><span class="rc__flow"></span></span></span></span>
         <span class="rc__tip" aria-hidden="true">
           <b class="rc__tail"></b>
           {sparks.slice(0, 5).map((r, k) => <i style={`--r:${r + 20}deg;--d:${0.62 + k * 0.13}s;--w:${k * 0.17}s`}></i>)}
@@ -200,7 +200,8 @@ const sparks = [-160, -118, -72, -28, 18, 64, 110, 152];
     .rc__station { transition: translate 0.6s var(--ease-out); }
     .rc__station:hover { translate: 0 -6px; }
   }
-  .rc__station:has(.rc__visual:focus-visible) { outline: 2px solid var(--focus); outline-offset: 4px; }
+  /* ink, not orange: an orange ring would read as one more powered (orange) station ring */
+  .rc__station:has(.rc__visual:focus-visible) { outline: 3px solid var(--ink); outline-offset: 5px; }
   /* powered ring: flickers on when the station connects, then glows steady */
   .rc__station::after {
     content: ''; position: absolute; inset: -1px; border-radius: inherit; pointer-events: none;
@@ -350,10 +351,15 @@ const sparks = [-160, -118, -72, -28, 18, 64, 110, 152];
       repeating-linear-gradient(90deg, rgba(11, 26, 58, 0.26) 0 1px, transparent 1px 96px),
       repeating-linear-gradient(90deg, rgba(11, 26, 58, 0.14) 0 1px, transparent 1px 16px) 0 4px / 100% 6px no-repeat;
   }
+  /* reveal = a sliding mask (transform only, no repaint): the mask moves left by the unlit length s while the
+     fill inside moves right by s, so the fill stays put and its right end is cut at the tip. The mask bleeds
+     14px up and down so the glow is not clipped. */
+  .rc__reveal { position: absolute; inset: -14px 0; overflow: hidden; }
   .rc__fill {
-    position: absolute; inset: 1px 0; border-radius: inherit; overflow: hidden;
+    position: absolute; inset: 15px 0; border-radius: 6px; overflow: hidden;
     background: var(--grad-brand); box-shadow: 0 0 12px rgba(242, 106, 27, 0.6);
   }
+  .rc--pin.is-flowing :is(.rc__reveal, .rc__fill) { will-change: transform; }
   /* current: two layers at different periods and speeds (transform only):
      comet-shaped energy packets + a faint fast shimmer of sparks */
   .rc__flow { position: absolute; inset: 0; }
@@ -434,17 +440,29 @@ const sparks = [-160, -118, -72, -28, 18, 64, 110, 152];
      Desktop gate: pinned horizontal recorrido (class set by scripts/recorrido.js)
      ===================================================================== */
   .rc--pin {
-    --under: clamp(56px, 11vh, 140px);
-    --branch: clamp(28px, 6vh, 72px);
-    --tall: clamp(300px, min(55vh, 100vh - 320px), 760px);
+    /* sized from the height that is really free between the HUD and the ground (short laptop windows, 560px+),
+       the leftover on tall screens is split above the cards and under the cable: the composition stays centred */
+    --hud-b: calc(var(--header-h) + 18px + clamp(2rem, 4.4vh, 3.2rem) + 14px); /* HUD bottom + air */
+    --under0: clamp(44px, 8vh, 120px);
+    --branch: clamp(22px, 4vh, 64px);
+    --lift: 3vh;               /* even stations stand this much higher */
+    --avail: calc(100vh - var(--hud-b) - var(--under0) - var(--branch) - var(--lift) - 2 * var(--pad));
+    --tall: clamp(280px, min(var(--avail), 64vh), 780px);
+    --under: calc(var(--under0) + max(0px, var(--avail) - var(--tall)) / 2); /* cable height above the ground */
     --pad: 12px;
     --vis-w: calc(var(--tall) * 0.79);
     --body-w: clamp(250px, 21vw, 440px);
     --intro-w: min(38rem, 36vw);
+    /* the stage is a CSS sticky pin (the compositor holds it: no lag on keyboard / scrollbar scrolling, no
+       fixed↔static flip); --d = horizontal travel + end dwell, set by scripts/recorrido.js once per refresh */
+    height: calc(100vh + var(--d, 0px));
     padding: 0;
+    /* the stage clips its own overflow; an ancestor clip around a sticky layer moves in its space every frame
+       and forces the whole stage to repaint while pinned (trace: 113 → 31 stage paints per pass) */
+    overflow: visible;
     z-index: 4; /* over the chrome's margin line while pinned: the current turns horizontal here */
   }
-  .rc--pin .rc__stage { position: relative; height: 100vh; overflow: clip; }
+  .rc--pin .rc__stage { position: sticky; top: 0; height: 100vh; overflow: clip; }
   /* ground under the cable */
   .rc--pin .rc__stage::after {
     content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: var(--under); z-index: 0; pointer-events: none;
@@ -475,8 +493,8 @@ const sparks = [-160, -118, -72, -28, 18, 64, 110, 152];
   .rc--pin .rc__track { height: 100%; display: flex; align-items: flex-end; padding: 0 var(--edge) var(--under) calc(var(--edge) + var(--intro-w) + 6vw); will-change: transform; }
   .rc--pin .rc__list { align-items: flex-end; gap: clamp(32px, 4.2vw, 88px); }
   .rc--pin .rc__card { container-type: normal; width: calc(var(--vis-w) + var(--body-w) + var(--pad) * 2 + 2px); }
-  .rc--pin .rc__card:nth-child(even) { padding-bottom: calc(var(--branch) + 3vh); }
-  .rc--pin .rc__card:nth-child(even)::after, .rc--pin .rc__card:nth-child(even) .rc__branch { height: calc(var(--branch) + 3vh); }
+  .rc--pin .rc__card:nth-child(even) { padding-bottom: calc(var(--branch) + var(--lift)); }
+  .rc--pin .rc__card:nth-child(even)::after, .rc--pin .rc__card:nth-child(even) .rc__branch { height: calc(var(--branch) + var(--lift)); }
   .rc--pin .rc__src { display: block; }
 
   .rc--pin .rc__station { height: calc(var(--tall) + var(--pad) * 2); grid-template-columns: var(--vis-w) minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); border-radius: 28px; }

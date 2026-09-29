@@ -39,9 +39,11 @@ const {
   .cta__inner { position: relative; display: grid; gap: 36px; align-items: end; }
   @media (min-width: 900px) { .cta__inner { grid-template-columns: 1.4fr 1fr; } }
   .cta__copy h2 { max-width: 16ch; }
+  /* narrow phones: "infraestructura" alone is wider than 288px at --step-4 */
+  @media (max-width: 380px) { .cta__copy h2 { font-size: 2.15rem; } }
   .cta__copy .lead { margin-top: 20px; max-width: 46ch; }
   .cta__actions { display: flex; flex-direction: column; align-items: flex-start; gap: 14px; }
-  .cta__mail { display: inline-flex; align-items: center; gap: 10px; color: var(--muted); font-family: var(--font-mono); font-size: 0.9rem; transition: color 0.3s; }
+  .cta__mail { display: inline-flex; align-items: center; gap: 10px; min-height: 44px; overflow-wrap: anywhere; color: var(--muted); font-family: var(--font-mono); font-size: 0.9rem; transition: color 0.3s; }
   .cta__mail:hover { color: var(--glow); }
   @media (min-width: 900px) { .cta__actions { align-items: flex-end; } }
 </style>

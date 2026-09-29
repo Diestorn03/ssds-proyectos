@@ -6,6 +6,6 @@ export const GET: APIRoute = ({ site }) => {
   const base = import.meta.env.BASE_URL.replace(/\/$/, '');
   const body = demo
     ? 'User-agent: *\nDisallow: /\n'
-    : `User-agent: *\nAllow: /\n\nSitemap: ${site?.origin ?? ''}${base}/sitemap-index.xml\n`;
+    : `User-agent: *\nAllow: /\n${site ? `\nSitemap: ${site.origin}${base}/sitemap-index.xml\n` : ''}`; // no SITE_URL → no sitemap is built
   return new Response(body, { headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
 };

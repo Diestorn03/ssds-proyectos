@@ -41,6 +41,7 @@ onPage(({ gsap, ScrollTrigger, env, onRefresh }) => {
   const resetStatic = () => {
     root.classList.remove('is-live', 'is-charging', 'is-probing');
     count.textContent = String(N).padStart(2, '0');
+    routes.forEach((r) => r.classList.add('is-flow'));
   };
   resetStatic();
 
@@ -62,6 +63,7 @@ onPage(({ gsap, ScrollTrigger, env, onRefresh }) => {
   const pick = $('.cob__route--pick');
   const pickParts = [...pick.children];
   const target = $('.cob__target');
+  const tgt = $('.cob__tgt'); // its pulse rings (HTML, compositor-animated)
   const dest = $('.cob__dest');
   const pickLabel = $('.cob__label--pick');
   const defaults = { href: cta.href, text: ctaText.textContent, live: liveText.textContent };
@@ -72,11 +74,11 @@ onPage(({ gsap, ScrollTrigger, env, onRefresh }) => {
     relayTl?.progress(1);
     finishIntro?.();
     $$('.cob__state.is-picked').forEach((s) => s.classList.remove('is-picked'));
-    labels.forEach((l) => l.classList.remove('is-dest'));
+    labels.forEach((l) => l.classList.remove('is-dest', 'is-off'));
     pickLabel.hidden = true;
     if (!o || !o.value) {
       cta.href = defaults.href; ctaText.textContent = defaults.text; liveText.textContent = defaults.live;
-      pick.classList.remove('is-on'); target.classList.remove('is-on'); dest.hidden = true;
+      pick.classList.remove('is-on'); target.classList.remove('is-on'); tgt.classList.remove('is-on'); dest.hidden = true;
       root.classList.remove('is-picked');
       return;
     }
@@ -98,19 +100,26 @@ onPage(({ gsap, ScrollTrigger, env, onRefresh }) => {
     root.querySelector(`.cob__state[data-state="${CSS.escape(state)}"]`)?.classList.add('is-picked');
     target.setAttribute('transform', `translate(${x} ${y})`);
     target.classList.add('is-on');
-    const cityLabel = labels.find((l) => l.dataset.state === state);
+    const px = `${((x / W) * 100).toFixed(2)}%`, py = `${((y / H) * 100).toFixed(2)}%`;
+    tgt.style.setProperty('--x', px);
+    tgt.style.setProperty('--y', py);
+    tgt.classList.add('is-on');
+    // the destination is the state capital: highlight its route label only when that label IS the capital
+    // (Bolívar → Ciudad Bolívar, not Ciudad Guayana; Nueva Esparta → La Asunción, not Porlamar)
+    const cityLabel = labels.find((l) => l.dataset.state === state && l.querySelector('.cob__label-full')?.textContent === capital);
     if (cityLabel) cityLabel.classList.add('is-dest');
     else if (!home) {
+      labels.find((l) => l.dataset.state === state)?.classList.add('is-off'); // same state, other city: would collide
       pickLabel.firstElementChild.textContent = capital;
       pickLabel.dataset.side = x / W > 0.78 ? 'l' : 'r';
-      pickLabel.style.setProperty('--x', `${((x / W) * 100).toFixed(2)}%`);
-      pickLabel.style.setProperty('--y', `${((y / H) * 100).toFixed(2)}%`);
+      pickLabel.style.setProperty('--x', px);
+      pickLabel.style.setProperty('--y', py);
       pickLabel.hidden = false;
     }
 
     if (home) {
       pick.classList.remove('is-on');
-      gsap.set([target, dest, pickLabel], { opacity: 1 }); // a killed pick may have left them mid-fade
+      gsap.set([target, tgt, dest, pickLabel], { opacity: 1 }); // a killed pick may have left them mid-fade
       if (!reduced) pickTl = ping(x, y, 5);
       return;
     }
@@ -120,7 +129,7 @@ onPage(({ gsap, ScrollTrigger, env, onRefresh }) => {
     pickTl = gsap.timeline({ onComplete: packets })
       .fromTo(pickParts.slice(0, 2), { drawSVG: '0%' }, { drawSVG: '100%', duration: 0.9, ease: 'power2.inOut' }, 0)
       .fromTo(pickParts[2], { opacity: 0 }, { opacity: 0.8, duration: 0.3 }, 0.85)
-      .fromTo([target, pickLabel], { opacity: 0 }, { opacity: 1, duration: 0.3 }, 0.8)
+      .fromTo([target, tgt, pickLabel], { opacity: 0 }, { opacity: 1, duration: 0.3 }, 0.8)
       .set(freeSpark, { opacity: 1 }, 0)
       .to(freeSpark, { motionPath: { path: pickParts[1], start: 0, end: 1 }, duration: 0.9, ease: 'power2.inOut' }, 0)
       .to(freeSpark, { opacity: 0, duration: 0.15 }, 0.85)
@@ -165,7 +174,7 @@ onPage(({ gsap, ScrollTrigger, env, onRefresh }) => {
       .to(ray, { opacity: 0, duration: 0.3 }, 1.25)
       .fromTo(states, { opacity: 0, scale: 0.3, ...TO }, { opacity: 0.5, scale: 0.7, duration: 0.5, stagger: 0.015 }, 1.2)
     // 2 · Maracay powers up
-      .fromTo($('.cob__hub'), { opacity: 0 }, { opacity: 1, duration: 0.15 }, 1.15)
+      .fromTo([$('.cob__hub'), $('.cob__rings')], { opacity: 0 }, { opacity: 1, duration: 0.15 }, 1.15)
       .fromTo($('.cob__hex'), { scale: 0, rotation: -90, ...TO }, { scale: 1, rotation: 0, duration: 0.55, ease: 'back.out(2.2)' }, 1.15)
       .fromTo($('.cob__core'), { scale: 0, ...TO }, { scale: 1, duration: 0.35, ease: 'back.out(3)' }, 1.35)
       .fromTo($('.cob__callout'), { opacity: 0, y: 10 }, { opacity: 1, y: 0, duration: 0.45, ease: 'expo.out' }, 1.35)
@@ -199,6 +208,7 @@ onPage(({ gsap, ScrollTrigger, env, onRefresh }) => {
     shown = n;
     count.textContent = String(n).padStart(2, '0');
     root.classList.toggle('is-charging', n < N);
+    routes.forEach((r, i) => r.classList.toggle('is-flow', i < n)); // dashes show only on energised routes (the loops share one phase)
   }
   onRefresh(() => { shown = -1; status(); });
 
@@ -212,7 +222,9 @@ onPage(({ gsap, ScrollTrigger, env, onRefresh }) => {
     if (c.conditions.wide) {
       // pre-warm: initialise every tween now (DrawSVG lengths, MotionPath caches) instead of on the first scroll into each stage
       tl.progress(1, true).progress(0, true);
-      ScrollTrigger.create({ trigger: $('.cob__grid'), start: 'top 72%', end: 'bottom bottom', scrub: 0.9, animation: tl, invalidateOnRefresh: true });
+      // no invalidateOnRefresh: every value here is in SVG user units / percentages / constants, nothing depends on layout,
+      // so a refresh (load, fonts, resize, other scenes) must not re-measure ~22 paths and re-parse 11 motion paths mid-scroll
+      ScrollTrigger.create({ trigger: $('.cob__grid'), start: 'top 72%', end: 'bottom bottom', scrub: 0.9, animation: tl });
       const off = tilt();
       return () => { off(); tl.eventCallback('onUpdate', null); };
     }
@@ -265,13 +277,19 @@ onPage(({ gsap, ScrollTrigger, env, onRefresh }) => {
     const rotY = gsap.quickTo(plane, 'rotationY', { duration: 0.9, ease: 'power3' });
     gsap.set(plane, { transformPerspective: 1400 });
     let raf = 0, px = 0, py = 0;
-    // measured per painted frame (pointer-driven, never in a scroll handler): the page may scroll under a still pointer
+    // the plane's box inside the figure is cached (resize / pointer entry); per frame only the figure's rect is read,
+    // since the sticky stage may move under a still pointer
+    let bx = { l: 0, t: 0, w: 1, h: 1 };
+    const measure = () => { bx = { l: plane.offsetLeft, t: plane.offsetTop, w: plane.offsetWidth || 1, h: plane.offsetHeight || 1 }; };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(plane);
     const paint = () => {
       raf = 0;
       const r = fig.getBoundingClientRect();
-      const w = plane.offsetWidth, h = plane.offsetHeight;
-      const u = gsap.utils.clamp(0, 1, (px - r.left - plane.offsetLeft) / w);
-      const v = gsap.utils.clamp(0, 1, (py - r.top - plane.offsetTop) / h);
+      const { w, h } = bx;
+      const u = gsap.utils.clamp(0, 1, (px - r.left - bx.l) / w);
+      const v = gsap.utils.clamp(0, 1, (py - r.top - bx.t) / h);
       rotY((u - 0.5) * 7);
       rotX(-(v - 0.5) * 6);
       cx.style.transform = `translate3d(${(u * w).toFixed(1)}px,0,0)`;
@@ -285,10 +303,10 @@ onPage(({ gsap, ScrollTrigger, env, onRefresh }) => {
       probe.textContent = probe.dataset.home;
     };
     const leave = () => { reset(); rotX(0); rotY(0); };
-    fig.addEventListener('pointerenter', () => root.classList.add('is-probing'), o);
+    fig.addEventListener('pointerenter', () => { measure(); root.classList.add('is-probing'); }, o);
     fig.addEventListener('pointermove', (e) => { px = e.clientX; py = e.clientY; if (!raf) raf = requestAnimationFrame(paint); }, o);
     fig.addEventListener('pointerleave', leave, o);
-    return () => { pac.abort(); reset(); cx.style.transform = cy.style.transform = ''; }; // the plane's tilt tweens revert with the branch
+    return () => { pac.abort(); ro.disconnect(); reset(); cx.style.transform = cy.style.transform = ''; }; // the plane's tilt tweens revert with the branch
   }
 
   if (sel.value) onPick(); // a restored form value

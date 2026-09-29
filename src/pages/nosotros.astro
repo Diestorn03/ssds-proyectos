@@ -29,9 +29,8 @@ const readout = [
       <dl class="ab-meter__rows">
         {readout.map((r) => (
           <div class="ab-meter__row">
-            <dt>{r.t}</dt>
+            <dt>{r.t}<span class="ab-meter__seg" aria-hidden="true" style={`--n:${r.n}`}>{Array.from({ length: r.n }, () => <i></i>)}</span></dt>
             <dd><span class="ab-meter__n num" data-count={r.n}>{r.n}</span></dd>
-            <span class="ab-meter__seg" aria-hidden="true" style={`--n:${r.n}`}>{Array.from({ length: r.n }, () => <i></i>)}</span>
           </div>
         ))}
       </dl>
@@ -54,13 +53,15 @@ const readout = [
       </div>
       <ul class="ab-values__grid" data-stagger="0.1" data-ab-values>
         {values.map((v, i) => (
-          <li class="ab-val" data-glow data-tilt="4" style={`--i:${i}`}>
-            <span class="ab-val__top">
-              <span class="ab-val__icon" data-draw aria-hidden="true"><Icon name={valueIcons[i]} size={28} /></span>
-              <span class="ab-val__sw" aria-hidden="true"><i></i></span>
-            </span>
-            <h3>{v.t}</h3>
-            <p>{v.d}</p>
+          <li style={`--i:${i}`}>
+            <div class="ab-val" data-glow data-tilt="4">
+              <span class="ab-val__top">
+                <span class="ab-val__icon" data-draw aria-hidden="true"><Icon name={valueIcons[i]} size={28} /></span>
+                <span class="ab-val__sw" aria-hidden="true"><i></i></span>
+              </span>
+              <h3>{v.t}</h3>
+              <p>{v.d}</p>
+            </div>
           </li>
         ))}
       </ul>
@@ -107,11 +108,13 @@ const readout = [
       </div>
       <ul class="ab-sectors__grid" data-stagger="0.12">
         {sectors.map((s, i) => (
-          <li class="ab-sec" data-glow data-tilt="4">
-            <span class="ab-sec__n mono" aria-hidden="true">0{i + 1}</span>
-            <span class="ab-sec__icon" data-draw aria-hidden="true"><Icon name={sectorIcons[i]} size={34} stroke={1.5} /></span>
-            <h3>{s.t}</h3>
-            <p>{s.d}</p>
+          <li>
+            <div class="ab-sec" data-glow data-tilt="4">
+              <span class="ab-sec__n mono" aria-hidden="true">0{i + 1}</span>
+              <span class="ab-sec__icon" data-draw aria-hidden="true"><Icon name={sectorIcons[i]} size={34} stroke={1.5} /></span>
+              <h3>{s.t}</h3>
+              <p>{s.d}</p>
+            </div>
           </li>
         ))}
       </ul>
@@ -131,7 +134,7 @@ const readout = [
   @media (prefers-reduced-motion: no-preference) { :global(.js) .ab-meter { opacity: 0; } } /* powered up by the script */
   .ab-meter {
     position: relative; width: min(100%, 420px); justify-self: center; padding: 20px 22px; border-radius: var(--radius-lg);
-    border: 1px solid rgba(255, 255, 255, 0.12); background: linear-gradient(160deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.015) 60%), rgba(6, 13, 31, 0.55);
+    border: 1px solid rgba(255, 255, 255, 0.12); background: linear-gradient(160deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.015) 60%), rgba(6, 13, 31, 0.88);
     box-shadow: 0 40px 80px -40px rgba(0, 0, 0, 0.8), inset 0 1px 0 rgba(255, 255, 255, 0.08);
   }
   @media (max-width: 959px) { .ab-meter { justify-self: start; width: 100%; max-width: 520px; } }
@@ -140,10 +143,11 @@ const readout = [
   @keyframes ab-blink { 50% { opacity: 0.45; } }
   .ab-meter__rows { margin: 0; }
   .ab-meter__row { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: 4px 16px; padding: 16px 0; border-bottom: 1px solid rgba(255, 255, 255, 0.08); }
-  .ab-meter__row dt { grid-row: 1; font-size: 0.9rem; color: var(--muted); }
-  .ab-meter__row dd { grid-row: 1 / span 2; grid-column: 2; margin: 0; }
+  /* the segment meter sits inside the <dt> (aria-hidden): a <div> in a <dl> may only hold <dt>/<dd> */
+  .ab-meter__row dt { display: grid; gap: 4px; font-size: 0.9rem; color: var(--muted); }
+  .ab-meter__row dd { margin: 0; }
   .ab-meter__n { display: block; min-width: 2ch; text-align: right; font-size: clamp(2.4rem, 1.8rem + 2vw, 3.4rem); font-weight: 800; line-height: 0.9; letter-spacing: -0.04em; background: var(--grad-brand); -webkit-background-clip: text; background-clip: text; color: transparent; }
-  .ab-meter__seg { grid-row: 2; display: flex; gap: 3px; align-items: center; }
+  .ab-meter__seg { display: flex; gap: 3px; align-items: center; }
   .ab-meter__seg i { flex: 0 1 18px; min-width: 4px; height: 10px; border-radius: 2px; background: var(--orange-500); box-shadow: 0 0 8px rgba(255, 140, 60, 0.6); }
   .ab-meter__foot { margin: 14px 0 0; font-size: 0.75rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--amber-400); }
 
@@ -157,6 +161,8 @@ const readout = [
 
   /* ---------- values ---------- */
   .ab-values__grid { list-style: none; margin: 0; padding: 0; display: grid; gap: 16px; }
+  /* the stagger reveal moves the <li>, the tilt turns the card inside: they never write the same transform */
+  .ab-values__grid > li, .ab-sectors__grid > li { display: grid; }
   @media (min-width: 640px) { .ab-values__grid { grid-template-columns: 1fr 1fr; } }
   @media (min-width: 1100px) { .ab-values__grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
   .ab-val { position: relative; padding: clamp(22px, 2.4vw, 30px); border-radius: var(--radius-lg); background: var(--card); border: 1px solid var(--line); box-shadow: 0 18px 40px -30px rgba(11, 26, 58, 0.4); transition: border-color 0.4s, box-shadow 0.6s var(--ease-out); }

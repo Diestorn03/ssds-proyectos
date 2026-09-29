@@ -135,6 +135,7 @@ const waInspeccion = wa('Hola SSD&S, quiero agendar una inspección de mis insta
     const cards = q('.val__card');
     const items = q('.val__index li');
     const last = cards.length - 1;
+    const bus = root.querySelector('.val__bus span');
 
     // cumulative "power on": cards and LEDs up to i are on, i is the live one
     let cur = -2;
@@ -143,7 +144,7 @@ const waInspeccion = wa('Hola SSD&S, quiero agendar una inspección de mis insta
       cur = i;
       cards.forEach((c, k) => { c.classList.toggle('is-on', k <= i); c.classList.toggle('is-current', k === i); });
       items.forEach((li, k) => { li.classList.toggle('is-on', k <= i); li.classList.toggle('is-cur', k === i); });
-      root.style.setProperty('--lvl', String(Math.max(0, i) / last));
+      bus.style.setProperty('--lvl', String(Math.max(0, i) / last)); // on the leaf that reads it: no section-wide recalc
     };
     if (env.reduced) { setCur(last); return; } // final state: filled word (CSS), drawn strokes, all LEDs on
 
@@ -213,7 +214,17 @@ const waInspeccion = wa('Hola SSD&S, quiero agendar una inspección de mis insta
         cards[i].focus({ preventScroll: true });
       };
       nav.addEventListener('click', onNav);
-      return () => { io.disconnect(); nav.removeEventListener('click', onNav); head.style.marginBottom = ''; };
+      // keyboard: tabbing in from the Recorrido must land with the link in view even if a smooth scroll is running
+      const onNavFocus = (e) => {
+        const a = e.target.closest('a');
+        if (!a || !a.matches(':focus-visible')) return;
+        requestAnimationFrame(() => { // after the browser's own scroll-into-view (a running smooth scroll may have eaten it)
+          const r = a.getBoundingClientRect();
+          if (r.top < 0 || r.bottom > innerHeight) scrollTo(a, { offset: -innerHeight * 0.4, immediate: true });
+        });
+      };
+      nav.addEventListener('focusin', onNavFocus);
+      return () => { io.disconnect(); nav.removeEventListener('click', onNav); nav.removeEventListener('focusin', onNavFocus); head.style.marginBottom = ''; bus.style.removeProperty('--lvl'); };
     }
 
     // touch / narrow: everything plays once on entry

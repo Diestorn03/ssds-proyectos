@@ -7,7 +7,7 @@
   a diagonal orange ray crosses it and the dark veil lifts. Idle: every few seconds a diagonal ray wave crosses the
   whole grid (the brand motif). Hover (fine pointer): photo zoom, meta panel slides up, the ray sweeps, the brand
   edge lights, tilt. Desktop gate: even columns drift on scroll (parallax), pointer glow behind the grid.
-  "Ver las 14 publicaciones" charges its meter and powers on the rest. Cards open the lightbox (ui/Lightbox.astro +
+  "Ver las 14 publicaciones" shows the rest at once and powers them on as their photos are ready. Cards open the lightbox (ui/Lightbox.astro +
   scripts/lightbox.js); without JS they are links to Instagram and every post is listed.
   Reduced motion: no pre-hide, no entrance, no wave, no parallax, lightbox without morph.
   Props: limit (home 8, Nosotros 4).
@@ -60,7 +60,11 @@ const pad = (n: number) => String(n).padStart(2, '0');
           data-title={p.title} data-date={day(p.date, 'long')} data-datetime={p.date} data-text={p.text} data-reel={p.reel ? '' : undefined}
           aria-label={`${p.title} · ${day(p.date, 'long')}${p.reel ? ' · Reel' : ''}`}
         >
-          <img src={`${base}/ig/${p.code}.webp`} width="640" height="811" alt="" loading={i < 4 ? 'eager' : 'lazy'} decoding="async" draggable="false" />
+          <img
+            src={`${base}/ig/${p.code}.webp`} srcset={`${base}/ig/${p.code}-320.webp 320w, ${base}/ig/${p.code}.webp 640w`}
+            sizes="(min-width: 900px) min(22vw, 290px), 46vw"
+            width="640" height="811" alt="" loading={i < 4 ? 'eager' : 'lazy'} decoding="async" draggable="false"
+          />
           <span class="ig__veil"></span>
           <span class="ig__sweep"></span>
           <span class="ig__edge"></span>
@@ -106,7 +110,7 @@ const pad = (n: number) => String(n).padStart(2, '0');
   )}
   <p class="sr-only" aria-live="polite" data-ig-status></p>
 
-  <Lightbox id="ig-lightbox" handle={contact.instagram} />
+  <Lightbox id="ig-lightbox" handle={contact.instagram} src={`${base}/ig/${posts[0].code}.webp`} />
 </section>
 
 <script>
@@ -167,19 +171,19 @@ const pad = (n: number) => String(n).padStart(2, '0');
     }
 
     /* ---------- idle: a diagonal ray wave crosses the grid every few seconds ---------- */
-    let cols = 4, waveT = 0, inView = false;
-    const measure = () => { cols = getComputedStyle(grid).gridTemplateColumns.split(' ').length || 2; };
+    // the wave's per-card delay depends only on the index and the column count: set it on refresh, never mid-scroll
+    let cols = 0, waveT = 0, inView = false;
+    const measure = () => {
+      const c = getComputedStyle(grid).gridTemplateColumns.split(' ').length || 2;
+      if (c === cols) return;
+      cols = c;
+      cards.forEach((card, k) => card.style.setProperty('--pd', `${((k % cols) + Math.floor(k / cols)) * 0.12}s`));
+    };
     measure();
     onRefresh(measure);
+    // no layout reads here: only powered-on cards can be visible (hidden "more" cards power on only once shown)
     const wave = () => {
-      if (inView && !document.hidden && !dlg.open) {
-        items.forEach((li, k) => {
-          if (!li.offsetParent || !done.has(li)) return;
-          const c = cards[k];
-          c.style.setProperty('--pd', `${((k % cols) + Math.floor(k / cols)) * 0.12}s`);
-          c.classList.add('is-pulse');
-        });
-      }
+      if (inView && !document.hidden && !dlg.open) items.forEach((li, k) => { if (done.has(li)) cards[k].classList.add('is-pulse'); });
       waveT = setTimeout(wave, 6500);
     };
     const onEnd = (e) => { if (e.target.classList.contains('ig__sweep')) e.target.parentElement.classList.remove('is-pulse'); };
@@ -194,39 +198,44 @@ const pad = (n: number) => String(n).padStart(2, '0');
       io.observe(grid);
     }
 
-    /* ---------- "Ver las 14": charge the meter, then power on the rest ---------- */
+    /* ---------- "Ver las 14": the grid grows in the click task (a shift right after an input is not CLS), the new
+       cards stay dark (opacity 0) until their photos are decoded (max 450 ms), then they power on. Intent (hover,
+       focus, press; the hover also charges the meter cells) starts the photo downloads early. ---------- */
     const rest = all.filter((li) => li.classList.contains('ig__item--more'));
-    let revealTl = null;
+    const restImgs = part(rest, 'img');
+    let alive = true, fetched = false;
+    const prefetch = () => {
+      if (fetched) return;
+      fetched = true;
+      restImgs.forEach((im) => { im.loading = 'eager'; });
+    };
     const reveal = () => {
+      prefetch();
       more.setAttribute('aria-expanded', 'true');
       more.disabled = true;
-      const show = () => {
-        rest.forEach((li) => li.classList.add('is-on'));
-        const foot = more.closest('.ig__foot');
-        const firstNew = rest[0]?.querySelector('a');
-        firstNew?.focus({ preventScroll: true });
-        foot.hidden = true;
-        status.textContent = `Se muestran las ${items.length} publicaciones.`;
-        if (!env.reduced) powerOn(rest, 0.02);
-        requestAnimationFrame(() => ScrollTrigger.refresh());
-      };
-      if (env.reduced) return show();
-      const tl = (revealTl = gsap.timeline({ onComplete: show }));
-      more.querySelectorAll('.ig__cells i:not(.is-on)').forEach((c, k) => tl.call(() => c.classList.add('is-on'), null, k * 0.05));
-      tl.to(more, { opacity: 0, y: 12, duration: 0.25, ease: 'power2.in' }, '+=0.12');
+      rest.forEach((li) => li.classList.add('is-on'));
+      rest[0]?.querySelector('a')?.focus({ preventScroll: true });
+      more.closest('.ig__foot').hidden = true;
+      status.textContent = `Se muestran las ${items.length} publicaciones.`;
+      requestAnimationFrame(() => ScrollTrigger.refresh());
+      if (env.reduced) return;
+      const ready = Promise.all(restImgs.map((im) => im.decode().catch(() => {})));
+      Promise.race([ready, new Promise((r) => setTimeout(r, 450))]).then(() => { if (alive) powerOn(rest); });
     };
     if (more && rest.length) {
       more.hidden = false;
       more.addEventListener('click', reveal);
+      ['pointerenter', 'pointerdown', 'focus'].forEach((ev) => more.addEventListener(ev, prefetch, { once: true }));
     }
 
     return () => {
+      alive = false;
       destroyLightbox();
       clearTimeout(waveT);
       io?.disconnect();
       grid.removeEventListener('animationend', onEnd);
       more?.removeEventListener('click', reveal);
-      revealTl?.kill();
+      ['pointerenter', 'pointerdown', 'focus'].forEach((ev) => more?.removeEventListener(ev, prefetch));
     };
   });
 </script>
@@ -370,8 +379,13 @@ const pad = (n: number) => String(n).padStart(2, '0');
     font-size: 0.75rem; letter-spacing: 0.08em; text-transform: uppercase; color: #fff;
   }
   .ig__chip--reel { background: var(--orange-500); box-shadow: 0 6px 16px -6px rgba(242, 106, 27, 0.9); }
-  .ig__chip--new i { width: 6px; height: 6px; border-radius: 50%; background: var(--ok); box-shadow: 0 0 0 0 rgba(61, 220, 132, 0.6); animation: ig-live 2s ease-out infinite; }
-  @keyframes ig-live { 70%, 100% { box-shadow: 0 0 0 7px rgba(61, 220, 132, 0); } }
+  /* live dot: the ring is a pseudo-element that only scales and fades (compositor, no repaint per frame) */
+  .ig__chip--new i { position: relative; width: 6px; height: 6px; border-radius: 50%; background: var(--ok); }
+  .ig__chip--new i::after {
+    content: ''; position: absolute; inset: 0; border-radius: 50%; background: rgba(61, 220, 132, 0.6);
+    animation: ig-live 2s ease-out infinite;
+  }
+  @keyframes ig-live { from { transform: scale(1); opacity: 1; } 70%, to { transform: scale(3.3); opacity: 0; } }
   .ig__zoom {
     position: absolute; top: 8px; right: 8px; display: grid; place-items: center; width: 38px; height: 38px; border-radius: 50%;
     background: var(--orange-500); color: #fff; box-shadow: 0 8px 20px -8px rgba(242, 106, 27, 0.9);
@@ -459,7 +473,8 @@ const pad = (n: number) => String(n).padStart(2, '0');
   @media (max-width: 379px) { .ig__more { gap: 10px; padding: 0 16px 0 18px; font-size: 0.95rem; } .ig__cells :global(i) { width: 3px; } }
 
   @media (prefers-reduced-motion: reduce) {
-    .ig__ring::before, .ig__wire::before, .ig__chip--new i { animation: none; }
+    .ig__ring::before, .ig__wire::before, .ig__chip--new i::after { animation: none; }
+    .ig__chip--new i::after { display: none; }
     .ig__wire::before { display: none; }
     /* static wire: the claims wrap once (engine clones hidden), tighter rows */
     .ig__claim[aria-hidden='true'] { display: none; }
