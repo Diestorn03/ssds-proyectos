@@ -43,7 +43,7 @@ await send('Emulation.setDeviceMetricsOverride', { width: W, height: H, deviceSc
 if (mobile) await send('Emulation.setTouchEmulationEnabled', { enabled: true, maxTouchPoints: 5 });
 if (flag('reduced')) await send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: 'reduce' }] });
 await send('Page.addScriptToEvaluateOnNewDocument', { source: `try { ${flag('intro') ? '' : "sessionStorage.setItem('ssds-intro', '1');"} ${flag('lite') ? "sessionStorage.setItem('ssds-lite', '1');" : ''} } catch (e) {}` });
-const url = targets[0]?.startsWith('http') ? targets.shift() : 'http://127.0.0.1:4321/';
+const url = /^(https?|file):/.test(targets[0] || '') ? targets.shift() : 'http://127.0.0.1:4321/';
 await send('Page.navigate', { url });
 if (flag('intro')) { for (const t of [250, 500, 750, 1000, 1250, 1600, 2400]) { await sleep(t - (globalThis.__last || 0)); globalThis.__last = t; await shot(`intro-${t}ms`); } }
 await sleep(WAIT);
