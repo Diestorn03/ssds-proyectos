@@ -359,7 +359,7 @@ const svgIc = (d: string, s = 20) => `<svg width="${s}" height="${s}" viewBox="0
         </article>
       </form>
 
-      <aside class="dz-sum" data-theme="dark" data-dz-sum data-state="empty" aria-labelledby="dz-sum-t" data-reveal="up" data-delay=".15">
+      <div class="dz-sum" role="group" data-theme="dark" data-dz-sum data-state="empty" aria-labelledby="dz-sum-t" data-reveal="up" data-delay=".15">
         <h3 id="dz-sum-t" class="dz-sum__k">Tu sistema</h3>
         <p class="dz-sum__empty" data-dz-sum-empty>Elige un punto de partida y aquí verás tu inversor, tus baterías y el precio.</p>
         <div class="dz-sum__full" data-dz-sum-full hidden>
@@ -373,7 +373,7 @@ const svgIc = (d: string, s = 20) => `<svg width="${s}" height="${s}" viewBox="0
           <p class="dz-sum__eq" data-dz-sum-n></p>
           <div class="dz-sum__load" data-dz-sum-load><p data-dz-sum-loadtxt></p><span class="dz-sum__bar"><i data-dz-sum-bar></i></span></div>
         </div>
-      </aside>
+      </div>
     </div>
     <p class="sr-only" aria-live="polite" data-dz-live></p>
   </div>
@@ -442,6 +442,7 @@ const svgIc = (d: string, s = 20) => `<svg width="${s}" height="${s}" viewBox="0
   .dz-fs { border: 0; margin: 0; padding: 0; min-width: 0; }
   .dz-chips { display: flex; flex-wrap: wrap; gap: 8px; }
 
+  :global(html:has(.dz)) { scroll-padding-bottom: 110px; }   /* el foco por teclado no queda tapado por la barra fija de abajo (WCAG 2.4.11) */
   /* nav: sticky at every width; on phones it also carries the live price */
   .dz-nav {
     position: sticky; bottom: 0; z-index: 4; display: flex; justify-content: space-between; align-items: center; gap: 12px;
@@ -542,7 +543,7 @@ const svgIc = (d: string, s = 20) => `<svg width="${s}" height="${s}" viewBox="0
   @media (hover: hover) { .dz-qty button:hover { border-color: var(--navy-900); } }
   .dz-qty input { width: 32px; height: 40px; border: 0; background: transparent; text-align: center; padding: 0; font: 600 17px/1 var(--font-display); font-variant-numeric: tabular-nums; color: var(--ink); }
   .dz-qty input:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; border-radius: 8px; }
-  .dz-row:not(.is-on) [data-dz-dec], .dz-row:not(.is-on) [data-dz-qty] { display: none; }   /* at 0 only the + shows; the input stays in the form */
+  .dz-row:not(.is-on) [data-dz-dec], .dz-row:not(.is-on):not(:focus-within) [data-dz-qty] { display: none; }   /* at 0 only the + shows; the input stays in the form */
   .dz-qty__u { margin-left: 6px; font: 400 14px/1.2 var(--font-body); color: var(--ink-2); }
   .dz-ask { grid-column: 1 / -1; padding: 12px 8px 4px; border-top: 1px dashed var(--line); }
   .dz-ask__q { margin: 0 0 8px; font: 400 14px/1.4 var(--font-body); color: var(--ink-2); }
@@ -550,7 +551,7 @@ const svgIc = (d: string, s = 20) => `<svg width="${s}" height="${s}" viewBox="0
   .dz-hint + .dz-custom { border-top: 0; }
   .dz-f { display: grid; gap: 6px; min-width: 0; }
   .dz-f__l { padding: 0; font: 600 14px/1.2 var(--font-body); color: var(--ink); }
-  .dz-field { width: 100%; min-width: 0; min-height: 48px; padding: 0 14px; border: 1px solid var(--line); border-radius: var(--dz-r); background: var(--white); color: var(--ink); font-size: 1rem; }
+  .dz-field { width: 100%; min-width: 0; min-height: 48px; padding: 0 14px; border: 1px solid #8a96ad; border-radius: var(--dz-r); background: var(--white); color: var(--ink); font-size: 1rem; }
   .dz-field:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; border-radius: var(--dz-r); }
   .dz-custom__m { justify-self: start; }
   @media (max-width: 639px) { .dz-custom { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } .dz-f--t, .dz-custom__m { grid-column: 1 / -1; } }
@@ -735,9 +736,16 @@ const svgIc = (d: string, s = 20) => `<svg width="${s}" height="${s}" viewBox="0
   }
 
   /* details */
-  .dz-more { display: grid; min-width: 0; }
+  .dz-more { display: grid; grid-template-columns: minmax(0, 1fr); min-width: 0; }
+  @media (forced-colors: active) {   /* modo de alto contraste de Windows: el estado elegido se marca con contorno y colores del sistema */
+    .dz-tab[aria-selected='true'], .dz-hour:has(input:checked), .dz-pill:has(input:checked), .dz-card-opt:has(input:checked), .dz-tier:has(input:checked), .dz-seg__opt:has(input:checked) { outline: 3px solid Highlight; outline-offset: -3px; }
+    .dz-tab[aria-selected='true'] { forced-color-adjust: none; background: Highlight; color: HighlightText; border-color: Highlight; }
+    .dz-tier:has(input:checked) .dz-tier__top::before { forced-color-adjust: none; background: Highlight; border-color: Highlight; }
+    .dz-seg__thumb { forced-color-adjust: none; background: Highlight; }
+    .dz-seg__opt:has(input:checked) { color: HighlightText; }
+  }
   .dz-more__h { margin: 0 0 8px; font: 600 18px/1.3 var(--font-display); }
-  .dz-acc { border: 0; border-top: 1px solid var(--line); }
+  .dz-acc { min-width: 0; border: 0; border-top: 1px solid var(--line); }
   .dz-acc:last-of-type { border-bottom: 1px solid var(--line); }
   .dz-acc > summary { min-height: 56px; display: flex; align-items: center; justify-content: space-between; gap: 12px; list-style: none; cursor: pointer; font: 600 16px/1.3 var(--font-body); }
   .dz-acc > summary::-webkit-details-marker { display: none; }
@@ -766,7 +774,7 @@ const svgIc = (d: string, s = 20) => `<svg width="${s}" height="${s}" viewBox="0
   .dz-tune .dz-f__l { display: block; margin-bottom: 8px; }
   .dz-instopts { display: grid; gap: 16px; margin-top: 16px; padding: 16px; border-radius: var(--dz-r); background: var(--paper); }
   .dz-instopts .dz-pill { background: var(--white); }
-  .dz-msg { white-space: pre-line; padding: 12px 14px; border-radius: 12px 12px 12px 4px; background: var(--paper); font-size: 14px; line-height: 1.55; }
+  .dz-msg { overflow-wrap: anywhere; white-space: pre-line; padding: 12px 14px; border-radius: 12px 12px 12px 4px; background: var(--paper); font-size: 14px; line-height: 1.55; }
   .dz-res__note { margin: 0; font: 400 13px/1.5 var(--font-body); color: var(--ink-2); }
   .dz-prov { color: var(--dz-warn); font-weight: 600; }
 

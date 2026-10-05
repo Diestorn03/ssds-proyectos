@@ -184,8 +184,11 @@ export function initDimensionador({ env, scrollTo }) {
   }
   const schedule = () => { if (!raf) raf = requestAnimationFrame(() => { raf = 0; sync(); }); };
 
-  function hourCover() {   // each duration that the current system would NOT cover fully says so (5 size() calls, only on change)
-    const a = readAnswers();
+  let hcKey = '';
+  function hourCover() {   // each duration that the current system would NOT cover fully says so (5 size() calls; they do not depend on the chosen hours, so only when the equipment changes)
+    const a = readAnswers(), key = JSON.stringify([a.items, a.custom, a.v220, a.hot]);
+    if (key === hcKey) return;
+    hcKey = key;
     HOURS.forEach((h) => {
       const r = size({ ...a, hours: h, install: 'equipo', tier: null, url: null }), o = r.options.find((x) => x.tier === r.chosen);
       $(`[data-dz-hp="${h}"]`).textContent = o && o.coverage < K.quoteSlack ? `Solo cubre ≈ ${fmt(o.coversH)} h` : '';
@@ -234,6 +237,12 @@ export function initDimensionador({ env, scrollTo }) {
       showTab(tabs[j].dataset.dzTab, true);
       return;
     }
+    if (e.key === 'Enter' && !done && e.target.matches('[name^="ct"], [name^="cw"], [name^="cn"], [data-dz-qty]')) {   // no envía el formulario a medias: pasa al siguiente campo
+      e.preventDefault();
+      const fields = $$('[name^="ct"], [name^="cw"], [name^="cn"]'), i = fields.indexOf(e.target);
+      if (i >= 0 && fields[i + 1]) fields[i + 1].focus(); else e.target.blur();
+      return;
+    }
     if (e.key !== 'Enter' || done || !e.target.matches('input[type="radio"], input[type="checkbox"]')) return;
     e.preventDefault();
     if (!next.disabled) form.requestSubmit();
@@ -242,6 +251,8 @@ export function initDimensionador({ env, scrollTo }) {
   /* ---------- announcements ---------- */
   const say = (text) => { live.textContent = ''; requestAnimationFrame(() => { live.textContent = text; }); };
   const priceSay = () => (S.o ? priceText(S.o, S.a) : 'sin precio todavía');
+  let sayT = 0;
+  const sayPrice = () => { clearTimeout(sayT); sayT = setTimeout(() => say(`${S.o ? `Opción ${S.o.label.toLowerCase()}: ` : ''}${priceSay()}`), 400); };   // en el resultado, cada cambio de opción o de instalación se anuncia (con pausa, sin ruido)
 
   /* ---------- preset / quantities ---------- */
   function applyPreset(id) {
@@ -272,7 +283,7 @@ export function initDimensionador({ env, scrollTo }) {
     if (t.matches('[data-dz-qty], [name^="cw"], [name^="cn"]')) {
       const clean0 = t.value.replace(/\D/g, '');
       if (clean0 !== t.value) t.value = clean0;
-      if (t.matches('[data-dz-qty]')) paintRow(t.closest('[data-dz-row]'), parseInt(clean0, 10) || 0);
+      if (t.matches('[data-dz-qty]') && clean0 !== '') paintRow(t.closest('[data-dz-row]'), parseInt(clean0, 10) || 0);   // vacío: se confirma en change/blur, para no perder el foco
     }
     schedule();
   }
@@ -280,7 +291,7 @@ export function initDimensionador({ env, scrollTo }) {
     const t = e.target;
     if (!t.matches('input') || t.matches('[data-dz-pdf-name]')) return;   // el nombre del PDF no dimensiona: no refresca el resultado
     if (t.matches('[data-dz-extra]')) t.value = String(clamp(parseInt(t.value, 10) || 0, 0, 30));
-    if (done) { refresh(); return; }
+    if (done) { refresh(); sayPrice(); return; }
     if (t.matches('[data-dz-qty]')) { const row = t.closest('[data-dz-row]'); setQty(row, parseInt(t.value, 10) || 0); }
     sync();
     if (t.name === 'preset') {
@@ -303,7 +314,7 @@ export function initDimensionador({ env, scrollTo }) {
     if (t.closest('[data-dz-extra-dec], [data-dz-extra-inc]')) {
       const inp = $('[data-dz-extra]');
       inp.value = String(clamp((parseInt(inp.value, 10) || 0) + (t.closest('[data-dz-extra-inc]') ? 1 : -1), 0, 30));
-      return refresh();
+      refresh(); sayPrice(); return;
     }
     if (t.closest('[data-dz-adjust]')) { const d = $('[data-dz-acc-adjust]'); d.open = true; $('summary', d).focus({ preventScroll: true }); return toCardTop(d); }
     if (t.closest('[data-dz-back]')) return go(cur - 1);   // go() moves focus to the step, so a disabled Atrás never keeps it
@@ -454,11 +465,13 @@ export function initDimensionador({ env, scrollTo }) {
     if (ok) tip.textContent = `Si quitas ${list(names)}, el resto sí se puede respaldar con inversor y baterías.`;
   }
 
-  // the whole result, from the form: two size() passes (the first fixes the chosen tier so the URL and the message agree)
+  // the whole result, from the form: one size() pass when the tier asked for exists, two when it does not (the first fixes the chosen tier so the URL and the message agree)
   function fill() {
-    const a0 = readAnswers(), R0 = size(a0), chosen = R0.chosen;
-    const url = buildUrl(a0, chosen);
-    const a = clean({ ...a0, tier: chosen, url }), R = size(a), o = R.options.find((x) => x.tier === R.chosen) || null;
+    const a0 = readAnswers();
+    let chosen = a0.tier, a = null, R = null, url = '';
+    if (chosen) { url = buildUrl(a0, chosen); a = clean({ ...a0, tier: chosen, url }); R = size(a); }   // la opción pedida casi siempre existe: una sola pasada
+    if (!R || R.chosen !== chosen) { chosen = size(a0).chosen; url = buildUrl(a0, chosen); a = clean({ ...a0, tier: chosen, url }); R = size(a); }
+    const o = R.options.find((x) => x.tier === R.chosen) || null;
     S = { a, R, o };
     const oos = !!R.outOfScope || !o;
     res.classList.toggle('dz-res--oos', oos);

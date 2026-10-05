@@ -79,7 +79,7 @@ const year = new Date().getFullYear();
 
   <div class="container ftr__bottom">
     <span>© {year} {brand.legalName} · {brand.tagline}</span>
-    <span class="ftr__rif">{brand.razonSocial} · RIF {brand.rif}</span>
+    <span class="ftr__rif">{brand.razonSocial} · <span class="ftr__nowrap">RIF {brand.rif}</span></span>
     {demo && <span class="ftr__demo">Propuesta de sitio web · demo</span>}
     <a href={social.instagram} target="_blank" rel="noopener">@{contact.instagram}</a>
   </div>
@@ -114,6 +114,8 @@ const year = new Date().getFullYear();
   .ftr__giant-outline { fill: none; stroke: rgba(255, 255, 255, 0.14); stroke-width: 1.2; }
   .ftr__bottom { position: relative; display: flex; flex-wrap: wrap; gap: 10px 24px; justify-content: space-between; margin-top: clamp(24px, 4vw, 40px); padding-top: 22px; border-top: 1px solid var(--line); font-size: 0.85rem; color: var(--muted); }
   .ftr__bottom a { display: inline-flex; align-items: center; min-height: 36px; }
+  .ftr__bottom { align-items: center; }
+  .ftr__nowrap { white-space: nowrap; }
   /* touch: 44px targets (the list loses its 4px gap so the rhythm stays close to the pointer layout) */
   @media (pointer: coarse) { .ftr__list { gap: 0; } .ftr__list a, .ftr__bottom a { min-height: 44px; } }
   .ftr__demo { font-family: var(--font-mono); letter-spacing: 0.08em; text-transform: uppercase; font-size: 0.75rem; color: var(--amber-400); }
