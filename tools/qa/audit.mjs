@@ -9,7 +9,7 @@ const argv = process.argv.slice(2);
 const flags = Object.fromEntries(argv.filter((a) => a.startsWith('--')).map((a) => a.slice(2).split('=')));
 const pos = argv.filter((a) => !a.startsWith('--'));
 const [baseUrl, outFile, ...pagesArg] = pos;
-const pages = pagesArg.length ? pagesArg : ['/', '/servicios/', '/servicios/respaldo-energetico/', '/nosotros/', '/contacto/', '/no-existe/'];
+const pages = pagesArg.length ? pagesArg : ['/', '/servicios/', '/servicios/respaldo-energetico/', '/nosotros/', '/contacto/', '/diagnostico/', '/dimensionar/', '/no-existe/'];
 const SHOTS = (flags.shots || process.env.SHOTS_DIR || tmpdir() + '/ssds-shots/audit').replaceAll(String.fromCharCode(92), '/') + '/';
 mkdirSync(SHOTS, { recursive: true });
 const ALL = [

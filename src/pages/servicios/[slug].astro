@@ -34,6 +34,7 @@ const loops = Math.ceil(14 / s.tags.length); // enough tag copies for one marque
   <PageHero id="servicio" kicker={`${s.code} · ${s.kicker}`} title={s.headline} accent={accents[s.slug]} lead={s.intro} crumbs={[{ href: '/servicios/', label: 'Servicios' }, { label: s.short }]}>
     <div slot="actions" class="btn-row phero__actions">
       <a class="btn btn--primary" href={wa(s.waText)} target="_blank" rel="noopener" data-magnetic="0.25"><Icon name="whatsapp" size={20} />{s.cta}</a>
+      {s.tool && <a class="btn btn--ghost" href={`${import.meta.env.BASE_URL.replace(/\/$/, '')}${s.tool.href}`}>{s.tool.label}<Icon name="arrow" size={18} /></a>}
       <a class="btn btn--ghost" href="#detalle">Ver alcance<Icon name="chevron" size={18} /></a>
     </div>
 

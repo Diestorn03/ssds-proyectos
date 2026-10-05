@@ -1,0 +1,788 @@
+---
+// Escena #dimensionar "Dimensiona tu respaldo" (light). Tres pasos (Punto de partida · Equipos · Horas) + resultado con opciones
+// Básica / Recomendada / Holgada, y un resumen fijo "Tu sistema". Reglas y precios: src/data/dimensionar.js · lógica: src/scripts/dimensionar.js
+// Diseño: una cifra protagonista por pantalla, cada dato se ve una sola vez; naranja solo para acción y selección. Todo número es orientativo.
+import Icon from '../ui/Icon.astro';
+import { wa } from '../../data/site.js';
+import { K, loads, presets, inverters, pricing, validezTxt } from '../../data/dimensionar.js';
+
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+const nf = (n: number, d = 1) => n.toLocaleString('es-VE', { maximumFractionDigits: d });
+
+// Glifos de equipos 24×24 (trazo 1.8) que Icon.astro no tiene; los alias reutilizan el más parecido.
+const glyph: Record<string, string> = {
+  bolt: '<path d="M13 2 4 14h7l-1 8 9-12h-7l1-8Z"/>',
+  snowflake: '<path d="M12 2v20M2 12h20M5 5l14 14M19 5 5 19"/><path d="M12 2l-2 3h4M12 22l-2-3h4M2 12l3-2v4M22 12l-3-2v4"/>',
+  phone: '<path d="M5 3h4l2 5-2.5 1.5a11 11 0 0 0 6 6L16 13l5 2v4a2 2 0 0 1-2 2A17 17 0 0 1 3 5a2 2 0 0 1 2-2Z"/>',
+  plug: '<path d="M9 3v5M15 3v5M6 8h12v3a6 6 0 0 1-12 0V8ZM12 17v4"/>',
+  home: '<path d="m3 11 9-8 9 8v9a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1v-9Z"/>',
+  fridge: '<rect x="6" y="2.5" width="12" height="19" rx="2"/><path d="M6 10h12M9 6v1.5M9 13v3"/>',
+  router: '<rect x="3" y="14" width="18" height="6" rx="2"/><path d="M7 17h.01M11 17h.01M7 14 5 9.5M17 14l2-4.5M12 14V8"/>',
+  dish: '<ellipse cx="12" cy="9" rx="8" ry="4.5"/><path d="M12 13.5V20M8 21h8"/>',
+  bulb: '<path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.5 10.9c.6.5 1 1.2 1 2V16h5v-.1c0-.8.4-1.5 1-2A6 6 0 0 0 12 3Z"/>',
+  fan: '<circle cx="12" cy="12" r="1.6"/><path d="M12 10.4C12 6 14 3.5 16 4s1.4 3-1 4.6M13.6 12c4.4 0 6.9 2 6.4 4s-3 1.4-4.6-1M12 13.6c0 4.4-2 6.9-4 6.4s-1.4-3 1-4.6M10.4 12C6 12 3.5 10 4 8s3-1.4 4.6 1"/>',
+  tv: '<rect x="3" y="5" width="18" height="12" rx="2"/><path d="M8 21h8M12 17v4"/>',
+  camera: '<path d="M3 8h3l1.5-2h9L18 8h3v11H3V8Z"/><circle cx="12" cy="13" r="3.5"/>',
+  gate: '<path d="M3 21V6M21 21V6M3 10h18M3 16h18M8 10v6M13 10v6M18 10v6"/>',
+  pump: '<circle cx="10" cy="13" r="5"/><path d="M15 13h6v-3M8 13h4M10 8V5h4"/>',
+  ac: '<rect x="3" y="5" width="18" height="8" rx="2"/><path d="M7 9h10M8 16c0 2-1 3-1 5M12 16c0 2-1 3-1 5M16 16c0 2-1 3-1 5"/>',
+  laptop: '<rect x="5" y="5" width="14" height="10" rx="1.5"/><path d="M2 19h20"/>',
+  pc: '<rect x="3" y="4" width="8" height="16" rx="1.5"/><path d="M7 16h.01M14 8h7v8h-7zM17.5 16v3M15 19h5"/>',
+  washer: '<rect x="4" y="3" width="16" height="18" rx="2"/><circle cx="12" cy="13" r="4"/><path d="M8 6.5h.01M11 6.5h.01"/>',
+  microwave: '<rect x="3" y="6" width="18" height="12" rx="2"/><rect x="6" y="9" width="8" height="6" rx="1"/><path d="M17 9.5h.01M17 12h.01M17 14.5h.01"/>',
+  blender: '<path d="M8 3h8l-1 10H9L8 3Z"/><path d="M7 13h10v3a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2v-3ZM10 21h4"/>',
+  bottle: '<path d="M10 2h4v4l2 3v11a2 2 0 0 1-2 2h-4a2 2 0 0 1-2-2V9l2-3V2Z"/><path d="M8 13h8"/>',
+  pos: '<rect x="5" y="3" width="14" height="18" rx="2"/><path d="M8 7h8M8 11h2M12 11h2M8 14.5h2M12 14.5h2M8 18h8"/>',
+};
+const alias: Record<string, string> = { showcase: 'fridge', icecream: 'snowflake', register: 'pos', dryer: 'washer', drop: 'pump', stove: 'microwave', weld: 'bolt', motor: 'bolt' };
+const gl = (k: string) => glyph[alias[k] ?? k] ?? glyph.plug;
+const presetIc: Record<string, string> = { esencial: 'bulb', aire: 'ac', completa: 'home', negocio: 'pos', oficina: 'laptop', cero: 'plug' };
+const presetList = [...presets, { id: 'cero', t: 'Desde cero', d: 'Marco mis equipos yo mismo', items: {} }];
+
+// Equipos por categoría (el orden de loads[] manda dentro de cada una). Los que cotiza un ingeniero van aparte y al final.
+const cats = [
+  { id: 'esencial', t: 'Lo esencial' }, { id: 'clima', t: 'Clima' }, { id: 'agua', t: 'Agua' },
+  { id: 'cocina', t: 'Cocina y lavado' }, { id: 'trabajo', t: 'Trabajo' }, { id: 'negocio', t: 'Negocio' }, { id: 'ing', t: 'Con ingeniero' },
+].map((c) => ({ ...c, rows: loads.filter((l) => l.id !== 'otro' && (c.id === 'ing' ? l.engineer : !l.engineer && l.cat === c.id)) }));
+const tabsList = [...cats, { id: 'otro', t: 'Otro equipo' }];
+const sub = (l: any) => [l.engineer && 'Lo cotiza un ingeniero', l.v220 === true && !l.engineer && '220 V'].filter(Boolean).join(' · ');
+const hours = [{ h: 2, t: 'un bajón' }, { h: 4, t: 'corte típico' }, { h: 8, t: 'una noche' }, { h: 12, t: 'medio día' }, { h: 24, t: 'día completo' }];
+const places = [{ v: 'apto', t: 'Apartamento' }, { v: 'casa', t: 'Casa' }, { v: 'negocio', t: 'Negocio' }];
+const cities = ['Maracay', 'Turmero', 'Cagua', 'La Victoria', 'Otra zona'];
+const tiers = [{ k: 'basico' }, { k: 'recomendado' }, { k: 'holgado' }];
+const lights = [{ k: 'start', t: 'Arranque' }, { k: 'hours', t: 'Horas' }, { k: 'charge', t: 'Recarga' }, { k: 'v220', t: '220 V' }];
+const maxKw = Math.max(...inverters.filter((i: any) => i.available && i.priceEq > 0).map((i: any) => i.kw));
+const waHi = wa('Hola SSD&S, quiero dimensionar un respaldo con inversor y baterías para mi casa o negocio.');
+const svgIc = (d: string, s = 20) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
+---
+<section id="dimensionar" class="section dz" data-theme="light" data-fab-hide aria-labelledby="dimensionar-title">
+  <div class="dz__bg" aria-hidden="true">
+    <span class="streak streak--thick dz__ray"></span>
+  </div>
+
+  <div class="container">
+    <h2 id="dimensionar-title" class="sr-only">Dimensiona tu respaldo</h2>
+
+    <div class="dz-grid" data-dz-grid>
+      <form class="dz-main" data-dz-form novalidate aria-label="Dimensiona tu respaldo en 3 pasos">
+        <div class="dz-card" data-dz-card data-step="0" data-reveal="up" data-delay=".05">
+          <div class="dz-prog" data-dz-track aria-hidden="true">
+            <p class="dz-count">Paso <b data-dz-count>1</b> de 3 · <span data-dz-steplbl>Punto de partida</span></p>
+            <div class="dz-seg3"><i data-dz-seg></i><i data-dz-seg></i><i data-dz-seg></i></div>
+          </div>
+
+          <div class="dz-steps">
+            <!-- 1 · Punto de partida -->
+            <fieldset class="dz-step dz-step--preset is-active" data-dz-step aria-describedby="dz-help-0">
+              <legend class="dz-legend">¿Por dónde empezamos?</legend>
+              <p class="dz-help" id="dz-help-0">Elige lo más parecido a tu caso. Después quitas o sumas equipos.</p>
+              <div class="dz-opts">
+                {presetList.map((p) => (
+                  <label class="dz-card-opt">
+                    <input type="radio" name="preset" value={p.id} />
+                    <span class="dz-opt__ic" aria-hidden="true" set:html={svgIc(gl(presetIc[p.id]), 22)} />
+                    <span class="dz-opt__txt"><span class="dz-opt__t">{p.t}</span><span class="dz-opt__d">{p.d}</span></span>
+                    <span class="dz-opt__ck" aria-hidden="true"><Icon name="check" size={14} stroke={2.6} /></span>
+                  </label>
+                ))}
+              </div>
+            </fieldset>
+
+            <!-- 2 · Equipos -->
+            <fieldset class="dz-step dz-step--items" data-dz-step aria-describedby="dz-help-1">
+              <legend class="dz-legend">¿Qué quieres mantener encendido?</legend>
+              <p class="dz-help" id="dz-help-1">Toca para agregar; con − y + ajustas la cantidad. No hace falta saber vatios.</p>
+              <p class="dz-from" data-dz-fromrow hidden><span>Partiste de: <b data-dz-from></b></span><button type="button" class="btn btn--text" data-dz-change>cambiar</button></p>
+              <div class="dz-tabs" role="tablist" aria-label="Categorías de equipos" data-dz-tabs>
+                {tabsList.map((c, i) => (
+                  <button type="button" role="tab" id={`dz-tab-${c.id}`} class="dz-tab" data-dz-tab={c.id} aria-selected={i === 0 ? 'true' : 'false'} aria-controls={`dz-panel-${c.id}`} tabindex={i === 0 ? 0 : -1}>
+                    <span>{c.t}</span><span class="dz-tab__n" data-dz-gn hidden></span>
+                  </button>
+                ))}
+              </div>
+              <div class="dz-panels">
+                {cats.map((c, i) => (
+                  <div class="dz-rows" role="tabpanel" id={`dz-panel-${c.id}`} aria-labelledby={`dz-tab-${c.id}`} data-dz-group={c.id} hidden={i !== 0}>
+                    {c.id === 'clima' && <p class="dz-hint" data-dz-hotnote hidden>Si donde vives hace mucho calor, actívalo en «Ajustar mi caso» al ver tu precio.</p>}
+                    {c.id === 'ing' && <p class="dz-hint">Cocinas, secadoras, soldadoras y motores trifásicos no se respaldan con baterías de este tamaño: márcalos igual y te lo cotiza un ingeniero.</p>}
+                    {c.rows.map((l: any) => (
+                      <div class="dz-row" data-dz-row={l.id}>
+                        <button type="button" class="dz-row__hit" data-dz-hit aria-pressed="false">
+                          <span class="dz-opt__ic" aria-hidden="true" set:html={svgIc(gl(l.icon), 22)} />
+                          <span class="dz-row__txt"><span class="dz-row__t">{l.t}</span>{sub(l) && <span class="dz-row__sub">{sub(l)}</span>}</span>
+                        </button>
+                        <span class="dz-qty" role="group" aria-label={`Cantidad: ${l.t}`}>
+                          <button type="button" data-dz-dec aria-label={`Quitar uno: ${l.t}`}>−</button>
+                          <input type="text" inputmode="numeric" pattern="[0-9]*" maxlength="2" name={l.id} value="0" aria-label={`Cantidad: ${l.t}`} autocomplete="off" data-dz-qty />
+                          <button type="button" data-dz-inc aria-label={`Sumar uno: ${l.t}`}>+</button>
+                        </span>
+                        {l.v220 === 'ask' && (
+                          <div class="dz-ask" data-dz-ask hidden role="group" aria-labelledby={`dz-askq-${l.id}`}>
+                            <p class="dz-ask__q" id={`dz-askq-${l.id}`}>¿Tu {l.hp ? 'bomba' : 'aire'} es de 220 V? Lo dice la placa{l.hp ? '' : ' o el breaker doble'}.</p>
+                            <div class="dz-chips">
+                              <label class="dz-pill"><input type="radio" name={`v220-${l.id}`} value="1" />Sí, es de 220</label>
+                              <label class="dz-pill"><input type="radio" name={`v220-${l.id}`} value="0" />No, es de 110</label>
+                              <label class="dz-pill"><input type="radio" name={`v220-${l.id}`} value="?" />No sé</label>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                ))}
+                <div class="dz-rows" role="tabpanel" id="dz-panel-otro" aria-labelledby="dz-tab-otro" data-dz-group="otro" hidden>
+                  <p class="dz-hint">Escribe la potencia que dice la placa. Si tiene motor (bomba, compresor), márcalo: cuenta su arranque.</p>
+                  {[0, 1, 2].map((i) => (
+                    <div class="dz-custom" data-dz-crow>
+                      <label class="dz-f dz-f--t"><span class="dz-f__l">Nombre</span><input class="dz-field" type="text" name={`ct${i}`} maxlength="40" autocomplete="off" placeholder="Ej. bomba de pozo" /></label>
+                      <label class="dz-f"><span class="dz-f__l">Potencia (W)</span><input class="dz-field" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="5" name={`cw${i}`} autocomplete="off" placeholder="Ej. 750" /></label>
+                      <label class="dz-f"><span class="dz-f__l">Cantidad</span><input class="dz-field" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="2" name={`cn${i}`} autocomplete="off" placeholder="1" /></label>
+                      <label class="dz-pill dz-custom__m"><input type="checkbox" name={`cm${i}`} value="1" />Tiene motor</label>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </fieldset>
+
+            <!-- 3 · Horas y dónde va -->
+            <fieldset class="dz-step dz-step--hours" data-dz-step aria-describedby="dz-help-2">
+              <legend class="dz-legend">¿Cuántas horas quieres cubrir por corte?</legend>
+              <p class="dz-help" id="dz-help-2">Piensa en tu corte habitual. Si dudas, deja 8 h.</p>
+              <div class="dz-hours">
+                {hours.map((o) => (
+                  <label class="dz-hour">
+                    <input type="radio" name="hours" value={String(o.h)} checked={o.h === 8} />
+                    <span class="dz-hour__h">{o.h} h</span><span class="dz-hour__t">{o.t}</span><span class="dz-hour__w" data-dz-hp={o.h}></span>
+                  </label>
+                ))}
+              </div>
+              <p class="dz-live" data-dz-liveline></p>
+              <p class="dz-plant" data-dz-plant hidden>Para cortes tan largos conviene evaluar también una planta eléctrica. <a class="btn btn--text" href={`${base}/servicios/respaldo-energetico/`}>Ver Respaldo Energético</a></p>
+              <fieldset class="dz-fs dz-q2">
+                <legend class="dz-q2__t">¿Dónde va el sistema?</legend>
+                <div class="dz-places">
+                  {places.map((p) => <label class="dz-pill dz-place"><input type="radio" name="place" value={p.v} />{p.t}</label>)}
+                </div>
+              </fieldset>
+            </fieldset>
+          </div>
+
+          <div class="dz-nav" data-dz-nav>
+            <button type="button" class="btn btn--ghost dz-back" data-dz-back disabled>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5M11 6l-6 6 6 6" /></svg>
+              <span class="dz-back__t">Atrás</span>
+            </button>
+            <p class="dz-bar__sum" aria-hidden="true"><b class="num" data-dz-bar-price></b><span data-dz-bar-sub></span></p>
+            <button type="submit" class="btn btn--primary dz-next" data-dz-next disabled data-magnetic="0.2">
+              <span data-dz-next-lbl>Siguiente</span><Icon name="arrow" size={20} class="arrow" />
+            </button>
+          </div>
+          <p class="dz-nojs">
+            Esta herramienta necesita JavaScript. Cuéntanos qué quieres mantener encendido y te respondemos por WhatsApp.<br />
+            <a class="btn btn--wa" href={waHi} target="_blank" rel="noopener"><Icon name="whatsapp" size={20} />Dimensionar por WhatsApp</a>
+          </p>
+        </div>
+
+        <!-- Resultado -->
+        <article class="dz-res" data-dz-res hidden tabindex="-1" aria-labelledby="dz-res-title">
+          <p class="dz-resume" data-dz-resume hidden><span>Configuración cargada desde el enlace.</span><button type="button" class="btn btn--text" data-dz-edit>Editar equipos</button></p>
+          <header class="dz-res__top">
+            <h3 id="dz-res-title" class="dz-res__title" data-dz-rtitle>Tu respaldo</h3>
+            <p class="dz-res__sub" data-dz-rsub>Precio referencial en USD. Se confirma en la visita técnica.</p>
+          </header>
+
+          <div class="dz-ok" data-dz-ok>
+            <p class="dz-status" data-dz-status data-state="ok"><span class="dz-status__ic" aria-hidden="true"></span><span data-dz-status-t></span></p>
+
+            <section class="dz-cmp" aria-labelledby="dz-cmp-h">
+              <div class="dz-cmp__bar">
+                <h4 class="dz-cmp__h" id="dz-cmp-h">Elige una opción</h4>
+                <div class="dz-seg" role="radiogroup" aria-label="Qué incluye el precio">
+                  <span class="dz-seg__thumb" aria-hidden="true"></span>
+                  <label class="dz-seg__opt"><input type="radio" name="install" value="equipo" checked /><span>Solo equipo</span></label>
+                  <label class="dz-seg__opt"><input type="radio" name="install" value="instalado" /><span>Instalado</span></label>
+                </div>
+              </div>
+              <div class="dz-tiers" data-dz-tiers role="radiogroup" aria-label="Opciones de respaldo">
+                {tiers.map((t) => (
+                  <label class="dz-tier" data-dz-tier={t.k} hidden>
+                    <input type="radio" name="tier" value={t.k} />
+                    <span class="dz-tier__top"><span class="dz-tier__lbl" data-dz-t="lbl"></span><span class="dz-tier__rev" data-dz-t="rev" hidden>Sujeta a revisión</span></span>
+                    <span class="dz-tier__pic"><span class="dz-pic" data-dz-pic="inv"></span><span class="dz-pic" data-dz-pic="bat"></span></span>
+                    <span class="dz-tier__price"><span class="dz-tier__from" data-dz-t="from" hidden>desde</span><b class="dz-tier__n num" data-dz-t="price"></b><span class="dz-tier__pl" data-dz-t="pl"></span></span>
+                    <span class="dz-tier__sub" data-dz-t="sub"></span>
+                    <span class="dz-tier__line" data-dz-t="line"></span>
+                    <span class="dz-tier__h" data-dz-t="h"></span>
+                    <span class="dz-tier__sys"><span data-dz-t="inv" data-k="Inversor"></span><span data-dz-t="bat" data-k="Baterías"></span></span>
+                    <span class="dz-tier__delta" data-dz-t="delta"></span>
+                  </label>
+                ))}
+              </div>
+              <p class="dz-cmp__note" data-dz-cmpnote hidden></p>
+              <p class="dz-adj" data-dz-adjline hidden>Incluye kit básico hasta {pricing.basicKitM} m del tablero. <button type="button" class="btn btn--text" data-dz-adjust>Ajustar transferencia y metros</button></p>
+            </section>
+          </div>
+
+          <div class="dz-oos" data-dz-oos hidden>
+            <h3 class="dz-oos__t">Esto se dimensiona con un ingeniero.</h3>
+            <p class="dz-oos__s">Tu lista ya está en el mensaje: escríbenos y lo vemos contigo.</p>
+            <p class="dz-oos__why"><b>Motivo</b><span data-dz-reason></span></p>
+            <p class="dz-oos__lim">En línea cotizamos un solo inversor, de hasta {nf(maxKw, 0)} kW. Tu caso pasa de eso, o incluye equipos que no se respaldan con baterías de este tamaño.</p>
+            <ul class="dz-oos__list" role="list" data-dz-list></ul>
+            <ul class="dz-kpis" role="list" data-dz-figs></ul>
+            <p class="dz-oos__tip" data-dz-tip hidden></p>
+            <button type="button" class="btn btn--primary" data-dz-remove hidden></button>
+          </div>
+
+          <section class="dz-sel">
+            <p class="dz-sel__t" data-dz-sel></p>
+          </section>
+
+          <div class="dz-cta">
+            <a class="btn btn--wa" data-dz-wa data-magnetic="0.2" href={waHi} target="_blank" rel="noopener"><Icon name="whatsapp" size={20} /><span><span class="dz-xs-hide">Pedir por </span>WhatsApp</span></a>
+            <button type="button" class="btn btn--ghost dz-pdf__btn" data-dz-pdf-btn data-dz-okonly aria-describedby="dz-pdf-hint">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11M7.5 10.5 12 15l4.5-4.5M5 19h14" /></svg>
+              <span data-dz-pdf-lbl><span class="dz-xs-hide">Descargar presupuesto </span>PDF</span>
+            </button>
+          </div>
+
+          <div class="dz-after">
+            <details class="dz-pdfname" data-dz-okonly>
+              <summary>Poner mi nombre en el PDF (opcional)</summary>
+              <label class="dz-f"><span class="dz-f__l">Tu nombre</span><input class="dz-field" type="text" name="pdfName" maxlength="60" autocomplete="name" enterkeyhint="done" placeholder="Ej. María Pérez" aria-describedby="dz-pdf-hint" data-dz-pdf-name /></label>
+              <p class="dz-micro" id="dz-pdf-hint">No se envía a ningún lado: solo se imprime en tu PDF.</p>
+            </details>
+            <p class="dz-pdf__ig" data-dz-pdf-ig hidden>
+              <span>Para descargar, abre esta página en tu navegador.</span>
+              <button type="button" class="btn btn--text" data-dz-copy="url"><span>Copiar enlace</span></button>
+            </p>
+            <p class="dz-pdf__err" role="alert" data-dz-pdf-err hidden></p>
+            <p class="dz-micro">No pedimos tu teléfono ni tu correo. Se abre WhatsApp con el texto listo; lo envías tú.</p>
+            <p class="dz-micro" data-dz-igtip hidden>Si WhatsApp no abre desde Instagram, toca ⋯ y elige Abrir en el navegador, o copia el mensaje.</p>
+            <p class="dz-links">
+              <button type="button" class="btn btn--text" data-dz-copy="url"><span>Copiar enlace</span></button>
+              <button type="button" class="btn btn--text" data-dz-edit>Editar mis equipos</button>
+              <button type="button" class="btn btn--text" data-dz-restart>Volver a empezar</button>
+            </p>
+          </div>
+
+          <section class="dz-more" data-dz-okonly>
+            <h4 class="dz-more__h">Detalles</h4>
+            <details class="dz-acc">
+              <summary>Qué incluye tu opción<Icon name="chevron" size={18} class="dz-chev" /></summary>
+              <div class="dz-acc__b">
+                <p data-dz-runs></p>
+                <ul class="dz-checks" role="list" data-dz-lights>
+                  {lights.map((l) => <li class="dz-light" data-dz-light={l.k} data-state="ok"><span class="dz-light__ic" aria-hidden="true"></span><span class="dz-light__k">{l.t}</span><span class="dz-light__t"></span></li>)}
+                </ul>
+                <ul class="dz-whys" role="list" data-dz-whys></ul>
+                <p class="dz-model" data-dz-model></p>
+                <div class="dz-hintsbox" data-dz-hintsbox hidden>
+                  <h5>Pistas para tu caso</h5>
+                  <ul role="list" data-dz-hints></ul>
+                </div>
+              </div>
+            </details>
+            <details class="dz-acc">
+              <summary>Desglose del precio<Icon name="chevron" size={18} class="dz-chev" /></summary>
+              <ul class="dz-break" role="list" data-dz-break></ul>
+            </details>
+            <details class="dz-acc">
+              <summary>Cómo lo calculamos<Icon name="chevron" size={18} class="dz-chev" /></summary>
+              <ul class="dz-calc" role="list" data-dz-calc></ul>
+            </details>
+            <details class="dz-acc" data-dz-acc-adjust>
+              <summary>Ajustar mi caso<Icon name="chevron" size={18} class="dz-chev" /></summary>
+              <div class="dz-acc__b dz-tune">
+                <fieldset class="dz-fs">
+                  <legend class="dz-f__l">¿Para cuándo? (opcional)</legend>
+                  <div class="dz-chips">
+                    <label class="dz-pill"><input type="radio" name="when" value="sem" />Esta semana</label>
+                    <label class="dz-pill"><input type="radio" name="when" value="mes" />Este mes</label>
+                    <label class="dz-pill"><input type="radio" name="when" value="exp" />Explorando</label>
+                  </div>
+                </fieldset>
+                <fieldset class="dz-fs">
+                  <legend class="dz-f__l">Instalación</legend>
+                  <div class="dz-chips">
+                    <label class="dz-pill"><input type="radio" name="install" value="manoObra" />Solo mano de obra (ya tengo los equipos)</label>
+                  </div>
+                  <p class="dz-micro">Para volver al precio normal, elige «Solo equipo» o «Instalado» arriba.</p>
+                  <div class="dz-instopts" data-dz-instopts hidden>
+                    <fieldset class="dz-fs">
+                      <legend class="dz-f__l">Kit de transferencia</legend>
+                      <div class="dz-chips">
+                        <label class="dz-pill"><input type="radio" name="transfer" value="quiero" />La quiero</label>
+                        <label class="dz-pill"><input type="radio" name="transfer" value="tengo" />Ya tengo</label>
+                        <label class="dz-pill"><input type="radio" name="transfer" value="no" checked />No hace falta</label>
+                      </div>
+                    </fieldset>
+                    <div class="dz-fs">
+                      <p class="dz-f__l" id="dz-extra-l">Distancia al tablero: hasta {pricing.basicKitM} m incluidos</p>
+                      <span class="dz-qty dz-qty--extra" role="group" aria-labelledby="dz-extra-l">
+                        <button type="button" data-dz-extra-dec aria-label="Menos metros de cable adicional">−</button>
+                        <input type="text" inputmode="numeric" pattern="[0-9]*" maxlength="2" name="extraM" value="0" aria-label="Metros adicionales al tablero" autocomplete="off" data-dz-extra />
+                        <button type="button" data-dz-extra-inc aria-label="Más metros de cable adicional">+</button>
+                        <span class="dz-qty__u">m extra</span>
+                      </span>
+                    </div>
+                  </div>
+                </fieldset>
+                <fieldset class="dz-fs">
+                  <legend class="dz-f__l">Afinar (opcional)</legend>
+                  <div class="dz-chips">
+                    <label class="dz-pill"><input type="checkbox" name="solar" value="1" />Quiero paneles solares (se cotizan aparte)</label>
+                    <label class="dz-pill"><input type="checkbox" name="hot" value="1" />Clima caluroso (sube un {Math.round((K.hotDuty - 1) * 100)} % el uso de nevera y aire)</label>
+                  </div>
+                </fieldset>
+                <fieldset class="dz-fs">
+                  <legend class="dz-f__l">¿En qué zona?</legend>
+                  <div class="dz-chips">
+                    {cities.map((c) => <label class="dz-pill"><input type="radio" name="city" value={c} />{c}</label>)}
+                  </div>
+                </fieldset>
+              </div>
+            </details>
+            <details class="dz-acc dz-res__msg">
+              <summary>Mensaje que se enviará por WhatsApp<Icon name="chevron" size={18} class="dz-chev" /></summary>
+              <div class="dz-acc__b">
+                <p class="dz-msg" data-dz-msg></p>
+                <button type="button" class="btn btn--text" data-dz-copy="msg"><span>Copiar mensaje</span></button>
+              </div>
+            </details>
+          </section>
+
+          <p class="dz-res__note">
+            {pricing.provisional && <span class="dz-prov" data-dz-prov>Precios de prueba mientras se confirma la lista. </span>}
+            Precio referencial en USD, sujeto a disponibilidad{validezTxt() ? `; válido por ${validezTxt()}` : ''}. {pricing.payment} La instalación y la autonomía se confirman midiendo tu carga en la visita técnica, sin costo en Aragua; en otros estados tiene un costo que te confirmamos.
+          </p>
+        </article>
+      </form>
+
+      <aside class="dz-sum" data-theme="dark" data-dz-sum data-state="empty" aria-labelledby="dz-sum-t" data-reveal="up" data-delay=".15">
+        <h3 id="dz-sum-t" class="dz-sum__k">Tu sistema</h3>
+        <p class="dz-sum__empty" data-dz-sum-empty>Elige un punto de partida y aquí verás tu inversor, tus baterías y el precio.</p>
+        <div class="dz-sum__full" data-dz-sum-full hidden>
+          <p class="dz-sum__price num" data-dz-sum-price></p>
+          <p class="dz-sum__pl" data-dz-sum-pl></p>
+          <p class="dz-sum__cover" data-dz-sum-cover></p>
+          <ul class="dz-sum__prod" role="list" data-dz-sum-prod>
+            <li><span class="dz-pic" data-dz-pic="inv"></span><span class="dz-sum__ptxt"><b data-dz-sum-inv></b><span data-dz-sum-invs></span></span></li>
+            <li><span class="dz-pic" data-dz-pic="bat"></span><span class="dz-sum__ptxt"><b data-dz-sum-bat></b><span data-dz-sum-bats></span></span></li>
+          </ul>
+          <p class="dz-sum__eq" data-dz-sum-n></p>
+          <div class="dz-sum__load" data-dz-sum-load><p data-dz-sum-loadtxt></p><span class="dz-sum__bar"><i data-dz-sum-bar></i></span></div>
+        </div>
+      </aside>
+    </div>
+    <p class="sr-only" aria-live="polite" data-dz-live></p>
+  </div>
+</section>
+
+<script>
+  import { onPage } from '../../scripts/engine.js';
+  import { initDimensionador } from '../../scripts/dimensionar.js';
+  onPage(initDimensionador);
+</script>
+
+<style is:global>
+  .dz {
+    overflow: clip; padding-top: clamp(40px, 6vw, 72px);
+    --dz-pad: clamp(16px, 4vw, 40px); --dz-r-lg: 24px; --dz-r: 14px;
+    --dz-ok: #1f7a46; --dz-warn: #8a4b00; --dz-bad: #b0281c;
+    --dz-shadow: 0 1px 2px rgba(11, 26, 58, 0.06), 0 28px 56px -36px rgba(11, 26, 58, 0.3);
+  }
+  @media (max-width: 959px) { .dz { padding-top: 28px; } }
+  .dz [hidden] { display: none !important; }
+  .dz__bg { position: absolute; inset: 0; z-index: -1; pointer-events: none; overflow: hidden; }
+  .dz__ray { top: 560px; --angle: -9deg; --streak-opacity: 0.12; }
+
+  /* ---------- layout ---------- */
+  .dz-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; align-items: start; }
+  .dz-main { position: relative; display: block; min-width: 0; margin: 0; }
+  @media (min-width: 960px) {
+    .dz-grid { grid-template-columns: minmax(0, 1fr) clamp(300px, 28vw, 360px); gap: clamp(24px, 3vw, 40px); }
+    .dz-grid[data-done] { grid-template-columns: minmax(0, 1fr); }
+    .dz-grid[data-done] .dz-sum { display: none; }
+    .dz-grid[data-done] .dz-main { width: 100%; max-width: 1040px; margin-inline: auto; }
+  }
+  .dz-card, .dz-res {
+    position: relative; border-radius: var(--dz-r-lg); background: var(--white); border: 1px solid var(--line);
+    box-shadow: var(--dz-shadow); padding: var(--dz-pad);
+  }
+  .dz-card { display: grid; grid-template-columns: minmax(0, 1fr); gap: 24px; }
+  .dz-card::after, .dz-res::before { content: ''; position: absolute; top: -1px; left: var(--dz-r-lg); right: var(--dz-r-lg); height: 3px; border-radius: 3px; background: var(--grad-brand); }
+  .dz-res { display: grid; grid-template-columns: minmax(0, 1fr); gap: 32px; }
+  .dz-res:focus { outline: none; }
+  .dz-res:focus-visible { outline: 2px solid var(--focus); outline-offset: 4px; }
+
+  /* no JS: nothing computes here, so the questions give way to the WhatsApp fallback */
+  .dz-nojs { display: none; }
+  html:not(.js) .dz-steps, html:not(.js) .dz-sum, html:not(.js) .dz-nav, html:not(.js) .dz-prog { display: none; }
+  html:not(.js) .dz-nojs { display: grid; gap: 16px; justify-items: start; color: var(--ink-2); }
+
+  /* ---------- progress ---------- */
+  .dz-prog { display: grid; gap: 10px; }
+  .dz-count { margin: 0; font: 600 14px/1.2 var(--font-body); color: var(--ink-2); }
+  .dz-count b { color: var(--ink); }
+  .dz-seg3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+  .dz-seg3 i { height: 4px; border-radius: 4px; background: var(--line); transition: background-color 0.3s; }
+  .dz-seg3 i.is-done { background: var(--navy-900); }
+  .dz-seg3 i.is-current { background: var(--orange-500); }
+
+  /* ---------- steps: each has its own height ---------- */
+  .dz-steps { display: block; min-width: 0; }
+  .js .dz-step:not(.is-active) { display: none; }
+  html:not(.js) .dz-step + .dz-step { margin-top: 32px; }
+  .dz-step { border: 0; margin: 0; padding: 0; min-width: 0; }
+  .dz-legend { padding: 0; font: 700 clamp(1.5rem, 1.2rem + 1vw, 1.875rem)/1.15 var(--font-display); letter-spacing: -0.025em; color: var(--ink); }
+  .dz-help { margin: 8px 0 24px; font-size: 1rem; line-height: 1.5; color: var(--ink-2); }
+  html.dz-compact .dz-step--preset .dz-help { display: none; }   /* Instagram / ?c=: the first cards must show on a 360×640 screen (the legend keeps aria-describedby) */
+  html.dz-compact .dz-step--preset .dz-legend { margin-bottom: 14px; }
+  .dz-fs { border: 0; margin: 0; padding: 0; min-width: 0; }
+  .dz-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+
+  /* nav: sticky at every width; on phones it also carries the live price */
+  .dz-nav {
+    position: sticky; bottom: 0; z-index: 4; display: flex; justify-content: space-between; align-items: center; gap: 12px;
+    margin: 0 calc(-1 * var(--dz-pad)) calc(-1 * var(--dz-pad)); padding: 16px var(--dz-pad) calc(16px + env(safe-area-inset-bottom, 0px));
+    background: var(--white); border-top: 1px solid var(--line); border-radius: 0 0 var(--dz-r-lg) var(--dz-r-lg);
+  }
+  .dz-nav .btn { min-width: 0; }
+  .dz-next { min-width: 12rem; }
+  .dz-back:disabled { opacity: 0.4; cursor: default; }
+  .dz-back:disabled:hover { transform: none; border-color: color-mix(in srgb, var(--fg) 25%, transparent); }
+  .dz-next:disabled { opacity: 0.45; cursor: not-allowed; box-shadow: none; }
+  .dz-next:disabled:hover { transform: none; }
+  .dz-next:disabled:hover::after { background-position: 120% 0; }
+  .dz-bar__sum { display: none; margin: 0; }
+  @media (max-width: 959px) {
+    .dz-nav { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; box-shadow: 0 -12px 20px -16px rgba(11, 26, 58, 0.25); }
+    .dz-nav .dz-back { width: 48px; padding: 0; }
+    .dz-back__t { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+    .dz-bar__sum { display: grid; gap: 1px; min-width: 0; }
+    .dz-bar__sum b { flex: none; white-space: nowrap; font: 700 20px/1.1 var(--font-display); letter-spacing: -0.02em; color: var(--ink); font-variant-numeric: tabular-nums; }
+    .dz-bar__sum b:empty { display: none; }
+    .dz-bar__sum span { font: 400 13px/1.3 var(--font-body); color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .dz-next { min-width: 0; min-height: 52px; padding-inline: 20px; }
+  }
+  @media (max-width: 400px) {
+    .dz-nav { gap: 8px; }
+    .dz-next { padding-inline: 14px; } .dz-next .arrow { display: none; }
+    .dz-bar__sum b { font-size: 18px; }
+  }
+  @media (max-width: 480px) { .dz-xs-hide { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; } }
+
+  /* ---------- step 1 · starting points ---------- */
+  .dz-opts { display: grid; gap: 12px; }
+  @media (min-width: 560px) { .dz-step--preset .dz-opts { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  .dz-card-opt {
+    position: relative; display: grid; grid-template-columns: 44px minmax(0, 1fr); gap: 14px; align-items: center; min-height: 88px; padding: 16px 48px 16px 16px;
+    border: 1px solid var(--line); border-radius: var(--dz-r); background: var(--white); cursor: pointer; transition: border-color 0.2s, box-shadow 0.2s, background-color 0.2s;
+  }
+  .dz-card-opt > input { position: absolute; opacity: 0; inset: 0; margin: 0; cursor: pointer; }
+  .dz-opt__ic { width: 44px; height: 44px; border-radius: 12px; display: grid; place-items: center; background: var(--paper); color: var(--ink); }
+  .dz-opt__txt { display: grid; gap: 2px; min-width: 0; }
+  .dz-opt__t { font: 600 17px/1.25 var(--font-display); color: var(--ink); }
+  .dz-opt__d { font: 400 14px/1.4 var(--font-body); color: var(--ink-2); }
+  .dz-opt__ck { position: absolute; top: 14px; right: 14px; width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; background: var(--navy-900); color: #fff; opacity: 0; transform: scale(0.6); transition: opacity 0.2s, transform 0.25s var(--ease-out); }
+  .dz-card-opt:has(input:checked) { border-color: var(--orange-500); box-shadow: inset 0 0 0 1px var(--orange-500); background: color-mix(in srgb, var(--orange-500) 4%, #fff); }
+  .dz-card-opt:has(input:checked) .dz-opt__ck { opacity: 1; transform: none; }
+  .dz-card-opt:has(input:focus-visible) { outline: 2px solid var(--focus); outline-offset: 3px; }
+  @media (hover: hover) and (pointer: fine) { .dz-card-opt:hover { border-color: var(--navy-900); } .dz-card-opt:has(input:checked):hover { border-color: var(--orange-500); } }
+
+  /* ---------- step 2 · equipment: one category at a time ---------- */
+  .dz-from { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; margin: -8px 0 0; font: 400 14px/1.4 var(--font-body); color: var(--ink-2); }
+  .dz-from b { color: var(--ink); font-weight: 600; }
+  .dz-from .btn--text { --btn-fg: var(--ink); min-height: 32px; font: 600 14px/1.4 var(--font-body); text-decoration: underline; background: none; }
+  .dz-tabs { position: relative; display: flex; flex-wrap: wrap; gap: 6px; margin: 16px 0; }
+  @media (min-width: 640px) { .dz-tabs { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); } .dz-tab { justify-content: center; } }   /* 8 tabs = 2 even rows of 4, never 6 + 2 */
+  @media (max-width: 639px) {
+    .dz-tabs { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; margin-inline: calc(-1 * var(--dz-pad)); padding-inline: var(--dz-pad);
+      -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 32px), transparent); mask-image: linear-gradient(90deg, #000 calc(100% - 32px), transparent); }
+    .dz-tabs::-webkit-scrollbar { display: none; }
+  }
+  .dz-tab {
+    flex: none; display: inline-flex; align-items: center; gap: 8px; min-height: 40px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--line);
+    background: var(--white); font: 600 14px/1 var(--font-body); color: var(--ink-2); cursor: pointer; white-space: nowrap; transition: background-color 0.2s, color 0.2s, border-color 0.2s;
+  }
+  @media (pointer: coarse) { .dz-tab { min-height: 44px; } }
+  @media (hover: hover) { .dz-tab:hover { border-color: var(--navy-900); color: var(--ink); } }
+  .dz-tab[aria-selected='true'] { background: var(--navy-900); border-color: var(--navy-900); color: #fff; }
+  .dz-tab:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; border-radius: 999px; }
+  .dz-tab__n { min-width: 20px; height: 20px; padding: 0 6px; border-radius: 999px; display: inline-grid; place-items: center; background: var(--paper); color: var(--ink); font: 600 12px/1 var(--font-body); font-variant-numeric: tabular-nums; }
+  .dz-tab[aria-selected='true'] .dz-tab__n { background: rgba(255, 255, 255, 0.18); color: #fff; }
+  .dz-rows { border: 1px solid var(--line); border-radius: var(--dz-r); overflow: hidden; background: var(--white); }
+  .dz-hint { margin: 0; padding: 12px 16px; border-bottom: 1px solid var(--line); background: var(--paper); font: 400 14px/1.45 var(--font-body); color: var(--ink-2); }
+  .dz-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 8px 12px; min-height: 64px; padding: 8px 16px 8px 8px; border-top: 1px solid var(--line); transition: background-color 0.2s, box-shadow 0.2s; }
+  .dz-row:first-child, .dz-hint + .dz-row { border-top: 0; }
+  .dz-row.is-on { background: color-mix(in srgb, var(--orange-500) 6%, #fff); box-shadow: inset 3px 0 0 var(--orange-500); }
+  .dz-row__hit { display: grid; grid-template-columns: 40px minmax(0, 1fr); gap: 14px; align-items: center; min-height: 48px; padding: 4px 8px; border-radius: 12px; text-align: left; }
+  .dz-row__hit:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; border-radius: 12px; }
+  .dz-row .dz-opt__ic { width: 40px; height: 40px; transition: background-color 0.2s, color 0.2s; }
+  .dz-row.is-on .dz-opt__ic { background: var(--navy-900); color: #fff; }
+  .dz-row__t { display: block; font: 500 16px/1.3 var(--font-body); color: var(--ink); }
+  .dz-row.is-on .dz-row__t { font-weight: 600; }
+  .dz-row__sub { display: block; font: 400 13px/1.3 var(--font-body); color: var(--ink-2); }
+  @media (min-width: 640px) { .dz-row__t { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } }   /* 1 line on desktop; on phones up to 2 lines, never cut */
+  .dz-row__hit { min-width: 0; }
+  @media (max-width: 639px) {   /* one line always: icon, name (up to 2 lines) and stepper; the row never changes height when toggled */
+    .dz-row { gap: 8px; padding-right: 8px; }
+    .dz-row__hit { gap: 10px; padding-inline: 4px; }
+    .dz-row__t { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; font-size: 15px; }
+    .dz-qty { gap: 2px; }
+    .dz-qty button { position: relative; width: 36px; height: 36px; }
+    .dz-qty button::after { content: ''; position: absolute; inset: -4px; }   /* 44 px touch target, 36 px drawn */
+    .dz-qty input { width: 24px; }
+  }
+  .dz-qty { display: inline-flex; align-items: center; gap: 4px; justify-self: end; }
+  .dz-qty button { width: 40px; height: 40px; border-radius: 999px; border: 1px solid var(--line); background: var(--white); color: var(--ink); display: grid; place-items: center; font-size: 22px; line-height: 1; transition: border-color 0.2s; }
+  .dz-qty button:focus-visible { border-radius: 999px; }
+  @media (pointer: coarse) and (min-width: 640px) { .dz-qty button { width: 44px; height: 44px; } }
+  @media (hover: hover) { .dz-qty button:hover { border-color: var(--navy-900); } }
+  .dz-qty input { width: 32px; height: 40px; border: 0; background: transparent; text-align: center; padding: 0; font: 600 17px/1 var(--font-display); font-variant-numeric: tabular-nums; color: var(--ink); }
+  .dz-qty input:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; border-radius: 8px; }
+  .dz-row:not(.is-on) [data-dz-dec], .dz-row:not(.is-on) [data-dz-qty] { display: none; }   /* at 0 only the + shows; the input stays in the form */
+  .dz-qty__u { margin-left: 6px; font: 400 14px/1.2 var(--font-body); color: var(--ink-2); }
+  .dz-ask { grid-column: 1 / -1; padding: 12px 8px 4px; border-top: 1px dashed var(--line); }
+  .dz-ask__q { margin: 0 0 8px; font: 400 14px/1.4 var(--font-body); color: var(--ink-2); }
+  .dz-custom { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) 96px; gap: 12px; padding: 16px; border-top: 1px solid var(--line); align-items: end; }
+  .dz-hint + .dz-custom { border-top: 0; }
+  .dz-f { display: grid; gap: 6px; min-width: 0; }
+  .dz-f__l { padding: 0; font: 600 14px/1.2 var(--font-body); color: var(--ink); }
+  .dz-field { width: 100%; min-width: 0; min-height: 48px; padding: 0 14px; border: 1px solid var(--line); border-radius: var(--dz-r); background: var(--white); color: var(--ink); font-size: 1rem; }
+  .dz-field:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; border-radius: var(--dz-r); }
+  .dz-custom__m { justify-self: start; }
+  @media (max-width: 639px) { .dz-custom { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } .dz-f--t, .dz-custom__m { grid-column: 1 / -1; } }
+
+  /* shared by every small choice: places, kit, when, zone, 220 V, motor */
+  .dz-pill {
+    position: relative; display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 8px 16px; border-radius: 999px; border: 1px solid var(--line); background: var(--white);
+    font: 500 14px/1.25 var(--font-body); color: var(--ink); cursor: pointer; user-select: none; transition: border-color 0.2s, background-color 0.2s, box-shadow 0.2s;
+  }
+  .dz-pill > input { position: absolute; opacity: 0; inset: 0; margin: 0; cursor: pointer; }
+  .dz-pill:has(input:checked) { border-color: var(--orange-500); box-shadow: inset 0 0 0 1px var(--orange-500); background: color-mix(in srgb, var(--orange-500) 4%, #fff); font-weight: 600; }
+  .dz-pill:has(input:focus-visible) { outline: 2px solid var(--focus); outline-offset: 2px; }
+  @media (hover: hover) and (pointer: fine) { .dz-pill:hover { border-color: var(--navy-900); } .dz-pill:has(input:checked):hover { border-color: var(--orange-500); } }
+
+  /* ---------- step 3 · hours ---------- */
+  .dz-hours { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 12px; }
+  .dz-hour {
+    position: relative; grid-column: span 2; display: grid; justify-items: center; align-content: center; gap: 4px; min-height: 104px; padding: 12px 8px; border-radius: var(--dz-r); text-align: center;
+    background: var(--white); border: 1px solid var(--line); cursor: pointer; transition: border-color 0.2s, box-shadow 0.2s, background-color 0.2s;
+  }
+  .dz-hour > input { position: absolute; opacity: 0; inset: 0; margin: 0; cursor: pointer; }
+  .dz-hour:nth-child(n + 4) { grid-column: span 3; }
+  @media (min-width: 560px) { .dz-hours { grid-template-columns: repeat(5, minmax(0, 1fr)); } .dz-hour, .dz-hour:nth-child(n + 4) { grid-column: auto; } }
+  .dz-hour__h { font: 700 26px/1 var(--font-display); letter-spacing: -0.02em; color: var(--ink); }
+  .dz-hour__t { font: 400 14px/1.2 var(--font-body); color: var(--ink-2); }
+  .dz-hour__w { min-height: 1.3em; font: 600 13px/1.3 var(--font-body); color: var(--dz-warn); }
+  .dz-hour:has(input:checked) { border-color: var(--orange-500); box-shadow: inset 0 0 0 1px var(--orange-500); background: color-mix(in srgb, var(--orange-500) 4%, #fff); }
+  .dz-hour:has(input:focus-visible) { outline: 2px solid var(--focus); outline-offset: 3px; }
+  @media (hover: hover) and (pointer: fine) { .dz-hour:hover { border-color: var(--navy-900); } .dz-hour:has(input:checked):hover { border-color: var(--orange-500); } }
+  .dz-live { min-height: 3.2em; margin: 24px 0 0; font: 400 16px/1.5 var(--font-body); color: var(--ink); }
+  .dz-plant { margin: 0; font-size: 0.9rem; color: var(--ink-2); }
+  .dz-plant .btn--text { --btn-fg: var(--ink); display: inline-flex; font-size: inherit; text-decoration: underline; background: none; }
+  .dz-q2 { margin-top: 32px; }
+  .dz-q2__t { padding: 0; margin-bottom: 12px; font: 600 18px/1.3 var(--font-display); color: var(--ink); }
+  .dz-places { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+  .dz-place { justify-content: center; text-align: center; min-height: 48px; padding-inline: 8px; }
+
+  /* ---------- equipment photos ---------- */
+  .dz-pic { position: relative; display: flex; align-items: flex-end; justify-content: center; height: 100%; min-width: 0; }
+  .dz-pic img, .dz-pic svg { display: block; height: 100%; width: auto; max-width: 100%; object-fit: contain; }
+  .dz-pic__n { position: absolute; right: -6px; top: -4px; min-width: 24px; height: 22px; padding: 0 6px; border-radius: 999px; display: grid; place-items: center; background: var(--navy-900); color: #fff; font: 600 13px/1 var(--font-body); font-variant-numeric: tabular-nums; }
+
+  /* ---------- "Tu sistema" ---------- */
+  .dz-sum { position: sticky; top: calc(var(--header-h) + 24px); min-height: 300px; padding: 28px; border-radius: var(--dz-r-lg); background: var(--navy-900); color: #fff; border: 1px solid rgba(255, 255, 255, 0.08); display: grid; align-content: start; gap: 16px; }
+  @media (max-width: 959px) { .dz-sum { display: none; } }
+  .dz-sum__k { margin: 0; font: 500 12px/1 var(--font-mono); letter-spacing: 0.12em; text-transform: uppercase; color: #a9b6cf; }
+  .dz-sum__empty { margin: 0; font: 400 16px/1.5 var(--font-body); color: #a9b6cf; }
+  .dz-sum__full { display: grid; gap: 16px; }
+  .dz-sum__price { margin: 0; min-height: 1em; font: 700 44px/1 var(--font-display); letter-spacing: -0.03em; font-variant-numeric: tabular-nums; }
+  .dz-sum[data-state='oos'] .dz-sum__price { font-size: 32px; }
+  .dz-sum__pl { margin: -8px 0 0; font: 400 14px/1.3 var(--font-body); color: #a9b6cf; }
+  .dz-sum__cover { margin: 0; font: 600 18px/1.3 var(--font-display); }
+  .dz-sum__cover.is-warn { color: var(--amber-400); }
+  .dz-sum__prod { list-style: none; margin: 0; padding: 0; display: grid; border-top: 1px solid rgba(255, 255, 255, 0.1); }
+  .dz-sum__prod li { display: grid; grid-template-columns: 64px minmax(0, 1fr); gap: 14px; align-items: center; padding: 12px 0; border-bottom: 1px solid rgba(255, 255, 255, 0.1); }
+  .dz-sum__prod .dz-pic { width: 64px; height: 64px; padding: 6px; align-items: center; border-radius: 12px; background: var(--paper); }
+  .dz-sum__ptxt { display: grid; gap: 2px; min-width: 0; }
+  .dz-sum__ptxt b { font: 600 15px/1.3 var(--font-body); }
+  .dz-sum__ptxt span { font: 400 13px/1.3 var(--font-body); color: #a9b6cf; }
+  .dz-sum__eq { margin: -4px 0 0; font: 400 14px/1.3 var(--font-body); color: #a9b6cf; }
+  .dz-sum__load p { margin: 0 0 8px; font: 400 14px/1.3 var(--font-body); color: #a9b6cf; }
+  .dz-sum__bar { display: block; height: 6px; border-radius: 6px; background: rgba(255, 255, 255, 0.12); overflow: hidden; }
+  .dz-sum__bar i { display: block; height: 100%; width: 100%; border-radius: inherit; background: var(--orange-500); transform-origin: 0 50%; transform: scaleX(0); transition: transform 0.5s var(--ease-out); }
+  .dz-sum__bar i.is-tight { background: var(--amber-400); }
+  .dz-sum__note { margin: 0; font: 400 13px/1.45 var(--font-body); color: #a9b6cf; }
+
+  /* ---------- result ---------- */
+  .dz-resume { margin: 0; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0 14px; padding: 4px 16px; border-radius: var(--dz-r); font-size: 14px; background: var(--paper); }
+  .dz-resume .btn--text { --btn-fg: var(--ink); text-decoration: underline; background: none; }
+  .dz-res__title { margin: 0; font: 700 clamp(1.5rem, 1.2rem + 1vw, 1.875rem)/1.15 var(--font-display); letter-spacing: -0.025em; }
+  .dz-res__sub { margin: 6px 0 0; font: 400 14px/1.5 var(--font-body); color: var(--ink-2); }
+  .dz-ok { display: grid; gap: 24px; min-width: 0; }
+  .dz-status { margin: 0; display: flex; gap: 10px; align-items: flex-start; padding: 12px 16px; border-radius: var(--dz-r); background: color-mix(in srgb, #1f9d55 8%, #fff); font: 500 15px/1.4 var(--font-body); color: var(--dz-ok); }
+  .dz-status[data-state='warn'] { background: color-mix(in srgb, var(--amber-400) 14%, #fff); color: var(--dz-warn); }
+  .dz-status[data-state='bad'] { background: color-mix(in srgb, #c0392b 7%, #fff); color: var(--dz-bad); }
+  .dz-status__ic, .dz-light__ic { flex: none; width: 20px; height: 20px; display: grid; place-items: center; border-radius: 50%; color: #fff; background: #1f9d55; }
+  .dz-status__ic svg, .dz-light__ic svg { width: 12px; height: 12px; }
+  .dz-status[data-state='warn'] .dz-status__ic, .dz-light[data-state='warn'] .dz-light__ic { background: var(--amber-400); color: var(--navy-900); }
+  .dz-status[data-state='bad'] .dz-status__ic, .dz-light[data-state='bad'] .dz-light__ic { background: #c0392b; }
+  .dz-cmp { display: grid; gap: 16px; min-width: 0; }
+  .dz-cmp__bar { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px; }
+  .dz-cmp__h { margin: 0; font: 600 18px/1.3 var(--font-display); }
+  .dz-seg { --i: 0; position: relative; display: inline-grid; grid-template-columns: repeat(2, minmax(120px, 1fr)); padding: 4px; border-radius: 999px; background: var(--paper); border: 1px solid var(--line); }
+  .dz-seg__thumb { position: absolute; top: 4px; bottom: 4px; left: 4px; width: calc((100% - 8px) / 2); border-radius: 999px; background: var(--navy-900); transform: translateX(calc(var(--i) * 100%)); transition: transform 0.3s var(--ease-out), opacity 0.2s; }
+  .dz-seg:has(.dz-seg__opt:nth-of-type(2) input:checked) { --i: 1; }
+  .dz-seg:not(:has(input:checked)) .dz-seg__thumb { opacity: 0; }   /* "solo mano de obra" chosen under Ajustar */
+  .dz-seg__opt { position: relative; z-index: 1; display: grid; place-items: center; min-height: 44px; padding: 0 12px; border-radius: 999px; font: 600 15px/1.15 var(--font-body); text-align: center; cursor: pointer; color: var(--ink-2); transition: color 0.3s; }
+  .dz-seg__opt > input { position: absolute; opacity: 0; inset: 0; margin: 0; cursor: pointer; }
+  .dz-seg__opt:has(input:checked) { color: #fff; }
+  .dz-seg__opt:has(input:focus-visible) { outline: 2px solid var(--focus); outline-offset: 2px; }
+
+  /* option cards: three columns on desktop, row-aligned with subgrid; rows on phones and tablets */
+  .dz-tiers { display: grid; grid-template-columns: repeat(var(--cols, 3), minmax(0, 1fr)); gap: 16px; min-width: 0; }
+  .dz-tier { position: relative; border: 1px solid var(--line); border-radius: var(--dz-r); background: var(--white); text-align: left; cursor: pointer; transition: border-color 0.2s, box-shadow 0.2s, background-color 0.2s; }
+  .dz-tier > input { position: absolute; opacity: 0; inset: 0; margin: 0; cursor: pointer; }
+  .dz-tier:has(input:checked) { border-color: var(--orange-500); box-shadow: inset 0 0 0 1px var(--orange-500); background: color-mix(in srgb, var(--orange-500) 4%, #fff); }
+  .dz-tier:has(input:focus-visible) { outline: 2px solid var(--focus); outline-offset: 3px; }
+  @media (hover: hover) and (pointer: fine) { .dz-tier:hover { border-color: var(--navy-900); } .dz-tier:has(input:checked):hover { border-color: var(--orange-500); } }
+  .dz-tier__top { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; min-height: 22px; }
+  .dz-tier__top::before { content: ''; flex: none; width: 20px; height: 20px; border-radius: 50%; border: 2px solid var(--line); box-sizing: border-box; }
+  .dz-tier:has(input:checked) .dz-tier__top::before { border-color: var(--orange-500); background: radial-gradient(circle, var(--orange-500) 0 42%, transparent 46%); }
+  .dz-tier__lbl { font: 600 17px/1.2 var(--font-display); color: var(--ink); }
+  .dz-tier[data-dz-tier='recomendado'] .dz-tier__lbl { padding: 4px 10px; border-radius: 999px; background: var(--navy-900); color: #fff; font: 600 14px/1.2 var(--font-body); }
+  .dz-tier__rev { font: 600 13px/1.2 var(--font-body); color: var(--dz-warn); }
+  .dz-tier__pic { display: flex; align-items: flex-end; justify-content: center; gap: 20px; height: 128px; padding: 12px; margin-top: 16px; border-radius: var(--dz-r); background: var(--paper); }
+  .dz-tier__pic .dz-pic { flex: 0 1 auto; }
+  .dz-tier__price { margin-top: 16px; display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; }
+  .dz-tier__n { min-width: 6.4ch; font: 700 36px/1.05 var(--font-display); letter-spacing: -0.03em; font-variant-numeric: tabular-nums; color: var(--ink); }
+  .dz-tier__from, .dz-tier__pl { font: 400 14px/1.3 var(--font-body); color: var(--ink-2); }
+  .dz-tier__sub { margin-top: 6px; min-height: 1.4em; font: 400 14px/1.4 var(--font-body); color: var(--ink-2); }
+  .dz-tier__line { display: flex; gap: 8px; align-items: flex-start; margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--line); font: 600 15px/1.35 var(--font-body); color: var(--dz-ok); }
+  .dz-tier__line::before { content: ''; flex: none; width: 16px; height: 16px; margin-top: 1px; background: currentColor; -webkit-mask: var(--dz-ic) center / contain no-repeat; mask: var(--dz-ic) center / contain no-repeat; --dz-ic: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m5 12 4 4L19 6'/%3E%3C/svg%3E"); }
+  .dz-tier__line.is-warn { color: var(--dz-warn); }
+  .dz-tier__line.is-warn::before { --dz-ic: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 4v9M12 18h.01'/%3E%3C/svg%3E"); }
+  .dz-tier__h { margin-top: 4px; padding-left: 24px; min-height: 1.3em; font: 400 14px/1.3 var(--font-body); color: var(--ink-2); }
+  .dz-tier__sys { margin-top: 12px; display: grid; gap: 8px; font: 500 15px/1.3 var(--font-body); color: var(--ink); }
+  .dz-tier__sys > span::before { content: attr(data-k); display: block; font: 400 13px/1.2 var(--font-body); color: var(--ink-2); }
+  .dz-tier__delta { margin-top: 16px; min-height: 1.3em; font: 400 13px/1.3 var(--font-body); color: var(--ink-2); }
+  @media (min-width: 960px) {
+    .dz-tier { padding: 24px; }
+  }
+  @supports (grid-template-rows: subgrid) {
+    @media (min-width: 960px) { .dz-tier { grid-row: span 8; display: grid; grid-template-rows: subgrid; row-gap: 0; } .dz-tier > * { align-self: start; } .dz-tier > input { align-self: auto; } }
+  }
+  @media (max-width: 959px) {
+    .dz-tiers { grid-template-columns: minmax(0, 1fr); gap: 10px; }
+    .dz-tier { display: grid; grid-template-columns: 96px minmax(0, 1fr) auto; grid-template-areas: 'top top price' 'pic line line' 'pic sys sys'; gap: 6px 14px; padding: 14px 16px; align-items: center; }
+    .dz-tier__top { grid-area: top; flex-wrap: nowrap; min-width: 0; }
+    .dz-tier__price { grid-area: price; margin: 0; align-self: center; justify-content: flex-end; flex-direction: column; align-items: flex-end; gap: 0; }   /* apilado: la columna mide lo del precio, no la suma con «solo equipo» */
+    .dz-tier__n { font-size: 22px; min-width: 0; white-space: nowrap; }
+    .dz-tier__lbl { font-size: 16px; }
+    .dz-tier[data-dz-tier='recomendado'] .dz-tier__lbl { font-size: 13px; padding: 3px 8px; }
+    @media (max-width: 389px) {   /* teléfonos angostos: la columna del medio queda en 0 y la etiqueta «Recomendada» no debe tocar el precio, ni con 5 cifras (US$ 25.155) */
+      .dz-tier { grid-template-columns: 80px minmax(0, 1fr) auto; gap: 6px 8px; padding: 12px 10px; }
+      .dz-tier__n { font-size: 19px; }
+      .dz-tier__pl { font-size: 13px; }
+      .dz-tier[data-dz-tier='recomendado'] .dz-tier__lbl { font-size: 12px; padding: 3px 7px; }
+    }
+    @media (max-width: 359px) { .dz-tier__n { font-size: 18px; } }
+    .dz-tier__pic { grid-area: pic; height: 72px; padding: 6px; margin: 0; gap: 8px; align-self: stretch; }
+    .dz-tier__line { grid-area: line; margin: 0; padding: 0; border: 0; }
+    .dz-tier__sys { grid-area: sys; margin: 0; display: block; font-size: 14px; color: var(--ink-2); }
+    .dz-tier__sys > span { display: inline; }
+    .dz-tier__sys > span::before { content: none; }
+    .dz-tier__sys > span + span::before { content: ' · '; display: inline; font: inherit; color: inherit; }
+    .dz-tier__sub, .dz-tier__h, .dz-tier__delta { display: none; }
+    .dz-tier__from { font-size: 12px; }   /* «desde» se queda: el Roccia y el 8 kW tienen rango de instalación */   /* phones: name, price, what it covers, system; the rest is under Detalles */
+  }
+  .dz-cmp__note { margin: 0; font: 400 13px/1.5 var(--font-body); color: var(--ink-2); }
+  .dz-adj { margin: 0; font: 400 14px/1.5 var(--font-body); color: var(--ink-2); }
+  .dz-adj .btn--text { --btn-fg: var(--ink); min-height: 32px; display: inline; text-decoration: underline; background: none; }
+
+  /* selection, actions */
+  .dz-sel { display: grid; gap: 12px; min-width: 0; }
+  .dz-sel__t { margin: 0; font: 600 16px/1.4 var(--font-body); }
+  .dz-pdfname > summary { display: inline-flex; min-height: 44px; align-items: center; font: 400 14px/1.3 var(--font-body); color: var(--ink); text-decoration: underline; cursor: pointer; list-style: none; }
+  .dz-pdfname > summary::-webkit-details-marker { display: none; }
+  .dz-pdfname[open] > summary { margin-bottom: 8px; }
+  .dz-pdfname .dz-micro { margin-top: 8px; }
+  .dz-pdfname .dz-f { max-width: 420px; }
+  .dz-pdf__ig { margin: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 0 14px; padding: 10px 12px; border-radius: var(--dz-r); font-size: 14px; color: var(--ink); background: color-mix(in srgb, var(--amber-400) 14%, #fff); }
+  .dz-pdf__err { margin: 0; padding: 10px 12px; border-radius: var(--dz-r); font-size: 14px; color: var(--dz-bad); background: color-mix(in srgb, #c0392b 6%, #fff); }
+  .dz-pdf__btn[aria-busy='true'] { opacity: 0.7; cursor: progress; }
+  .dz-after { display: grid; gap: 8px; margin-top: -8px; }
+  .dz-micro { margin: 0; font: 400 13px/1.5 var(--font-body); color: var(--ink-2); }
+  .dz-links { margin: 0; display: flex; flex-wrap: wrap; gap: 0 20px; font-size: 14px; }
+  .dz-links .btn--text, .dz-oos .btn--text { --btn-fg: var(--ink); min-height: 40px; text-decoration: underline; background: none; }
+  .dz-links .btn--text { --btn-fg: var(--ink-2); font: 500 14px/1.4 var(--font-body); text-decoration-thickness: 1px; text-underline-offset: 3px; }
+  .dz-cta { display: flex; flex-wrap: wrap; gap: 12px; }
+  .dz-cta .btn { white-space: normal; }
+  .dz-cta .btn--wa { flex: 1 1 280px; min-height: 52px; font: 600 16px/1 var(--font-body); }
+  .dz-cta .dz-pdf__btn { flex: 1 1 240px; min-height: 52px; --btn-fg: var(--ink); border-color: var(--ink); font: 600 16px/1.1 var(--font-body); }
+  @media (max-width: 959px) {
+    .dz-res { padding-bottom: 0; }
+    .dz-cta {   /* one node, pinned to the bottom edge: the WhatsApp href is never duplicated */
+      order: 99; position: sticky; bottom: 0; z-index: 4; flex-wrap: nowrap; margin: 0 calc(-1 * var(--dz-pad)); padding: 10px 12px calc(10px + env(safe-area-inset-bottom, 0px)); gap: 8px;
+      background: var(--white); border-top: 1px solid var(--line); border-radius: 0 0 var(--dz-r-lg) var(--dz-r-lg); box-shadow: 0 -12px 20px -16px rgba(11, 26, 58, 0.25);
+    }
+    .dz-cta .btn--wa { flex: 1.4 1 0; min-width: 0; padding-inline: 12px; font-size: 15px; white-space: nowrap; }
+    .dz-cta .dz-pdf__btn { flex: 1 1 0; min-width: 0; padding-inline: 10px; font-size: 15px; white-space: nowrap; }
+    .dz-cta .dz-pdf__btn svg { display: none; }
+  }
+
+  /* details */
+  .dz-more { display: grid; min-width: 0; }
+  .dz-more__h { margin: 0 0 8px; font: 600 18px/1.3 var(--font-display); }
+  .dz-acc { border: 0; border-top: 1px solid var(--line); }
+  .dz-acc:last-of-type { border-bottom: 1px solid var(--line); }
+  .dz-acc > summary { min-height: 56px; display: flex; align-items: center; justify-content: space-between; gap: 12px; list-style: none; cursor: pointer; font: 600 16px/1.3 var(--font-body); }
+  .dz-acc > summary::-webkit-details-marker { display: none; }
+  .dz-chev { flex: none; color: var(--ink-2); transition: transform 0.3s var(--ease-out); }
+  details[open] > summary .dz-chev { transform: rotate(180deg); }
+  .dz-acc__b, .dz-calc, .dz-break { display: grid; gap: 16px; margin: 0; padding: 0 0 20px; font: 400 15px/1.55 var(--font-body); color: var(--ink-2); }
+  .dz-acc__b p, .dz-acc__b ul { margin: 0; }
+  .dz-acc__b .btn--text { --btn-fg: var(--ink); justify-self: start; min-height: 40px; text-decoration: underline; background: none; }
+  .dz-calc, .dz-break { list-style: none; gap: 12px; }
+  .dz-calc b { font-weight: 600; color: var(--ink); }
+  .dz-checks { list-style: none; display: grid; gap: 12px; padding: 0; }
+  .dz-light { display: grid; grid-template-columns: 20px minmax(0, 1fr); gap: 4px 12px; align-items: center; }
+  .dz-light__k { font: 600 15px/1.3 var(--font-body); color: var(--ink); }
+  .dz-light__t { grid-column: 2; font: 400 15px/1.5 var(--font-body); color: var(--ink-2); }
+  .dz-whys { list-style: disc; padding-left: 20px; display: grid; gap: 6px; }
+  .dz-model { font-size: 14px; }
+  .dz-hintsbox { padding: 12px 16px; border-radius: var(--dz-r); background: var(--paper); }
+  .dz-hintsbox h5 { margin: 0 0 8px; font: 600 14px/1.3 var(--font-body); color: var(--ink); }
+  .dz-hintsbox ul { list-style: disc; padding-left: 20px; display: grid; gap: 6px; font-size: 14px; }
+  .dz-hintsbox .btn--text { --btn-fg: var(--ink); min-height: 32px; display: inline; text-decoration: underline; background: none; font-size: inherit; }
+  .dz-break li { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 4px 12px; padding-bottom: 12px; border-bottom: 1px solid var(--line); }
+  .dz-break li:last-child { border-bottom: 0; padding-bottom: 0; font-weight: 700; color: var(--ink); }
+  .dz-break__v { flex: none; text-align: right; font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .dz-break__pend { color: var(--dz-warn); }
+  .dz-tune { gap: 24px; }
+  .dz-tune .dz-f__l { display: block; margin-bottom: 8px; }
+  .dz-instopts { display: grid; gap: 16px; margin-top: 16px; padding: 16px; border-radius: var(--dz-r); background: var(--paper); }
+  .dz-instopts .dz-pill { background: var(--white); }
+  .dz-msg { white-space: pre-line; padding: 12px 14px; border-radius: 12px 12px 12px 4px; background: var(--paper); font-size: 14px; line-height: 1.55; }
+  .dz-res__note { margin: 0; font: 400 13px/1.5 var(--font-body); color: var(--ink-2); }
+  .dz-prov { color: var(--dz-warn); font-weight: 600; }
+
+  /* with an engineer */
+  .dz-oos { display: grid; gap: 12px; }
+  .dz-oos__t { margin: 0; font: 700 clamp(1.4rem, 1.1rem + 1.2vw, 2rem)/1.15 var(--font-display); }
+  .dz-oos__s, .dz-oos__lim { margin: 0; color: var(--ink-2); font-size: 15px; }
+  .dz-oos__why { margin: 0; display: grid; gap: 2px; padding: 12px 14px; border-radius: var(--dz-r); font-size: 15px; background: color-mix(in srgb, var(--amber-400) 12%, #fff); color: var(--dz-warn); }
+  .dz-oos__why b { font-weight: 600; }
+  .dz-oos__list { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px; }
+  .dz-oos__list li { padding: 6px 12px; border-radius: 999px; font-size: 14px; background: var(--paper); border: 1px solid var(--line); }
+  .dz-oos__tip { margin: 0; padding: 12px 14px; border-radius: var(--dz-r); font-size: 15px; background: var(--paper); }
+  .dz-oos .btn { justify-self: start; white-space: normal; text-align: center; }
+  @media (max-width: 520px) { .dz-oos .btn { justify-self: stretch; } }
+  .dz-kpis { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 160px), 1fr)); }
+  .dz-kpis li { display: grid; gap: 2px; padding: 12px 14px; border-radius: var(--dz-r); background: var(--paper); }
+  .dz-kpi__k { font: 400 13px/1.3 var(--font-body); color: var(--ink-2); }
+  .dz-kpi__v { font: 700 20px/1.2 var(--font-display); font-variant-numeric: tabular-nums; }
+</style>
