@@ -1,8 +1,8 @@
 ---
-// Medidor de carga del inversor: el instrumento oscuro del diagnóstico (src/components/home/Diagnostico.astro), adaptado al resultado del cotizador.
-// La aguja marca la carga continua de tus equipos sobre la potencia del inversor de la opción elegida (loadMeter() en data/dimensionar.js); los tres
-// arcos usan los mismos cortes que esa función (K.recMargin → 57 %, K.tightShare → 80 %). Las cuatro luces repiten el estado de «Qué incluye tu opción».
-// Lo pinta scripts/dimensionar.js (paintMeter): aquí solo hay marcado y estilo. Mismo dial, aguja y pantalla LCD que el diagnóstico.
+// Medidor de carga del inversor, dentro del panel «Tu sistema» (debajo del precio): el dial del diagnóstico (src/components/home/Diagnostico.astro)
+// en versión compacta. La aguja sube sola al agregar equipos: marca la carga continua sobre la potencia del inversor de la opción elegida
+// (loadMeter() en data/dimensionar.js); los tres arcos usan los mismos cortes que esa función (K.recMargin → 57 %, K.tightShare → 80 %).
+// Lo pinta scripts/dimensionar.js (paintMeter, en cada cambio): aquí solo hay marcado y estilo.
 import { K } from '../../data/dimensionar.js';
 
 // Geometría del dial (viewBox 0 0 400 232): v ∈ 0..100 → −50°..+50° alrededor del pivote (CX, CY).
@@ -18,13 +18,9 @@ const nums = [0, 20, 40, 60, 80, 100].map((v) => { const [x, y] = pt(v, R - 38);
 const loEnd = Math.round(100 / K.recMargin), midEnd = Math.round(K.tightShare * 100), g = 0.7;
 const zoneArcs = [{ k: 'lo', d: arc(0, loEnd - g, R + 17) }, { k: 'mid', d: arc(loEnd + g, midEnd - g, R + 17) }, { k: 'hi', d: arc(midEnd + g, 100, R + 17) }];
 const valArc = arc(0, 100, R + 7);
-const leds = [{ k: 'start', t: 'Arranque' }, { k: 'hours', t: 'Horas' }, { k: 'charge', t: 'Recarga' }, { k: 'v220', t: '220 V' }];
 ---
-<div class="mc" data-theme="dark" data-dz-meter data-zone="" role="group" aria-labelledby="mc-title">
-  <div class="mc__plate">
-    <span class="mc__title" id="mc-title">Carga del inversor</span>
-    <span class="mc__sim"><span class="mc__rec" aria-hidden="true"></span>Con tus equipos</span>
-  </div>
+<div class="mc" data-dz-meter data-zone="" role="group" aria-labelledby="mc-title">
+  <p class="mc__k" id="mc-title">Carga del inversor</p>
   <div class="mc__face">
     <svg class="mc__gauge" viewBox="0 0 400 232" aria-hidden="true" focusable="false">
       <defs>
@@ -56,39 +52,18 @@ const leds = [{ k: 'start', t: 'Arranque' }, { k: 'hours', t: 'Horas' }, { k: 'c
       <circle class="mc__cap" cx={CX} cy={CY} r="14" />
       <circle class="mc__cap-dot" cx={CX} cy={CY} r="4" />
     </svg>
-  </div>
-  <div class="mc__read">
-    <p class="mc__num-row"><span class="mc__lcd" data-mc-val>0</span><span class="mc__of mono">%</span></p>
+    {/* Lecturas dentro del cristal, en las dos esquinas de abajo (la aguja nunca llega ahí) */}
+    <p class="mc__lcd-row"><span class="mc__lcd" data-mc-val>0</span><span class="mc__of mono">%</span></p>
     <p class="mc__zone-t"><span class="sr-only">Carga: </span><span data-mc-zone>En espera</span></p>
-    <p class="mc__cap-t" data-mc-cap></p>
   </div>
-  <div class="mc__leds">
-    <span class="mc__leds-lbl mono">Comprobaciones</span>
-    <ul role="list">
-      {leds.map((l, i) => <li data-mc-led={l.k} data-state="off" style={`--i:${i}`}><span class="mc__led" aria-hidden="true"></span><span class="mc__led-t">{l.t}<span class="sr-only" data-mc-led-s></span></span></li>)}
-    </ul>
-  </div>
+  <p class="mc__cap-t" data-mc-cap>Marca equipos y verás la carga.</p>
 </div>
 
 <style>
-  .mc {
-    position: relative; display: grid; gap: 12px; margin-bottom: 20px; padding: clamp(14px, 1.8vw, 22px); border-radius: var(--radius-lg); color: var(--fg);
-    background: radial-gradient(120% 70% at 50% 0%, #1d3a74 0%, var(--navy-900) 55%, var(--navy-950) 100%);
-    box-shadow: 0 30px 60px -40px rgba(11, 26, 58, 0.85), inset 0 1px 0 rgba(255, 255, 255, 0.1), inset 0 0 0 1px rgba(255, 255, 255, 0.06);
-    grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); grid-template-areas: 'plate plate' 'face read' 'leds leds'; align-items: center;
-  }
-  .mc::before {   /* cuatro tornillos del panel */
-    --s: radial-gradient(circle at 5px 5px, #8fa0c4 0 1.6px, #4a5f8c 2px 3.6px, #1a2c55 4px 4.6px, transparent 5px);
-    content: ''; position: absolute; inset: 9px; pointer-events: none;
-    background: var(--s) 0 0 / 10px 10px no-repeat, var(--s) 100% 0 / 10px 10px no-repeat, var(--s) 0 100% / 10px 10px no-repeat, var(--s) 100% 100% / 10px 10px no-repeat;
-  }
-  .mc__plate { grid-area: plate; display: flex; justify-content: space-between; align-items: center; gap: 8px 12px; flex-wrap: wrap; padding-inline: 14px; font-family: var(--font-mono); font-size: 0.75rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
-  .mc__title { color: var(--fg); }
-  .mc__sim { display: inline-flex; align-items: center; gap: 8px; }
-  .mc__rec { width: 7px; height: 7px; border-radius: 50%; background: var(--orange-500); box-shadow: 0 0 0 3px rgba(242, 106, 27, 0.25), 0 0 10px var(--orange-500); animation: mc-blink 1.8s steps(1) infinite; }
-
+  .mc { display: grid; gap: 10px; }
+  .mc__k { margin: 0; font: 500 12px/1 var(--font-mono); letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
   .mc__face {
-    grid-area: face; position: relative; overflow: hidden; border-radius: 12px; aspect-ratio: 400 / 232;
+    position: relative; overflow: hidden; container-type: inline-size; border-radius: 14px; aspect-ratio: 400 / 232;
     background: radial-gradient(70% 90% at 50% 100%, rgba(242, 106, 27, 0.16), transparent 70%), linear-gradient(180deg, #0f2352 0%, #071230 100%);
     box-shadow: inset 0 2px 14px rgba(0, 0, 0, 0.55), inset 0 0 0 1px rgba(255, 255, 255, 0.07);
   }
@@ -105,7 +80,7 @@ const leds = [{ k: 'start', t: 'Arranque' }, { k: 'hours', t: 'Horas' }, { k: 'c
   .mc__zone--hi { stroke: var(--orange-500); }
   .mc__zone.is-on { opacity: 1; stroke-width: 8; }
   .mc__track { fill: none; stroke: rgba(255, 255, 255, 0.08); stroke-width: 4; }
-  .mc__val, .mc__glow { fill: none; stroke: url(#mc-val-grad); stroke-dasharray: 100 100; stroke-dashoffset: 100; transition: stroke-dashoffset 1.3s cubic-bezier(0.34, 1.2, 0.5, 1); }
+  .mc__val, .mc__glow { fill: none; stroke: url(#mc-val-grad); stroke-dasharray: 100 100; stroke-dashoffset: 100; transition: stroke-dashoffset 1s cubic-bezier(0.34, 1.2, 0.5, 1); }
   .mc__val { stroke-width: 4; }
   .mc__glow { stroke-width: 14; opacity: 0.2; }
   .mc__tick { stroke: rgba(244, 246, 251, 0.45); stroke-width: 1.2; }
@@ -113,7 +88,7 @@ const leds = [{ k: 'start', t: 'Arranque' }, { k: 'hours', t: 'Horas' }, { k: 'c
   .mc__num { fill: #b7c3da; font-family: var(--font-mono); font-size: 15px; font-weight: 500; text-anchor: middle; dominant-baseline: middle; }
   .mc__needle { fill: url(#mc-needle-grad); }
   .mc__needle-glow { stroke: #ff8a3d; stroke-width: 10; stroke-linecap: round; opacity: 0.22; }
-  .mc__needle-g { transform-box: view-box; transform-origin: 200px 206px; transition: transform 1.3s cubic-bezier(0.34, 1.45, 0.5, 1); }
+  .mc__needle-g { transform-box: view-box; transform-origin: 200px 206px; transition: transform 1s cubic-bezier(0.34, 1.45, 0.5, 1); }
   /* el temblor gira la caja entera alrededor del pivote (206/232 de la altura): animación solo de compositor, amplitud fija por zona */
   .mc__needle-layer { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; transform-origin: 50% 88.793%; animation: mc-jitter-0 2.4s ease-in-out infinite; }
   .mc[data-zone='lo'] .mc__needle-layer { animation-name: mc-jitter-lo; }
@@ -122,53 +97,18 @@ const leds = [{ k: 'start', t: 'Arranque' }, { k: 'hours', t: 'Horas' }, { k: 'c
   .mc__cap { fill: url(#mc-cap-grad); stroke: rgba(255, 170, 90, 0.7); stroke-width: 1.5; }
   .mc__cap-dot { fill: var(--glow); }
 
-  .mc__read { grid-area: read; display: grid; gap: 2px; justify-items: start; padding-inline: 2px; }
-  .mc__num-row { display: flex; align-items: baseline; gap: 6px; }
-  .mc__lcd { display: inline-block; min-width: 3ch; text-align: right; font-family: var(--font-mono); font-weight: 600; font-size: 2.1rem; line-height: 1; font-variant-numeric: tabular-nums; color: var(--glow); text-shadow: 0 0 18px rgba(255, 170, 80, 0.55); }
-  .mc__of { color: var(--muted); font-size: 0.9rem; }
-  .mc__zone-t { font-family: var(--font-display); font-weight: 700; font-size: 1.05rem; letter-spacing: -0.02em; color: var(--muted); transition: color 0.4s; }
+  /* lecturas: el tamaño sigue el ancho del dial (container query) */
+  .mc__lcd-row { position: absolute; z-index: 2; left: 5cqw; bottom: 4cqw; margin: 0; display: flex; align-items: baseline; gap: 0.3em; }
+  .mc__lcd { display: inline-block; min-width: 2.2ch; text-align: right; font-family: var(--font-mono); font-weight: 600; font-size: clamp(1.25rem, 9cqw, 2.1rem); line-height: 1; font-variant-numeric: tabular-nums; color: var(--glow); text-shadow: 0 0 16px rgba(255, 170, 80, 0.55); }
+  .mc__of { font-size: clamp(0.7rem, 3.6cqw, 0.9rem); color: var(--muted); }
+  .mc__zone-t { position: absolute; z-index: 2; right: 5cqw; bottom: 4.6cqw; margin: 0; font-family: var(--font-display); font-weight: 700; font-size: clamp(0.8rem, 5.2cqw, 1.1rem); letter-spacing: -0.02em; text-align: right; color: var(--muted); transition: color 0.4s; }
   .mc[data-zone='lo'] .mc__zone-t { color: #a9c0ef; }
   .mc[data-zone='mid'] .mc__zone-t { color: var(--amber-400); }
   .mc[data-zone='hi'] .mc__zone-t { color: var(--orange-300); }
-  .mc__cap-t { max-width: 34ch; font-size: 0.8125rem; line-height: 1.4; color: var(--muted); }
+  .mc__cap-t { margin: 0; font: 400 14px/1.3 var(--font-body); color: var(--muted); }
 
-  .mc__leds { grid-area: leds; display: flex; align-items: center; flex-wrap: wrap; gap: 8px 16px; padding: 12px 2px 0; border-top: 1px solid rgba(255, 255, 255, 0.08); }
-  .mc__leds-lbl { display: none; font-size: 0.75rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
-  .mc__leds ul { list-style: none; display: flex; flex-wrap: wrap; gap: 8px 14px; }
-  .mc__leds li { display: inline-flex; align-items: center; gap: 7px; font-size: 0.8125rem; color: var(--muted); transition: color 0.4s; }
-  .mc__led { flex: none; width: 10px; height: 10px; border-radius: 50%; background: #243658; box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.6); transition: background 0.3s, box-shadow 0.4s; }
-  .mc__leds li:not([data-state='off']) { color: var(--fg); }
-  .mc__leds li[data-state='ok'] .mc__led { background: radial-gradient(circle at 40% 35%, #eafff1 0 20%, #46d98a 50%, #1f9d55); box-shadow: 0 0 0 3px rgba(70, 217, 138, 0.2), 0 0 12px rgba(70, 217, 138, 0.85); }
-  .mc__leds li[data-state='warn'] .mc__led { background: radial-gradient(circle at 40% 35%, #fff6e0 0 20%, var(--amber-400) 50%, var(--orange-500)); box-shadow: 0 0 0 3px rgba(242, 106, 27, 0.22), 0 0 14px rgba(255, 160, 70, 0.95); }
-  .mc__leds li[data-state='bad'] .mc__led { background: radial-gradient(circle at 40% 35%, #ffe3df 0 20%, #ff6a4d 52%, #c0392b); box-shadow: 0 0 0 3px rgba(255, 90, 61, 0.22), 0 0 14px rgba(255, 90, 61, 0.9); }
+  @media (max-height: 740px) { .mc__face { max-width: 230px; margin-inline: auto; width: 100%; } }   /* pantallas bajas: el panel fijo tiene que caber */
 
-  /* en el dial chiquito los números no se leen */
-  .mc__nums { display: none; }
-
-  @media (min-width: 640px) {   /* tableta y escritorio: dial grande a la izquierda; título, lectura y luces a la derecha */
-    .mc { grid-template-columns: minmax(240px, 380px) minmax(0, 1fr); grid-template-areas: 'face plate' 'face read' 'face leds'; column-gap: clamp(20px, 3vw, 36px); align-items: stretch; }
-    .mc__plate { align-self: end; padding-inline: 6px; }
-    .mc__face { align-self: center; border-radius: 16px; }
-    .mc__nums { display: block; }
-    .mc__read { align-self: center; padding-inline: 6px; gap: 4px; }
-    .mc__lcd { font-size: clamp(2.6rem, 2rem + 1.4vw, 3.4rem); }
-    .mc__zone-t { font-size: var(--step-1); }
-    .mc__cap-t { font-size: 0.875rem; }
-    .mc__leds { align-self: start; padding: 14px 6px 0; }
-    .mc__leds-lbl { display: block; flex-basis: 100%; }
-    .mc__leds ul { gap: 10px 18px; }
-    .mc__leds li { font-size: 0.875rem; }
-  }
-  @media (max-width: 379px) {
-    .mc { padding: 10px 12px 10px 10px; gap: 8px 10px; }
-    .mc__lcd { font-size: 1.8rem; }
-    .mc__zone-t { font-size: 0.95rem; }
-    .mc__cap-t { display: none; }
-    .mc__plate { letter-spacing: 0.04em; padding-inline: 8px; }
-    .mc__leds ul { display: grid; grid-template-columns: repeat(2, auto); justify-content: start; gap: 6px 18px; }   /* 2 × 2: no deja «220 V» huérfana en otra línea */
-  }
-
-  @keyframes mc-blink { 0%, 70% { opacity: 1; } 71%, 100% { opacity: 0.25; } }
   @keyframes mc-glint { 0%, 78% { transform: translateX(-150%) skewX(-18deg); } 100% { transform: translateX(650%) skewX(-18deg); } }
   /* la aguja tiembla un poco más cuanto más alto marca */
   @keyframes mc-jitter-0 { 0%, 100% { transform: rotate(0deg); } 18% { transform: rotate(0.2deg); } 40% { transform: rotate(-0.14deg); } 62% { transform: rotate(0.1deg); } 84% { transform: rotate(-0.18deg); } }
@@ -178,11 +118,10 @@ const leds = [{ k: 'start', t: 'Arranque' }, { k: 'hours', t: 'Horas' }, { k: 'c
   /* !important: las reglas de animation-name por zona son más específicas */
   :global(html.is-lite) .mc__face::after, :global(html.is-lite) .mc__needle-layer { animation: none !important; }
   @media (prefers-reduced-motion: reduce) {
-    .mc__face::after, .mc__needle-layer, .mc__rec { animation: none !important; }
+    .mc__face::after, .mc__needle-layer { animation: none !important; }
     .mc__needle-g, .mc__val, .mc__glow, .mc__zone { transition: none; }
   }
   @media (forced-colors: active) {
     .mc__needle { fill: CanvasText; }
-    .mc__leds li[data-state='ok'] .mc__led, .mc__leds li[data-state='warn'] .mc__led, .mc__leds li[data-state='bad'] .mc__led { forced-color-adjust: none; }
   }
 </style>

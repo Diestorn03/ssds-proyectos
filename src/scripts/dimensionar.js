@@ -40,8 +40,8 @@ export function initDimensionador({ env, scrollTo }) {
   const nextLbl = $('[data-dz-next-lbl]'), segs = $$('[data-dz-seg]'), countN = $('[data-dz-count]'), stepLbl = $('[data-dz-steplbl]');
   const barPrice = $('[data-dz-bar-price]'), barSub = $('[data-dz-bar-sub]');
   const card = $('[data-dz-card]'), res = $('[data-dz-res]'), live = $('[data-dz-live]');
-  const sumEl = $('[data-dz-sum]'), sumEmpty = $('[data-dz-sum-empty]'), sumFull = $('[data-dz-sum-full]'), sumProd = $('[data-dz-sum-prod]'), sumLoad = $('[data-dz-sum-load]');
-  const sumPrice = $('[data-dz-sum-price]'), sumPl = $('[data-dz-sum-pl]'), sumCover = $('[data-dz-sum-cover]'), sumN = $('[data-dz-sum-n]'), sumBar = $('[data-dz-sum-bar]'), sumLoadTxt = $('[data-dz-sum-loadtxt]');
+  const sumEl = $('[data-dz-sum]'), sumEmpty = $('[data-dz-sum-empty]'), sumFull = $('[data-dz-sum-full]'), sumProd = $('[data-dz-sum-prod]'), sumFullB = $('[data-dz-sum-fullb]');
+  const sumPrice = $('[data-dz-sum-price]'), sumPl = $('[data-dz-sum-pl]'), sumCover = $('[data-dz-sum-cover]'), sumN = $('[data-dz-sum-n]');
   const sumInv = $('[data-dz-sum-inv]'), sumInvS = $('[data-dz-sum-invs]'), sumBat = $('[data-dz-sum-bat]'), sumBatS = $('[data-dz-sum-bats]');
   const rows = $$('[data-dz-row]'), rowById = new Map(rows.map((r) => [r.dataset.dzRow, r]));
   const tabs = $$('[data-dz-tab]'), tabsBox = $('[data-dz-tabs]'), groups = $$('[data-dz-group]'), customRows = $$('[data-dz-crow]');
@@ -127,26 +127,50 @@ export function initDimensionador({ env, scrollTo }) {
 
   /* ---------- "Tu sistema" (desktop) and the price in the bottom bar (phones): text and one transform, safe on every input event ---------- */
   const setText = (el, t) => { if (el.textContent !== t) el.textContent = t; };
+  /* medidor de carga del inversor (en «Tu sistema», debajo del precio): la aguja sube sola al agregar equipos; CSS hace el movimiento, la LCD cuenta */
+  const ZONE_T = { lo: 'Holgado', mid: 'Justo', hi: 'Al límite' };
+  const mt = $('[data-dz-meter]'), mNeedle = $('[data-mc-needle]', mt), mArcs = $$('[data-mc-arc]', mt), mVal = $('[data-mc-val]', mt);
+  const mZone = $('[data-mc-zone]', mt), mCap = $('[data-mc-cap]', mt), mZones = $$('[data-mc-z]', mt);
+  let mTarget = -1, mShown = 0, mFrame = 0;
+  function mCount(to) {   // la pantalla LCD cuenta hasta el valor (sin movimiento: de una vez)
+    cancelAnimationFrame(mFrame);
+    const from = mShown, t0 = performance.now();
+    mShown = to;
+    if (reduced || from === to) { mVal.textContent = String(to); return; }
+    const step = (t) => { const k = Math.min(1, (t - t0) / 700), e = 1 - (1 - k) ** 3; mVal.textContent = String(Math.round(from + (to - from) * e)); if (k < 1) mFrame = requestAnimationFrame(step); };
+    mFrame = requestAnimationFrame(step);
+    later(() => { if (mShown === to) mVal.textContent = String(to); }, 800);   // pestaña en segundo plano: rAF no corre
+  }
+  function paintMeter(m, oos) {
+    const zone = oos ? 'hi' : m ? m.zone : '', pct = oos ? 100 : m ? m.pct : 0;
+    if (mt.dataset.zone !== zone) { mt.dataset.zone = zone; mZones.forEach((z) => z.classList.toggle('is-on', z.dataset.mcZ === zone)); }
+    setText(mZone, oos ? 'Fuera de rango' : m ? ZONE_T[m.zone] : 'En espera');
+    setText(mCap, oos ? 'Pasa de lo que cubre un solo inversor.' : m ? `${kwTxt(m.usedW)} de ${kwTxt(m.ratedW)} del inversor.` : 'Marca equipos y verás la carga.');
+    if (pct === mTarget) return;
+    mTarget = pct;
+    mNeedle.style.transform = `rotate(${(pct - 50).toFixed(2)}deg)`;
+    mArcs.forEach((p) => { p.style.strokeDashoffset = String(100 - pct); });
+    mCount(pct);
+  }
   function paintSummary() {
     const { a, R, o } = S, on = hasItems(a), oos = !!R.outOfScope, n = units(a), full = on && !oos && !!o;
     sumEl.dataset.state = !on ? 'empty' : oos ? 'oos' : 'ok';
-    sumEmpty.hidden = on; sumFull.hidden = !on; sumProd.hidden = !full; sumLoad.hidden = !full;
-    let price = '', pl = '', cover = '', pct = 0, bar = cur === 0 ? 'Elige un punto de partida' : 'Marca al menos un equipo', warn = false, tight = false;
+    sumEmpty.hidden = on; sumFull.hidden = !on; sumFullB.hidden = !on; sumProd.hidden = !full;
+    let price = '', pl = '', cover = '', bar = cur === 0 ? 'Elige un punto de partida' : 'Marca al menos un equipo', warn = false, m = null;
     if (full) {
       const p = priceView(o, a, null), H = fmt(a.hours, 0), ok = o.coverage >= K.quoteSlack, inv = o.inverter, b = batOf(o), per = o.batteries.kwh / o.batteries.n;
       price = p.main; pl = `${p.pl} · precio referencial`; warn = !ok;
       cover = ok ? `Cubre tus ${H} h` : `Cubre ≈ ${fmt(o.coversH)} de tus ${H} h`;
-      pct = clamp(R.contW / (inv.kw * 1000), 0, 1); tight = pct > K.tightShare;
+      m = loadMeter(R, o);
       setText(sumInv, `Inversor ${fmt(inv.kw)} kW`); setText(sumInvS, acTxt(inv));
       setText(sumBat, `${plural(o.batteries.n, 'batería')} de ${fmt(per, 2)} kWh`);
       setText(sumBatS, o.batteries.n > 1 ? `${fmt(o.batteries.kwh, 2)} kWh en total · ${b.busV} V` : `Litio · ${b.busV} V`);
       paintPics(sumProd, o);
-      setText(sumLoadTxt, `Carga: ${kwTxt(R.contW)} de ${fmt(inv.kw)} kW`);
-      bar = plural(n, 'equipo');
+      bar = `${plural(n, 'equipo')} · carga ${m.pct} %`;   // en el celular (sin panel) la carga viaja en la barra de abajo
     } else if (oos) { price = 'Con ingeniero'; pl = 'Este caso se cotiza aparte'; cover = 'Lo verás en el resultado'; bar = 'Se cotiza aparte'; }
     setText(sumPrice, price); setText(sumPl, pl); setText(sumCover, cover); sumCover.classList.toggle('is-warn', warn);
     setText(sumN, on ? plural(n, 'equipo') : '');
-    sumBar.style.transform = `scaleX(${pct.toFixed(3)})`; sumBar.classList.toggle('is-tight', tight);
+    paintMeter(m, oos);
     setText(barPrice, price); setText(barSub, bar);
   }
 
@@ -374,42 +398,6 @@ export function initDimensionador({ env, scrollTo }) {
     li.dataset.state = state;
     $('.dz-light__ic', li).innerHTML = LIGHT_ICON[state];
     $('.dz-light__t', li).textContent = text;
-    const led = $(`[data-mc-led="${k}"]`);   // la misma luz en el medidor
-    if (led) { led.dataset.state = state; $('[data-mc-led-s]', led).textContent = LED_SR[state]; }
-  }
-  /* ---------- medidor de carga del inversor (arriba del resultado) ---------- */
-  const LED_SR = { ok: ': bien', warn: ': con ojo', bad: ': por revisar' };
-  const ZONE_T = { lo: 'Holgado', mid: 'Justo', hi: 'Al límite' };
-  const mt = $('[data-dz-meter]'), mNeedle = $('[data-mc-needle]', mt), mArcs = $$('[data-mc-arc]', mt), mVal = $('[data-mc-val]', mt);
-  const mZone = $('[data-mc-zone]', mt), mCap = $('[data-mc-cap]', mt), mZones = $$('[data-mc-z]', mt);
-  let mTarget = 0, mShown = 0, mFrame = 0;
-  const mSet = (v) => { mNeedle.style.transform = `rotate(${(v - 50).toFixed(2)}deg)`; mArcs.forEach((p) => { p.style.strokeDashoffset = String(100 - v); }); };
-  function mCount(to) {   // la pantalla LCD cuenta hasta el valor (sin movimiento: de una vez)
-    cancelAnimationFrame(mFrame);
-    const from = mShown, t0 = performance.now();
-    mShown = to;
-    if (reduced || from === to) { mVal.textContent = String(to); return; }
-    const step = (t) => { const k = Math.min(1, (t - t0) / 900), e = 1 - (1 - k) ** 3; mVal.textContent = String(Math.round(from + (to - from) * e)); if (k < 1) mFrame = requestAnimationFrame(step); };
-    mFrame = requestAnimationFrame(step);
-    later(() => { mVal.textContent = String(to); }, 1000);   // pestaña en segundo plano: rAF no corre
-  }
-  function paintMeter(o, R) {
-    const m = loadMeter(R, o);
-    if (!m) return;
-    mt.dataset.zone = m.zone;
-    mZones.forEach((z) => z.classList.toggle('is-on', z.dataset.mcZ === m.zone));
-    mZone.textContent = ZONE_T[m.zone];
-    mCap.textContent = `Tus equipos usan ≈ ${kwTxt(m.usedW)} de los ${kwTxt(m.ratedW)} del inversor.`;
-    mTarget = m.pct;
-    mSet(m.pct); mCount(m.pct);
-  }
-  function sweepMeter() {   // al aparecer el resultado: la aguja parte de cero y sube hasta el valor
-    if (reduced) return;
-    mNeedle.style.transition = 'none'; mArcs.forEach((p) => { p.style.transition = 'none'; });
-    mSet(0); mShown = 0; mVal.textContent = '0';
-    void mt.offsetWidth;
-    mNeedle.style.transition = ''; mArcs.forEach((p) => { p.style.transition = ''; });
-    mSet(mTarget); mCount(mTarget);
   }
   function fillDetail(o, a, R) {
     const inv = o.inverter, c = o.checks, H = fmt(a.hours, 0), cap = inv.kw * 1000 * inv.kSurge;
@@ -538,7 +526,6 @@ export function initDimensionador({ env, scrollTo }) {
     if (!oos) {
       tierEl[R.chosen].querySelector('input').checked = true;
       fillDetail(o, a, R); fillHints(R.hints); fillCalc(o, a, R); fillBreak(o, a);
-      paintMeter(o, R);
     } else fillOos(a, R);
     $('[data-dz-msg]').textContent = R.message;
     $('[data-dz-wa]').href = wa(R.message);
@@ -560,7 +547,6 @@ export function initDimensionador({ env, scrollTo }) {
     const R = S.R, o = S.o;
     say(R.outOfScope || !o ? 'Esto se dimensiona con un ingeniero. Tu lista ya está en el mensaje.' : `Precio listo. Opción ${o.label.toLowerCase()}: inversor ${fmt(o.inverter.kw)} kW y ${o.batteries.n} batería${o.batteries.n > 1 ? 's' : ''}, ${priceText(o, S.a)}.`);
     card.hidden = true; res.hidden = false;
-    sweepMeter();
     if (!immediate) { res.focus({ preventScroll: true }); toCardTop(res); enter(res); }
   }
 
