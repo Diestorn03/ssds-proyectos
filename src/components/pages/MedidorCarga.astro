@@ -1,0 +1,127 @@
+---
+// Medidor de carga del inversor, dentro del panel «Tu sistema» (debajo del precio): el dial del diagnóstico (src/components/home/Diagnostico.astro)
+// en versión compacta. La aguja sube sola al agregar equipos: marca la carga continua sobre la potencia del inversor de la opción elegida
+// (loadMeter() en data/dimensionar.js); los tres arcos usan los mismos cortes que esa función (K.recMargin → 57 %, K.tightShare → 80 %).
+// Lo pinta scripts/dimensionar.js (paintMeter, en cada cambio): aquí solo hay marcado y estilo.
+import { K } from '../../data/dimensionar.js';
+
+// Geometría del dial (viewBox 0 0 400 232): v ∈ 0..100 → −50°..+50° alrededor del pivote (CX, CY).
+const CX = 200, CY = 206, R = 168;
+const pt = (v: number, r: number) => { const a = ((v - 50) * Math.PI) / 180; return [+(CX + r * Math.sin(a)).toFixed(1), +(CY - r * Math.cos(a)).toFixed(1)]; };
+const arc = (v0: number, v1: number, r: number) => { const [x0, y0] = pt(v0, r); const [x1, y1] = pt(v1, r); return `M${x0} ${y0}A${r} ${r} 0 0 1 ${x1} ${y1}`; };
+const ticks = Array.from({ length: 51 }, (_, i) => {
+  const v = i * 2, major = v % 10 === 0;
+  const [x1, y1] = pt(v, R - (major ? 20 : 10)); const [x2, y2] = pt(v, R);
+  return { major, x1, y1, x2, y2 };
+});
+const nums = [0, 20, 40, 60, 80, 100].map((v) => { const [x, y] = pt(v, R - 38); return { v, x, y }; });
+const loEnd = Math.round(100 / K.recMargin), midEnd = Math.round(K.tightShare * 100), g = 0.7;
+const zoneArcs = [{ k: 'lo', d: arc(0, loEnd - g, R + 17) }, { k: 'mid', d: arc(loEnd + g, midEnd - g, R + 17) }, { k: 'hi', d: arc(midEnd + g, 100, R + 17) }];
+const valArc = arc(0, 100, R + 7);
+---
+<div class="mc" data-dz-meter data-zone="" role="group" aria-labelledby="mc-title">
+  <p class="mc__k" id="mc-title">Carga del inversor</p>
+  <div class="mc__face">
+    <svg class="mc__gauge" viewBox="0 0 400 232" aria-hidden="true" focusable="false">
+      <defs>
+        <linearGradient id="mc-val-grad" x1="30" y1="0" x2="370" y2="0" gradientUnits="userSpaceOnUse">
+          <stop offset="0" stop-color="#f26a1b" /><stop offset=".55" stop-color="#ff9c5c" /><stop offset="1" stop-color="#ffd79a" />
+        </linearGradient>
+      </defs>
+      <g>{zoneArcs.map((z) => <path class={`mc__zone mc__zone--${z.k}`} data-mc-z={z.k} d={z.d} />)}</g>
+      <path class="mc__track" d={valArc} />
+      <path class="mc__glow" d={valArc} pathLength="100" data-mc-arc />
+      <path class="mc__val" d={valArc} pathLength="100" data-mc-arc />
+      <g>{ticks.map((t) => <line class:list={['mc__tick', { 'mc__tick--major': t.major }]} x1={t.x1} y1={t.y1} x2={t.x2} y2={t.y2} />)}</g>
+      <g class="mc__nums">{nums.map((n) => <text class="mc__num" x={n.x} y={n.y}>{n.v}</text>)}</g>
+    </svg>
+    {/* La aguja va en su propio <svg> para que su temblor (un rotate CSS sobre esta caja) corra en el compositor. El valor se pone en el <g> interior. */}
+    <svg class="mc__needle-layer" viewBox="0 0 400 232" aria-hidden="true" focusable="false">
+      <defs>
+        <linearGradient id="mc-needle-grad" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#ffd79a" /><stop offset=".3" stop-color="#ff7d33" /><stop offset=".31" stop-color="#f4f6fb" /><stop offset="1" stop-color="#c9d3e6" />
+        </linearGradient>
+        <radialGradient id="mc-cap-grad" cx=".4" cy=".35" r=".7">
+          <stop offset="0" stop-color="#3a5896" /><stop offset="1" stop-color="#060d1f" />
+        </radialGradient>
+      </defs>
+      <g class="mc__needle-g" data-mc-needle style="transform: rotate(-50deg)">
+        <line class="mc__needle-glow" x1={CX} y1={CY} x2={CX} y2={CY - R + 6} />
+        <path class="mc__needle" d={`M${CX - 3.4} ${CY} L${CX - 0.9} ${CY - R - 2} L${CX + 0.9} ${CY - R - 2} L${CX + 3.4} ${CY} L${CX + 5} ${CY + 24} L${CX - 5} ${CY + 24} Z`} />
+      </g>
+      <circle class="mc__cap" cx={CX} cy={CY} r="14" />
+      <circle class="mc__cap-dot" cx={CX} cy={CY} r="4" />
+    </svg>
+    {/* Lecturas dentro del cristal, en las dos esquinas de abajo (la aguja nunca llega ahí) */}
+    <p class="mc__lcd-row"><span class="mc__lcd" data-mc-val>0</span><span class="mc__of mono">%</span></p>
+    <p class="mc__zone-t"><span class="sr-only">Carga: </span><span data-mc-zone>En espera</span></p>
+  </div>
+  <p class="mc__cap-t" data-mc-cap>Marca equipos y verás la carga.</p>
+</div>
+
+<style>
+  .mc { display: grid; gap: 10px; }
+  .mc__k { margin: 0; font: 500 12px/1 var(--font-mono); letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
+  .mc__face {
+    position: relative; overflow: hidden; container-type: inline-size; border-radius: 14px; aspect-ratio: 400 / 232;
+    background: radial-gradient(70% 90% at 50% 100%, rgba(242, 106, 27, 0.16), transparent 70%), linear-gradient(180deg, #0f2352 0%, #071230 100%);
+    box-shadow: inset 0 2px 14px rgba(0, 0, 0, 0.55), inset 0 0 0 1px rgba(255, 255, 255, 0.07);
+  }
+  .mc__face::before { content: ''; position: absolute; inset: 0; pointer-events: none; background: linear-gradient(155deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.02) 38%, transparent 40%); z-index: 1; }
+  .mc__face::after {   /* destello del vidrio, de vez en cuando */
+    content: ''; position: absolute; top: -20%; bottom: -20%; left: 0; width: 18%; pointer-events: none; z-index: 1;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.12), transparent); transform: translateX(-150%) skewX(-18deg);
+    animation: mc-glint 7s var(--ease-in-out) 2s infinite;
+  }
+  .mc__gauge { width: 100%; height: 100%; overflow: visible; }
+  .mc__zone { fill: none; stroke-width: 6; opacity: 0.3; transition: opacity 0.5s, stroke-width 0.5s var(--ease-out); }
+  .mc__zone--lo { stroke: #86a2dc; }
+  .mc__zone--mid { stroke: var(--amber-400); }
+  .mc__zone--hi { stroke: var(--orange-500); }
+  .mc__zone.is-on { opacity: 1; stroke-width: 8; }
+  .mc__track { fill: none; stroke: rgba(255, 255, 255, 0.08); stroke-width: 4; }
+  .mc__val, .mc__glow { fill: none; stroke: url(#mc-val-grad); stroke-dasharray: 100 100; stroke-dashoffset: 100; transition: stroke-dashoffset 1s cubic-bezier(0.34, 1.2, 0.5, 1); }
+  .mc__val { stroke-width: 4; }
+  .mc__glow { stroke-width: 14; opacity: 0.2; }
+  .mc__tick { stroke: rgba(244, 246, 251, 0.45); stroke-width: 1.2; }
+  .mc__tick--major { stroke: rgba(244, 246, 251, 0.95); stroke-width: 2.6; }
+  .mc__num { fill: #b7c3da; font-family: var(--font-mono); font-size: 15px; font-weight: 500; text-anchor: middle; dominant-baseline: middle; }
+  .mc__needle { fill: url(#mc-needle-grad); }
+  .mc__needle-glow { stroke: #ff8a3d; stroke-width: 10; stroke-linecap: round; opacity: 0.22; }
+  .mc__needle-g { transform-box: view-box; transform-origin: 200px 206px; transition: transform 1s cubic-bezier(0.34, 1.45, 0.5, 1); }
+  /* el temblor gira la caja entera alrededor del pivote (206/232 de la altura): animación solo de compositor, amplitud fija por zona */
+  .mc__needle-layer { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; transform-origin: 50% 88.793%; animation: mc-jitter-0 2.4s ease-in-out infinite; }
+  .mc[data-zone='lo'] .mc__needle-layer { animation-name: mc-jitter-lo; }
+  .mc[data-zone='mid'] .mc__needle-layer { animation-name: mc-jitter-mid; }
+  .mc[data-zone='hi'] .mc__needle-layer { animation-name: mc-jitter-hi; }
+  .mc__cap { fill: url(#mc-cap-grad); stroke: rgba(255, 170, 90, 0.7); stroke-width: 1.5; }
+  .mc__cap-dot { fill: var(--glow); }
+
+  /* lecturas: el tamaño sigue el ancho del dial (container query) */
+  .mc__lcd-row { position: absolute; z-index: 2; left: 5cqw; bottom: 4cqw; margin: 0; display: flex; align-items: baseline; gap: 0.3em; }
+  .mc__lcd { display: inline-block; min-width: 2.2ch; text-align: right; font-family: var(--font-mono); font-weight: 600; font-size: clamp(1.25rem, 9cqw, 2.1rem); line-height: 1; font-variant-numeric: tabular-nums; color: var(--glow); text-shadow: 0 0 16px rgba(255, 170, 80, 0.55); }
+  .mc__of { font-size: clamp(0.7rem, 3.6cqw, 0.9rem); color: var(--muted); }
+  .mc__zone-t { position: absolute; z-index: 2; right: 5cqw; bottom: 4.6cqw; margin: 0; font-family: var(--font-display); font-weight: 700; font-size: clamp(0.8rem, 5.2cqw, 1.1rem); letter-spacing: -0.02em; text-align: right; color: var(--muted); transition: color 0.4s; }
+  .mc[data-zone='lo'] .mc__zone-t { color: #a9c0ef; }
+  .mc[data-zone='mid'] .mc__zone-t { color: var(--amber-400); }
+  .mc[data-zone='hi'] .mc__zone-t { color: var(--orange-300); }
+  .mc__cap-t { margin: 0; font: 400 14px/1.3 var(--font-body); color: var(--muted); }
+
+  @media (max-height: 740px) { .mc__face { max-width: 230px; margin-inline: auto; width: 100%; } }   /* pantallas bajas: el panel fijo tiene que caber */
+
+  @keyframes mc-glint { 0%, 78% { transform: translateX(-150%) skewX(-18deg); } 100% { transform: translateX(650%) skewX(-18deg); } }
+  /* la aguja tiembla un poco más cuanto más alto marca */
+  @keyframes mc-jitter-0 { 0%, 100% { transform: rotate(0deg); } 18% { transform: rotate(0.2deg); } 40% { transform: rotate(-0.14deg); } 62% { transform: rotate(0.1deg); } 84% { transform: rotate(-0.18deg); } }
+  @keyframes mc-jitter-lo { 0%, 100% { transform: rotate(0deg); } 18% { transform: rotate(0.4deg); } 40% { transform: rotate(-0.28deg); } 62% { transform: rotate(0.2deg); } 84% { transform: rotate(-0.36deg); } }
+  @keyframes mc-jitter-mid { 0%, 100% { transform: rotate(0deg); } 18% { transform: rotate(0.7deg); } 40% { transform: rotate(-0.49deg); } 62% { transform: rotate(0.35deg); } 84% { transform: rotate(-0.63deg); } }
+  @keyframes mc-jitter-hi { 0%, 100% { transform: rotate(0deg); } 18% { transform: rotate(1deg); } 40% { transform: rotate(-0.7deg); } 62% { transform: rotate(0.5deg); } 84% { transform: rotate(-0.9deg); } }
+  /* !important: las reglas de animation-name por zona son más específicas */
+  :global(html.is-lite) .mc__face::after, :global(html.is-lite) .mc__needle-layer { animation: none !important; }
+  @media (prefers-reduced-motion: reduce) {
+    .mc__face::after, .mc__needle-layer { animation: none !important; }
+    .mc__needle-g, .mc__val, .mc__glow, .mc__zone { transition: none; }
+  }
+  @media (forced-colors: active) {
+    .mc__needle { fill: CanvasText; }
+  }
+</style>

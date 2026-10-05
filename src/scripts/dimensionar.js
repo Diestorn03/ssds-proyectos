@@ -2,8 +2,9 @@
 // Registered from components/pages/Dimensionador.astro via onPage(initDimensionador). Rules, prices and the WhatsApp message: src/data/dimensionar.js
 // (the controller NEVER builds or edits message lines). State lives in the DOM (the form) and in the URL (?c=&o=&w=&via=).
 // For the PDF module: root.dzState() → { answers, tier, result, option, url, done } and a 'dz:state' CustomEvent on #dimensionar after each fill.
-// No GSAP here: the only motion is one opacity+translate entrance per step / result (and a transform on the load bar), gated by env.reduced.
-import { K, loads, presets, size, clean, encodeState, decodeState, fmtUSD, pricing, batteries } from '../data/dimensionar.js';
+// No GSAP here: the only motion is one opacity+translate entrance per step / result, a transform on the load bar and the meter of the result
+// (needle, arc and LCD: CSS transitions + a short count), all gated by env.reduced. The meter's markup/style: components/pages/MedidorCarga.astro.
+import { K, loads, presets, size, clean, encodeState, decodeState, fmtUSD, pricing, batteries, loadMeter } from '../data/dimensionar.js';
 import { wa } from '../data/site.js';
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, '');
@@ -39,8 +40,8 @@ export function initDimensionador({ env, scrollTo }) {
   const nextLbl = $('[data-dz-next-lbl]'), segs = $$('[data-dz-seg]'), countN = $('[data-dz-count]'), stepLbl = $('[data-dz-steplbl]');
   const barPrice = $('[data-dz-bar-price]'), barSub = $('[data-dz-bar-sub]');
   const card = $('[data-dz-card]'), res = $('[data-dz-res]'), live = $('[data-dz-live]');
-  const sumEl = $('[data-dz-sum]'), sumEmpty = $('[data-dz-sum-empty]'), sumFull = $('[data-dz-sum-full]'), sumProd = $('[data-dz-sum-prod]'), sumLoad = $('[data-dz-sum-load]');
-  const sumPrice = $('[data-dz-sum-price]'), sumPl = $('[data-dz-sum-pl]'), sumCover = $('[data-dz-sum-cover]'), sumN = $('[data-dz-sum-n]'), sumBar = $('[data-dz-sum-bar]'), sumLoadTxt = $('[data-dz-sum-loadtxt]');
+  const sumEl = $('[data-dz-sum]'), sumEmpty = $('[data-dz-sum-empty]'), sumFull = $('[data-dz-sum-full]'), sumProd = $('[data-dz-sum-prod]'), sumFullB = $('[data-dz-sum-fullb]');
+  const sumPrice = $('[data-dz-sum-price]'), sumPl = $('[data-dz-sum-pl]'), sumCover = $('[data-dz-sum-cover]'), sumN = $('[data-dz-sum-n]');
   const sumInv = $('[data-dz-sum-inv]'), sumInvS = $('[data-dz-sum-invs]'), sumBat = $('[data-dz-sum-bat]'), sumBatS = $('[data-dz-sum-bats]');
   const rows = $$('[data-dz-row]'), rowById = new Map(rows.map((r) => [r.dataset.dzRow, r]));
   const tabs = $$('[data-dz-tab]'), tabsBox = $('[data-dz-tabs]'), groups = $$('[data-dz-group]'), customRows = $$('[data-dz-crow]');
@@ -126,26 +127,50 @@ export function initDimensionador({ env, scrollTo }) {
 
   /* ---------- "Tu sistema" (desktop) and the price in the bottom bar (phones): text and one transform, safe on every input event ---------- */
   const setText = (el, t) => { if (el.textContent !== t) el.textContent = t; };
+  /* medidor de carga del inversor (en «Tu sistema», debajo del precio): la aguja sube sola al agregar equipos; CSS hace el movimiento, la LCD cuenta */
+  const ZONE_T = { lo: 'Holgado', mid: 'Justo', hi: 'Al límite' };
+  const mt = $('[data-dz-meter]'), mNeedle = $('[data-mc-needle]', mt), mArcs = $$('[data-mc-arc]', mt), mVal = $('[data-mc-val]', mt);
+  const mZone = $('[data-mc-zone]', mt), mCap = $('[data-mc-cap]', mt), mZones = $$('[data-mc-z]', mt);
+  let mTarget = -1, mShown = 0, mFrame = 0;
+  function mCount(to) {   // la pantalla LCD cuenta hasta el valor (sin movimiento: de una vez)
+    cancelAnimationFrame(mFrame);
+    const from = mShown, t0 = performance.now();
+    mShown = to;
+    if (reduced || from === to) { mVal.textContent = String(to); return; }
+    const step = (t) => { const k = Math.min(1, (t - t0) / 700), e = 1 - (1 - k) ** 3; mVal.textContent = String(Math.round(from + (to - from) * e)); if (k < 1) mFrame = requestAnimationFrame(step); };
+    mFrame = requestAnimationFrame(step);
+    later(() => { if (mShown === to) mVal.textContent = String(to); }, 800);   // pestaña en segundo plano: rAF no corre
+  }
+  function paintMeter(m, oos) {
+    const zone = oos ? 'hi' : m ? m.zone : '', pct = oos ? 100 : m ? m.pct : 0;
+    if (mt.dataset.zone !== zone) { mt.dataset.zone = zone; mZones.forEach((z) => z.classList.toggle('is-on', z.dataset.mcZ === zone)); }
+    setText(mZone, oos ? 'Fuera de rango' : m ? ZONE_T[m.zone] : 'En espera');
+    setText(mCap, oos ? 'Pasa de lo que cubre un solo inversor.' : m ? `${kwTxt(m.usedW)} de ${kwTxt(m.ratedW)} del inversor.` : 'Marca equipos y verás la carga.');
+    if (pct === mTarget) return;
+    mTarget = pct;
+    mNeedle.style.transform = `rotate(${(pct - 50).toFixed(2)}deg)`;
+    mArcs.forEach((p) => { p.style.strokeDashoffset = String(100 - pct); });
+    mCount(pct);
+  }
   function paintSummary() {
     const { a, R, o } = S, on = hasItems(a), oos = !!R.outOfScope, n = units(a), full = on && !oos && !!o;
     sumEl.dataset.state = !on ? 'empty' : oos ? 'oos' : 'ok';
-    sumEmpty.hidden = on; sumFull.hidden = !on; sumProd.hidden = !full; sumLoad.hidden = !full;
-    let price = '', pl = '', cover = '', pct = 0, bar = cur === 0 ? 'Elige un punto de partida' : 'Marca al menos un equipo', warn = false, tight = false;
+    sumEmpty.hidden = on; sumFull.hidden = !on; sumFullB.hidden = !on; sumProd.hidden = !full;
+    let price = '', pl = '', cover = '', bar = cur === 0 ? 'Elige un punto de partida' : 'Marca al menos un equipo', warn = false, m = null;
     if (full) {
       const p = priceView(o, a, null), H = fmt(a.hours, 0), ok = o.coverage >= K.quoteSlack, inv = o.inverter, b = batOf(o), per = o.batteries.kwh / o.batteries.n;
       price = p.main; pl = `${p.pl} · precio referencial`; warn = !ok;
       cover = ok ? `Cubre tus ${H} h` : `Cubre ≈ ${fmt(o.coversH)} de tus ${H} h`;
-      pct = clamp(R.contW / (inv.kw * 1000), 0, 1); tight = pct > K.tightShare;
+      m = loadMeter(R, o);
       setText(sumInv, `Inversor ${fmt(inv.kw)} kW`); setText(sumInvS, acTxt(inv));
       setText(sumBat, `${plural(o.batteries.n, 'batería')} de ${fmt(per, 2)} kWh`);
       setText(sumBatS, o.batteries.n > 1 ? `${fmt(o.batteries.kwh, 2)} kWh en total · ${b.busV} V` : `Litio · ${b.busV} V`);
       paintPics(sumProd, o);
-      setText(sumLoadTxt, `Carga: ${kwTxt(R.contW)} de ${fmt(inv.kw)} kW`);
-      bar = plural(n, 'equipo');
+      bar = `${plural(n, 'equipo')} · carga ${m.pct} %`;   // en el celular (sin panel) la carga viaja en la barra de abajo
     } else if (oos) { price = 'Con ingeniero'; pl = 'Este caso se cotiza aparte'; cover = 'Lo verás en el resultado'; bar = 'Se cotiza aparte'; }
     setText(sumPrice, price); setText(sumPl, pl); setText(sumCover, cover); sumCover.classList.toggle('is-warn', warn);
     setText(sumN, on ? plural(n, 'equipo') : '');
-    sumBar.style.transform = `scaleX(${pct.toFixed(3)})`; sumBar.classList.toggle('is-tight', tight);
+    paintMeter(m, oos);
     setText(barPrice, price); setText(barSub, bar);
   }
 

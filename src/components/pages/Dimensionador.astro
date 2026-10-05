@@ -3,6 +3,7 @@
 // Básica / Recomendada / Holgada, y un resumen fijo "Tu sistema". Reglas y precios: src/data/dimensionar.js · lógica: src/scripts/dimensionar.js
 // Diseño: una cifra protagonista por pantalla, cada dato se ve una sola vez; naranja solo para acción y selección. Todo número es orientativo.
 import Icon from '../ui/Icon.astro';
+import MedidorCarga from './MedidorCarga.astro';
 import { wa } from '../../data/site.js';
 import { K, loads, presets, inverters, pricing, validezTxt } from '../../data/dimensionar.js';
 
@@ -366,12 +367,14 @@ const svgIc = (d: string, s = 20) => `<svg width="${s}" height="${s}" viewBox="0
           <p class="dz-sum__price num" data-dz-sum-price></p>
           <p class="dz-sum__pl" data-dz-sum-pl></p>
           <p class="dz-sum__cover" data-dz-sum-cover></p>
+        </div>
+        <MedidorCarga />
+        <div class="dz-sum__full" data-dz-sum-fullb hidden>
           <ul class="dz-sum__prod" role="list" data-dz-sum-prod>
             <li><span class="dz-pic" data-dz-pic="inv"></span><span class="dz-sum__ptxt"><b data-dz-sum-inv></b><span data-dz-sum-invs></span></span></li>
             <li><span class="dz-pic" data-dz-pic="bat"></span><span class="dz-sum__ptxt"><b data-dz-sum-bat></b><span data-dz-sum-bats></span></span></li>
           </ul>
           <p class="dz-sum__eq" data-dz-sum-n></p>
-          <div class="dz-sum__load" data-dz-sum-load><p data-dz-sum-loadtxt></p><span class="dz-sum__bar"><i data-dz-sum-bar></i></span></div>
         </div>
       </div>
     </div>
@@ -597,6 +600,7 @@ const svgIc = (d: string, s = 20) => `<svg width="${s}" height="${s}" viewBox="0
   /* ---------- "Tu sistema" ---------- */
   .dz-sum { position: sticky; top: calc(var(--header-h) + 24px); min-height: 300px; padding: 28px; border-radius: var(--dz-r-lg); background: var(--navy-900); color: #fff; border: 1px solid rgba(255, 255, 255, 0.08); display: grid; align-content: start; gap: 16px; }
   @media (max-width: 959px) { .dz-sum { display: none; } }
+  @media (min-width: 960px) and (max-height: 740px) { .dz-sum { padding: 22px; gap: 12px; } .dz-sum__price { font-size: 38px; } .dz-sum__prod li { padding: 8px 0; } }   /* pantallas bajas: el panel fijo, con el medidor, tiene que caber */
   .dz-sum__k { margin: 0; font: 500 12px/1 var(--font-mono); letter-spacing: 0.12em; text-transform: uppercase; color: #a9b6cf; }
   .dz-sum__empty { margin: 0; font: 400 16px/1.5 var(--font-body); color: #a9b6cf; }
   .dz-sum__full { display: grid; gap: 16px; }
@@ -612,10 +616,6 @@ const svgIc = (d: string, s = 20) => `<svg width="${s}" height="${s}" viewBox="0
   .dz-sum__ptxt b { font: 600 15px/1.3 var(--font-body); }
   .dz-sum__ptxt span { font: 400 13px/1.3 var(--font-body); color: #a9b6cf; }
   .dz-sum__eq { margin: -4px 0 0; font: 400 14px/1.3 var(--font-body); color: #a9b6cf; }
-  .dz-sum__load p { margin: 0 0 8px; font: 400 14px/1.3 var(--font-body); color: #a9b6cf; }
-  .dz-sum__bar { display: block; height: 6px; border-radius: 6px; background: rgba(255, 255, 255, 0.12); overflow: hidden; }
-  .dz-sum__bar i { display: block; height: 100%; width: 100%; border-radius: inherit; background: var(--orange-500); transform-origin: 0 50%; transform: scaleX(0); transition: transform 0.5s var(--ease-out); }
-  .dz-sum__bar i.is-tight { background: var(--amber-400); }
   .dz-sum__note { margin: 0; font: 400 13px/1.45 var(--font-body); color: #a9b6cf; }
 
   /* ---------- result ---------- */
