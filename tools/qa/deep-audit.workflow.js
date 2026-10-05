@@ -9,7 +9,8 @@ export const meta = {
   ],
 }
 
-const ROOT = 'C:/Users/diegoa.cardozo/Desktop/ssds-proyectos'
+// ROOT: carpeta del repo. Por defecto el directorio desde el que se lanza (corre desde la raíz del repo); en casa: C:/Users/Diestorn/Desktop/ssds-proyectos
+const ROOT = (typeof process !== 'undefined' && process.env.SSDS_ROOT) || (typeof process !== 'undefined' && process.cwd().replaceAll(String.fromCharCode(92), '/')) || 'C:/Users/Diestorn/Desktop/ssds-proyectos'
 const SH = ROOT + '/tools/qa' // QA tools live in the repo; outputs go to %TEMP%/ssds-shots (or SHOTS_DIR)
 const CLS = `js:(async()=>{ let T=0; const S={}; new PerformanceObserver(l=>{for(const e of l.getEntries()){ T+=e.value; for(const s of e.sources||[]){ const k=String(s.node?.className?.baseVal ?? s.node?.className ?? '?').split(' ')[0]; S[k]=(S[k]||0)+e.value; } }}).observe({type:'layout-shift',buffered:false}); const h=document.documentElement.scrollHeight; const f=()=>new Promise(r=>requestAnimationFrame(r)); for(let y=0;y<h;y+=60){ scrollTo(0,y); await f(); await f(); } await new Promise(r=>setTimeout(r,500)); return 'CLS '+T.toFixed(3)+' '+JSON.stringify(S); })()`
 

@@ -10,7 +10,7 @@ Pase final de regresión, después de la auditoría, las correcciones y la verif
   - `shoot.mjs`: capturas, errores de consola, CLS con scroll completo (pasos de 60 px), navegación por enlaces y modos `--reduced` y `--lite`.
   - `perf-section.mjs`: fps y costo por frame de cada sección durante el scroll.
   - Una sonda propia de **reposo**: traza 2 s con la página quieta y cuenta Layerize, Paint, Style y JS. Con ella se encontraron los problemas corregidos en este pase.
-- **Páginas (9):** `/`, `/servicios/`, `/servicios/climatizacion/`, `/servicios/potencia-electrica/`, `/servicios/respaldo-energetico/`, `/nosotros/`, `/contacto/`, `/diagnostico/` y 404.
+- **Páginas (10):** `/`, `/servicios/`, `/servicios/climatizacion/`, `/servicios/potencia-electrica/`, `/servicios/respaldo-energetico/`, `/nosotros/`, `/contacto/`, `/diagnostico/`, `/dimensionar/` (nueva, pendiente de auditar con `audit.mjs`) y 404.
 - **Viewports:**
   - `audit.mjs`: tiny-320, iphone-14, tablet-768, laptop-1280, laptop-1366, desktop-1920 y ultrawide-2560 (63 corridas).
   - Ventanas reales de laptop: 1266×606, 1366×657 y 1536×730.

@@ -111,6 +111,9 @@ Guardan sus salidas en `%TEMP%/ssds-shots`, o en la carpeta que indiques con `SH
   Revisa desbordes, áreas táctiles, textos pequeños, reveals trabados, LCP/CLS, fps y errores. El LCP que reporta está inflado por su propio scroll; mídelo con una carga simple.
 - **Chequeo de CLS (debe dar 0.000):** el fragmento `CLS` de `tools/qa/deep-audit.workflow.js`, pasado como target `js:` a `shoot.mjs`.
 - **Test del diagnóstico:** `node src/data/diagnostico.check.mjs`.
+- **Test del dimensionador:** `node src/data/dimensionar.check.mjs` (motor, precios, enlace `?c=`).
+- **Probar el PDF:** abre `/dimensionar/`, marca equipos, elige "Instalado" y pulsa "Descargar presupuesto" (el nombre del cliente es opcional). Revisa que diga "Presupuesto" (nunca factura), razón social y RIF. Para verlo como imagen: `python -c "import pymupdf; pymupdf.open('x.pdf')[0].get_pixmap(dpi=110).save('x.png')"`. Las fuentes del PDF se regeneran con `python tools/pdf-fonts.py`.
+- **Preguntas pendientes para David:** `docs/PREGUNTAS-DAVID.md` (listas para pegar en WhatsApp; cada `POR CONFIRMAR Qn` del código apunta ahí).
 
 ## Cómo terminar (pedido del usuario)
 

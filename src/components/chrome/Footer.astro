@@ -41,6 +41,7 @@ const year = new Date().getFullYear();
       <ul class="ftr__list">
         {services.map((s) => <li><a href={`${base}/servicios/${s.slug}/`}>{s.name}</a></li>)}
         <li><a href={`${base}/diagnostico/`}>Diagnóstico rápido</a></li>
+        <li><a href={`${base}/dimensionar/`}>Dimensiona tu respaldo</a></li>
       </ul>
     </nav>
 
@@ -78,6 +79,7 @@ const year = new Date().getFullYear();
 
   <div class="container ftr__bottom">
     <span>© {year} {brand.legalName} · {brand.tagline}</span>
+    <span class="ftr__rif">{brand.razonSocial} · RIF {brand.rif}</span>
     {demo && <span class="ftr__demo">Propuesta de sitio web · demo</span>}
     <a href={social.instagram} target="_blank" rel="noopener">@{contact.instagram}</a>
   </div>

@@ -42,6 +42,7 @@ const items = [{ href: '/', label: 'Inicio', nav: 'home' }, ...nav.map((n) => ({
           <li style={`--i:${i}`}><a href={`${base}${item.href}`} data-nav={item.nav}><span class="mono">0{i + 1}</span>{item.label}</a></li>
         ))}
         <li style={`--i:${items.length}`}><a href={`${base}/diagnostico/`} data-nav="diagnostico"><span class="mono">0{items.length + 1}</span>Diagnóstico rápido</a></li>
+        <li style={`--i:${items.length + 1}`}><a href={`${base}/dimensionar/`} data-nav="dimensionar"><span class="mono">0{items.length + 2}</span>Dimensiona tu respaldo</a></li>
       </ul>
       <div class="menu__foot">
         <a class="btn btn--wa" href={wa()} target="_blank" rel="noopener"><Icon name="whatsapp" size={20} />Cotizar por WhatsApp</a>

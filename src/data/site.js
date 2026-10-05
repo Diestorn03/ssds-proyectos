@@ -6,6 +6,8 @@ export const brand = {
   name: 'SSD&S C.A.',
   shortName: 'SSD&S',
   legalName: 'SSD&S PROYECTOS C.A.',
+  razonSocial: 'SERVICIOS Y SUMINISTROS D&S, C.A.', // misma empresa que SSD&S C.A.; va en el presupuesto en PDF
+  rif: 'J-40625203-4',
   tagline: 'Potencia e Ingeniería Industrial',
   claim: 'Energía confiable para tu negocio.',
   description:
@@ -66,6 +68,7 @@ export const services = [
   },
   {
     slug: 'respaldo-energetico',
+    tool: { href: '/dimensionar/', label: 'Dimensiona tu respaldo' },
     code: '02',
     name: 'Respaldo Energético',
     short: 'Respaldo energético',
@@ -80,10 +83,11 @@ export const services = [
       { t: 'Mantenimiento preventivo y correctivo', d: 'Pruebas de banco de carga, calibración de parámetros y servicio técnico bajo estrictas normas de seguridad para generadores de cualquier capacidad.' },
       { t: 'Consumibles y repuestos originales', d: 'Filtros, lubricantes y repuestos garantizados. Usar consumibles genéricos o postergar el cambio reduce la vida útil del motor.' },
       { t: 'Instalación de plantas eléctricas', d: 'Instalación y puesta en marcha de grupos electrógenos para respaldo residencial, comercial e industrial.' },
+      { t: 'Sistemas de respaldo con inversor híbrido y baterías de litio', d: 'Dimensionamos el inversor y el banco de baterías a los equipos que quieres mantener encendidos y las horas de corte, y los instalamos.' },
     ],
     cta: 'Agenda la revisión de tu planta',
     waText: 'Hola SSD&S, quiero agendar mantenimiento / cotizar un tablero ATS para mi planta eléctrica.',
-    tags: ['Plantas eléctricas', 'Generadores', 'ATS', 'Banco de carga', 'Consumibles'],
+    tags: ['Plantas eléctricas', 'Generadores', 'ATS', 'Banco de carga', 'Consumibles', 'Inversores', 'Baterías de litio'],
   },
   {
     slug: 'climatizacion',
