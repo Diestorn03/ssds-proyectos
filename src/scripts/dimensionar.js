@@ -2,8 +2,9 @@
 // Registered from components/pages/Dimensionador.astro via onPage(initDimensionador). Rules, prices and the WhatsApp message: src/data/dimensionar.js
 // (the controller NEVER builds or edits message lines). State lives in the DOM (the form) and in the URL (?c=&o=&w=&via=).
 // For the PDF module: root.dzState() → { answers, tier, result, option, url, done } and a 'dz:state' CustomEvent on #dimensionar after each fill.
-// No GSAP here: the only motion is one opacity+translate entrance per step / result (and a transform on the load bar), gated by env.reduced.
-import { K, loads, presets, size, clean, encodeState, decodeState, fmtUSD, pricing, batteries } from '../data/dimensionar.js';
+// No GSAP here: the only motion is one opacity+translate entrance per step / result, a transform on the load bar and the meter of the result
+// (needle, arc and LCD: CSS transitions + a short count), all gated by env.reduced. The meter's markup/style: components/pages/MedidorCarga.astro.
+import { K, loads, presets, size, clean, encodeState, decodeState, fmtUSD, pricing, batteries, loadMeter } from '../data/dimensionar.js';
 import { wa } from '../data/site.js';
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, '');
@@ -373,6 +374,42 @@ export function initDimensionador({ env, scrollTo }) {
     li.dataset.state = state;
     $('.dz-light__ic', li).innerHTML = LIGHT_ICON[state];
     $('.dz-light__t', li).textContent = text;
+    const led = $(`[data-mc-led="${k}"]`);   // la misma luz en el medidor
+    if (led) { led.dataset.state = state; $('[data-mc-led-s]', led).textContent = LED_SR[state]; }
+  }
+  /* ---------- medidor de carga del inversor (arriba del resultado) ---------- */
+  const LED_SR = { ok: ': bien', warn: ': con ojo', bad: ': por revisar' };
+  const ZONE_T = { lo: 'Holgado', mid: 'Justo', hi: 'Al límite' };
+  const mt = $('[data-dz-meter]'), mNeedle = $('[data-mc-needle]', mt), mArcs = $$('[data-mc-arc]', mt), mVal = $('[data-mc-val]', mt);
+  const mZone = $('[data-mc-zone]', mt), mCap = $('[data-mc-cap]', mt), mZones = $$('[data-mc-z]', mt);
+  let mTarget = 0, mShown = 0, mFrame = 0;
+  const mSet = (v) => { mNeedle.style.transform = `rotate(${(v - 50).toFixed(2)}deg)`; mArcs.forEach((p) => { p.style.strokeDashoffset = String(100 - v); }); };
+  function mCount(to) {   // la pantalla LCD cuenta hasta el valor (sin movimiento: de una vez)
+    cancelAnimationFrame(mFrame);
+    const from = mShown, t0 = performance.now();
+    mShown = to;
+    if (reduced || from === to) { mVal.textContent = String(to); return; }
+    const step = (t) => { const k = Math.min(1, (t - t0) / 900), e = 1 - (1 - k) ** 3; mVal.textContent = String(Math.round(from + (to - from) * e)); if (k < 1) mFrame = requestAnimationFrame(step); };
+    mFrame = requestAnimationFrame(step);
+    later(() => { mVal.textContent = String(to); }, 1000);   // pestaña en segundo plano: rAF no corre
+  }
+  function paintMeter(o, R) {
+    const m = loadMeter(R, o);
+    if (!m) return;
+    mt.dataset.zone = m.zone;
+    mZones.forEach((z) => z.classList.toggle('is-on', z.dataset.mcZ === m.zone));
+    mZone.textContent = ZONE_T[m.zone];
+    mCap.textContent = `Tus equipos usan ≈ ${kwTxt(m.usedW)} de los ${kwTxt(m.ratedW)} del inversor.`;
+    mTarget = m.pct;
+    mSet(m.pct); mCount(m.pct);
+  }
+  function sweepMeter() {   // al aparecer el resultado: la aguja parte de cero y sube hasta el valor
+    if (reduced) return;
+    mNeedle.style.transition = 'none'; mArcs.forEach((p) => { p.style.transition = 'none'; });
+    mSet(0); mShown = 0; mVal.textContent = '0';
+    void mt.offsetWidth;
+    mNeedle.style.transition = ''; mArcs.forEach((p) => { p.style.transition = ''; });
+    mSet(mTarget); mCount(mTarget);
   }
   function fillDetail(o, a, R) {
     const inv = o.inverter, c = o.checks, H = fmt(a.hours, 0), cap = inv.kw * 1000 * inv.kSurge;
@@ -501,6 +538,7 @@ export function initDimensionador({ env, scrollTo }) {
     if (!oos) {
       tierEl[R.chosen].querySelector('input').checked = true;
       fillDetail(o, a, R); fillHints(R.hints); fillCalc(o, a, R); fillBreak(o, a);
+      paintMeter(o, R);
     } else fillOos(a, R);
     $('[data-dz-msg]').textContent = R.message;
     $('[data-dz-wa]').href = wa(R.message);
@@ -522,6 +560,7 @@ export function initDimensionador({ env, scrollTo }) {
     const R = S.R, o = S.o;
     say(R.outOfScope || !o ? 'Esto se dimensiona con un ingeniero. Tu lista ya está en el mensaje.' : `Precio listo. Opción ${o.label.toLowerCase()}: inversor ${fmt(o.inverter.kw)} kW y ${o.batteries.n} batería${o.batteries.n > 1 ? 's' : ''}, ${priceText(o, S.a)}.`);
     card.hidden = true; res.hidden = false;
+    sweepMeter();
     if (!immediate) { res.focus({ preventScroll: true }); toCardTop(res); enter(res); }
   }
 

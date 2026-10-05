@@ -616,6 +616,22 @@ export function size(answers) {
   return done();
 }
 
+// ───────────────────── medidor de carga del inversor ─────────────────────
+/**
+ * Lo que marca la aguja del medidor del resultado: la carga continua de tus equipos sobre la potencia del inversor de la opción elegida (0 a 100 %).
+ * Zonas: 'lo' holgado hasta 1 / K.recMargin (57 %: la holgura con la que vende David), 'mid' justo hasta K.tightShare (80 %), 'hi' al límite.
+ * `loEnd` y `midEnd` (en % del dial) son los mismos números con los que el componente dibuja los tres arcos. null si no hay opción.
+ */
+export function loadMeter(R, o) {
+  if (!R || !o) return null;
+  const ratedW = o.inverter.kw * 1000, usedW = R.contW, ratio = usedW / ratedW;
+  return {
+    pct: Math.round(Math.min(100, Math.max(0, ratio * 100))), usedW, ratedW,
+    zone: ratio <= 1 / K.recMargin ? 'lo' : ratio <= K.tightShare ? 'mid' : 'hi',
+    loEnd: Math.round(100 / K.recMargin), midEnd: Math.round(K.tightShare * 100),
+  };
+}
+
 // ───────────────────── presupuesto (PDF) ─────────────────────
 const MESES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
 const CONFIRMA = 'Se confirma en la visita';

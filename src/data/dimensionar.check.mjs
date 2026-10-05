@@ -3,7 +3,7 @@
 // de presupuestos reales: nunca nombres de clientes ni costos de distribuidor; aquí solo precios de venta.
 import assert from 'node:assert/strict';
 import { existsSync } from 'node:fs';
-import { K, OPENING, loads, presets, inverters, batteries, panel, pricing, size, clean, pickBatteries, encodeState, decodeState, fmtUSD, fmtUSD2, quote, validezTxt } from './dimensionar.js';
+import { K, OPENING, loads, presets, inverters, batteries, panel, pricing, size, clean, pickBatteries, encodeState, decodeState, fmtUSD, fmtUSD2, quote, validezTxt, loadMeter } from './dimensionar.js';
 
 const inv = (m) => inverters.find((i) => i.model === m);
 const bat = (m) => batteries.find((b) => b.model === m);
@@ -631,5 +631,14 @@ for (const x of [...inverters, ...batteries].filter((e) => e.available)) {   // 
   const slug = x.model.toLowerCase().replaceAll('/', '-');
   for (const ext of ['webp', 'jpg']) assert.ok(existsSync(new globalThis.URL(`../../public/equipos/${slug}.${ext}`, import.meta.url)), `falta public/equipos/${slug}.${ext}`);
 }
+
+// ── medidor de carga del inversor (arriba del resultado) ──
+const lm = loadMeter(comp, rec(comp));
+assert.deepEqual([lm.loEnd, lm.midEnd], [57, 80]); assert.equal(loadMeter(null, null), null);
+assert.equal(lm.pct, Math.round((comp.contW / (rec(comp).inverter.kw * 1000)) * 100)); assert.ok(lm.pct >= 0 && lm.pct <= 100);
+assert.equal(lm.zone, 'lo', 'la Recomendada trabaja a ≤ 57 % del inversor (la holgura con la que vende David)');
+for (const r of seen) for (const o of r.options) { const m = loadMeter(r, o); assert.ok(m.pct >= 0 && m.pct <= 100 && m.zone !== 'hi', 'con K.margin 1,25 ninguna opción pasa del 80 % (la zona roja es el límite que no se recomienda)'); if (o.tier === 'recomendado' && o.inverter.kw * 1000 >= K.recMargin * r.contW) assert.equal(m.zone, 'lo'); }
+const mb = loadMeter(comp, opt(comp, 'basico'));
+assert.ok(mb && mb.zone === 'mid' && mb.pct > 57 && mb.pct <= 80, 'la Básica va más justa: zona ámbar');
 
 console.log('dimensionar.check: ok');

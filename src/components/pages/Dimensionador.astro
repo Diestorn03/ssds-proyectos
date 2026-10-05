@@ -3,6 +3,7 @@
 // Básica / Recomendada / Holgada, y un resumen fijo "Tu sistema". Reglas y precios: src/data/dimensionar.js · lógica: src/scripts/dimensionar.js
 // Diseño: una cifra protagonista por pantalla, cada dato se ve una sola vez; naranja solo para acción y selección. Todo número es orientativo.
 import Icon from '../ui/Icon.astro';
+import MedidorCarga from './MedidorCarga.astro';
 import { wa } from '../../data/site.js';
 import { K, loads, presets, inverters, pricing, validezTxt } from '../../data/dimensionar.js';
 
@@ -192,6 +193,7 @@ const svgIc = (d: string, s = 20) => `<svg width="${s}" height="${s}" viewBox="0
           </header>
 
           <div class="dz-ok" data-dz-ok>
+            <MedidorCarga />
             <p class="dz-status" data-dz-status data-state="ok"><span class="dz-status__ic" aria-hidden="true"></span><span data-dz-status-t></span></p>
 
             <section class="dz-cmp" aria-labelledby="dz-cmp-h">
