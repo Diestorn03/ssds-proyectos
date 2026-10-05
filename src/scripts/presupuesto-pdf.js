@@ -36,11 +36,11 @@ async function cargarFuentes() {
   }));
 }
 
-// Foto JPG del equipo (public/equipos/<modelo>.jpg, fondo blanco) → { data, w, h } o null. Se pide solo al generar el PDF; si falta (p. ej. el Roccia) o falla, no hay miniatura.
+// Foto JPG del equipo (public/equipos/<modelo en minúsculas, "/" → "-">.jpg, fondo blanco) → { data, w, h } o null. Se pide solo al generar el PDF; si falta o falla, no hay miniatura.
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, '');
 async function cargarFoto(model) {
   try {
-    const r = await fetch(`${BASE}/equipos/${String(model).toLowerCase()}.jpg`);
+    const r = await fetch(`${BASE}/equipos/${String(model).toLowerCase().replaceAll('/', '-')}.jpg`);
     if (!r.ok || !/image\/jpe?g/.test(r.headers.get('content-type') || '')) return null;
     const data = `data:image/jpeg;base64,${b64(new Uint8Array(await r.arrayBuffer()))}`;
     const img = new Image(); img.src = data; await img.decode();
@@ -196,6 +196,7 @@ export function armarPresupuesto(JsPDF, fuentes, q, fotos = []) {
   use('b', 6.2, C.orangeInk, 0.16); put('N.º DE PRESUPUESTO', R, y - 7.4, { align: 'right' });
   use('h', 12, C.navy); put(q.numero, R, y - 1.8, { align: 'right' });
   use('r', 8.6, C.ink2); put(q.fechaTexto, R, y + 3.4, { align: 'right' });
+  if (q.validez) { use('b', 7.4, C.orangeInk); put(`Oferta válida por ${q.validez}`, R, y + 7.6, { align: 'right' }); }
   y += 10;
 
   const s = q.sistema, kwhUno = s.kwh / s.baterias;
@@ -286,7 +287,6 @@ export function armarPresupuesto(JsPDF, fuentes, q, fotos = []) {
   if (y + hClose > LIM()) hojaNueva();
   tarjeta(M, y, LW, hG);
   use('b', 6.2, C.orangeInk, 0.16); put('GARANTÍAS', M + 6, y + 5.4);
-  if (q.provisional) { const x = M + 6 + width('GARANTÍAS') + 3; use('r', 6.2, C.ink2, 0.1); put('POR CONFIRMAR', x, y + 5.4); }
   use('r', 8.4, C.navy);
   G.forEach((g, i) => { const gy = y + 5.4 + 5.6 + i * 4.5; fillC(C.orange); doc.circle(M + 6.7, gy - 1, 0.7, 'F'); put(g, M + 9.6, gy); });
   const yP = y + hG + 3.5;

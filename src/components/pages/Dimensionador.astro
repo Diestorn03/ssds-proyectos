@@ -4,7 +4,7 @@
 // Diseño: una cifra protagonista por pantalla, cada dato se ve una sola vez; naranja solo para acción y selección. Todo número es orientativo.
 import Icon from '../ui/Icon.astro';
 import { wa } from '../../data/site.js';
-import { K, loads, presets, inverters, pricing } from '../../data/dimensionar.js';
+import { K, loads, presets, inverters, pricing, validezTxt } from '../../data/dimensionar.js';
 
 const base = import.meta.env.BASE_URL.replace(/\/$/, '');
 const nf = (n: number, d = 1) => n.toLocaleString('es-VE', { maximumFractionDigits: d });
@@ -118,7 +118,7 @@ const svgIc = (d: string, s = 20) => `<svg width="${s}" height="${s}" viewBox="0
                         </span>
                         {l.v220 === 'ask' && (
                           <div class="dz-ask" data-dz-ask hidden role="group" aria-labelledby={`dz-askq-${l.id}`}>
-                            <p class="dz-ask__q" id={`dz-askq-${l.id}`}>¿Tu aire es de 220 V? Lo dice la placa o el breaker doble.</p>
+                            <p class="dz-ask__q" id={`dz-askq-${l.id}`}>¿Tu {l.hp ? 'bomba' : 'aire'} es de 220 V? Lo dice la placa{l.hp ? '' : ' o el breaker doble'}.</p>
                             <div class="dz-chips">
                               <label class="dz-pill"><input type="radio" name={`v220-${l.id}`} value="1" />Sí, es de 220</label>
                               <label class="dz-pill"><input type="radio" name={`v220-${l.id}`} value="0" />No, es de 110</label>
@@ -354,7 +354,7 @@ const svgIc = (d: string, s = 20) => `<svg width="${s}" height="${s}" viewBox="0
 
           <p class="dz-res__note">
             {pricing.provisional && <span class="dz-prov" data-dz-prov>Precios de prueba mientras se confirma la lista. </span>}
-            Precio referencial en USD, sujeto a disponibilidad. {pricing.payment} La instalación y la autonomía se confirman midiendo tu carga en la visita técnica.
+            Precio referencial en USD, sujeto a disponibilidad{validezTxt() ? `; válido por ${validezTxt()}` : ''}. {pricing.payment} La instalación y la autonomía se confirman midiendo tu carga en la visita técnica, sin costo en Aragua; en otros estados tiene un costo que te confirmamos.
           </p>
         </article>
       </form>
@@ -679,17 +679,25 @@ const svgIc = (d: string, s = 20) => `<svg width="${s}" height="${s}" viewBox="0
     .dz-tiers { grid-template-columns: minmax(0, 1fr); gap: 10px; }
     .dz-tier { display: grid; grid-template-columns: 96px minmax(0, 1fr) auto; grid-template-areas: 'top top price' 'pic line line' 'pic sys sys'; gap: 6px 14px; padding: 14px 16px; align-items: center; }
     .dz-tier__top { grid-area: top; flex-wrap: nowrap; min-width: 0; }
-    .dz-tier__price { grid-area: price; margin: 0; align-self: center; justify-content: flex-end; }
-    .dz-tier__n { font-size: 22px; min-width: 0; }
+    .dz-tier__price { grid-area: price; margin: 0; align-self: center; justify-content: flex-end; flex-direction: column; align-items: flex-end; gap: 0; }   /* apilado: la columna mide lo del precio, no la suma con «solo equipo» */
+    .dz-tier__n { font-size: 22px; min-width: 0; white-space: nowrap; }
     .dz-tier__lbl { font-size: 16px; }
     .dz-tier[data-dz-tier='recomendado'] .dz-tier__lbl { font-size: 13px; padding: 3px 8px; }
+    @media (max-width: 389px) {   /* teléfonos angostos: la columna del medio queda en 0 y la etiqueta «Recomendada» no debe tocar el precio, ni con 5 cifras (US$ 25.155) */
+      .dz-tier { grid-template-columns: 80px minmax(0, 1fr) auto; gap: 6px 8px; padding: 12px 10px; }
+      .dz-tier__n { font-size: 19px; }
+      .dz-tier__pl { font-size: 13px; }
+      .dz-tier[data-dz-tier='recomendado'] .dz-tier__lbl { font-size: 12px; padding: 3px 7px; }
+    }
+    @media (max-width: 359px) { .dz-tier__n { font-size: 18px; } }
     .dz-tier__pic { grid-area: pic; height: 72px; padding: 6px; margin: 0; gap: 8px; align-self: stretch; }
     .dz-tier__line { grid-area: line; margin: 0; padding: 0; border: 0; }
     .dz-tier__sys { grid-area: sys; margin: 0; display: block; font-size: 14px; color: var(--ink-2); }
     .dz-tier__sys > span { display: inline; }
     .dz-tier__sys > span::before { content: none; }
     .dz-tier__sys > span + span::before { content: ' · '; display: inline; font: inherit; color: inherit; }
-    .dz-tier__sub, .dz-tier__h, .dz-tier__delta, .dz-tier__from { display: none; }   /* phones: name, price, what it covers, system; the rest is under Detalles */
+    .dz-tier__sub, .dz-tier__h, .dz-tier__delta { display: none; }
+    .dz-tier__from { font-size: 12px; }   /* «desde» se queda: el Roccia y el 8 kW tienen rango de instalación */   /* phones: name, price, what it covers, system; the rest is under Detalles */
   }
   .dz-cmp__note { margin: 0; font: 400 13px/1.5 var(--font-body); color: var(--ink-2); }
   .dz-adj { margin: 0; font: 400 14px/1.5 var(--font-body); color: var(--ink-2); }

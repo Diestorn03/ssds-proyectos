@@ -23,6 +23,7 @@ const items = [{ href: '/', label: 'Inicio', nav: 'home' }, ...nav.map((n) => ({
         {nav.map((item) => (
           <li><a href={`${base}${item.href}`} data-nav={item.href.replace(/\//g, '')} aria-current={isActive(item.href) ? 'page' : undefined}>{item.label}</a></li>
         ))}
+        <li><a href={`${base}/dimensionar/`} data-nav="dimensionar" aria-label="Dimensiona tu respaldo" aria-current={isActive('/dimensionar/') ? 'page' : undefined}><span class="hdr__long" aria-hidden="true">Dimensiona tu respaldo</span><span class="hdr__short" aria-hidden="true">Dimensionador</span></a></li>
       </ul>
     </nav>
 
@@ -74,8 +75,10 @@ const items = [{ href: '/', label: 'Inicio', nav: 'home' }, ...nav.map((n) => ({
   .hdr__bar { position: relative; display: flex; align-items: center; justify-content: space-between; gap: 16px; height: 100%; }
   .hdr__brand { display: inline-flex; align-items: center; min-height: 44px; }
   .hdr__nav ul { display: none; gap: 6px; list-style: none; }
-  .hdr__nav li a { position: relative; display: inline-block; padding: 10px 14px; font-family: var(--font-display); font-weight: 600; font-size: 0.95rem; letter-spacing: -0.01em; color: currentColor; opacity: 0.82; transition: opacity 0.3s; }
+  .hdr__nav li a { white-space: nowrap; position: relative; display: inline-block; padding: 10px 14px; font-family: var(--font-display); font-weight: 600; font-size: 0.95rem; letter-spacing: -0.01em; color: currentColor; opacity: 0.82; transition: opacity 0.3s; }
   .hdr__nav li a::after { content: ''; position: absolute; left: 14px; right: 14px; bottom: 6px; height: 2px; border-radius: 2px; background: var(--grad-brand); transform: scaleX(0); transform-origin: left; transition: transform 0.5s var(--ease-out); }
+  .hdr__long { display: none; }   /* ≥ 1180 px cabe el nombre completo; antes, «Dimensionador» */
+  @media (min-width: 1180px) { .hdr__long { display: inline; } .hdr__short { display: none; } }
   .hdr__nav li a:hover, .hdr__nav li a[aria-current='page'] { opacity: 1; }
   .hdr__nav li a:hover::after, .hdr__nav li a[aria-current='page']::after { transform: scaleX(1); }
   .hdr__actions { display: flex; align-items: center; gap: 10px; }
@@ -86,6 +89,16 @@ const items = [{ href: '/', label: 'Inicio', nav: 'home' }, ...nav.map((n) => ({
   @media (min-width: 900px) {
     .hdr__nav ul { display: flex; }
     .hdr__burger { display: none; }
+  }
+  @media (min-width: 900px) and (max-width: 1023px) {   /* con 4 enlaces, el botón de WhatsApp se salía de 900 px */
+    .hdr__nav ul { gap: 0; }
+    .hdr__nav li a { padding: 10px 10px; }
+    .hdr__nav li a::after { left: 10px; right: 10px; }
+  }
+  @media (min-width: 900px) and (max-width: 959px) {
+    .hdr__bar { gap: 8px; }
+    .hdr__nav li a { padding: 10px 8px; }
+    .hdr__nav li a::after { left: 8px; right: 8px; }
   }
 
   /* ---------- mobile menu: full-screen dialog opening as a circle from the burger ---------- */

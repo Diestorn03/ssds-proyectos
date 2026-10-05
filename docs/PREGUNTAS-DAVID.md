@@ -1,6 +1,31 @@
 # Preguntas para David: Dimensiona tu respaldo
 
-Contexto: armamos una página donde el cliente marca sus equipos y las horas de corte, y el sitio calcula inversor y baterías con tus precios de venta de los presupuestos; también baja un presupuesto en PDF. Para publicarla necesito que me confirmes lo siguiente. Donde dice "Asumí" es lo que hoy está puesto: si está bien, responde "ok".
+Contexto: armamos una página donde el cliente marca sus equipos y las horas de corte, y el sitio calcula inversor y baterías con tus precios de venta de los presupuestos; también baja un presupuesto en PDF. Para publicarla necesito que me confirmes lo siguiente. Donde dice "Asumí" es lo que estaba puesto cuando se hizo la pregunta: las respondidas (5 oct 2026) están abajo, en "Respondidas", y mandan sobre su "Asumí".
+
+## Respondidas (5 oct 2026, audios de David vía Diego)
+
+Los números de abajo (1 a 12) son los de la lista corta que Diego le mandó por WhatsApp, no los Q del resto de este documento. Los audios son transcripciones automáticas de WhatsApp: lo dudoso está marcado.
+
+- **Q20 y Q3 (mostrar precios, marcas, potencias):** se puede mostrar todo. El rótulo "Precios de prueba · por confirmar" (`pricing.provisional`) se queda hasta cerrar lo pendiente de abajo.
+- **Q30 (pago):** "Zelle, efectivo o Binance; en bolívares a tasa Binance" (confirmó Diego).
+- **El 25 %:** es la ganancia de David sobre el costo de los equipos y ya está en su lista de precios de venta; no es un recargo de instalación (`installMode: 'factor'` no aplica).
+- **1 · Instalación (Q1, Q2b):** mano de obra de 350 a 600 US$, la más alta en los 8 kW; "más o menos las mismas" que ya estaban. Los kits valen lo mismo en las tres opciones: cambiar de batería no implica más herraje ni más montaje. Aprobó kit + mano de obra por tramo (800, 900, 850 a 1.000 y 1.000 a 1.200): `installConfirmed: true`. El "excesiva" de su primer audio era "accesible" (error de la transcripción). Parte del audio quedó cortada ("ya que una sola...").
+- **2 · Garantías (Q27):** "OK" (batería 2 años, inversor 1 año, tablero 3 meses, instalación 3 meses): ya no llevan "POR CONFIRMAR" en el PDF.
+- **3 · Horas (Q31, Q7):** "está OK" (horas nominales con la aclaración de las pérdidas).
+- **4 · Validez (Q28):** "tres días de validez"; Diego escuchó el audio y lo confirmó. `pricing.validityDays: 3`; sale en el PDF ("Oferta válida por 3 días", bajo la fecha) y en la nota del resultado.
+- **5 · Paneles (Q5):** sí los vende, pero se cotizan aparte (según Diego); más adelante habrá un módulo para esa cotización. La página sigue sugiriendo la cantidad sin sumarla. Falta saber de cuántos vatios son (hoy 580 W).
+- **Solo mano de obra (Q2):** se cotiza en el sitio (decisión de Diego): la opción se queda y dice "se confirma en la visita"; `pricing.laborOnly` queda en null.
+- **6 · Zona (Q15):** la visita técnica es gratis en Aragua; en cada otro estado tiene un costo específico que aún no estiman. Puesto en la nota del resultado.
+- **7 · Fotos (Q32):** mandó fotos de un Roccia instalado con una batería Felicity, otra del Roccia sobre su caja, y las etiquetas de varias cajas. Por audio aclaró que el Roccia de 6 kW "va en la pared y el ventilador lateralmente": es el de pared con pantalla negra. Su foto está en `public/equipos/roccia-6k-120-220.(webp|jpg)` (recorte de la foto que mandó) y sale en la página y en el PDF. La FLA12171-EU usa provisionalmente la foto de la FLA12280 (`fla12171-eu.*`): reemplazar cuando haya una propia.
+- **8 · Inversores de 12 y 24 V (Q22):** los sigue vendiendo mientras estén disponibles (para clientes de presupuesto corto: "hay gente que me dice solamente tengo mil cien"). La caja del de 24 V dice IVCM2024-LV (2000 VA / 2000 W) y David confirmó por audio que es el "IVCM 2024 LV" (2 kW, 24 V) y Diego decidió que se imprime el nombre de la caja: el modelo pasó de IVEM2024-LV a IVCM2024-LV. El de 12 V sigue como IVEM1612-LV (no se vio su caja).
+- **9 · Baterías de 12 V (Q25):** sus únicos dos modelos son la FLA12171-EU (2,2 kWh, 12,8 V, 171 Ah) y la FLA12280-EU (3,6 kWh, 12,8 V, 280 Ah); el 2,56 kWh de sus presupuestos es la batería de 24 V (la caja dice FLA24100PG2, 25,6 V; Diego decidió imprimir ese nombre, antes FLA24100-EU). La 12280 ya estaba bien (3,58 kWh). La FLA12171-EU ya está en el catálogo a 650 US$: David dijo por audio que "vale 130 dólares menos que la otra" (780 - 130, derivado). Su corriente continua no está publicada: se usa 100 A, conservador (la FLA48171, de las mismas celdas, da 120 A); confirmar con la ficha.
+- **10 · Dos baterías (Q1, precios que se mueven):** el 3.060 c/u fue un descuento a un cliente específico, "un error mío"; "en todo caso vendemos el precio de presupuestos más caros". Queda 3.315 (FLA48314). Diego confirmó que la regla aplica también al Roccia (990 en vez de 954) y a la FLA48230 (2.150 en vez de 2.100): puestos. Con eso la Recomendada de ejemplo (Roccia + FLA48230) pasa de 3.054 a 3.140.
+- **11 · Consumos (Q8):** nevera y freezer a 230 W todo el tiempo (puesto, `duty` 1): "la nevera no apaga nunca, simplemente pasa a consumir menos" y "hay que estandarizarlas a 230 vatios porque las he visto consumir hasta menos, pero hay que tener un poquito más"; el freezer es igual que la nevera (Diego). Aire de 12.000 BTU a 1.200 W bien. 1 HP = 746 W (bomba de 1 HP e hidroneumático, puestos); ½ HP = 373 W (puesto). Dijo que hay que aclarar si la bomba es de 110 o de 220 V: la bomba y el hidroneumático ahora preguntan "¿es de 220 V?" como los aires grandes (un equipo de 220 V obliga a un inversor 120/240 V). El microondas no lo mencionó. Por el cambio de la nevera, algunos casos cambian (por ejemplo "Lo esencial" a 8 h pasa a un 3 kW con una FLA48100, y "Casa con un aire" ya no tiene opción Básica).
+- **12 · Roccia (Q24):** mandó la etiqueta: PV3300 TLV (MD PV33-6048 TLV), 6000 W, AC 120/240 V 25 A, cargador solar 80 A, MPPT 60 a 230 V, Voc máx. 245 V, carga desde la red: entrada 240 V 36 A, salida 48 V 40 A. Coincide con lo supuesto. Con el cargador solar de 80 A (3.840 W a 48 V) el máximo de paneles sugeridos del Roccia bajó de 8 a 6 de 580 W. Sigue sin etiqueta: el arranque (2,5×) y el consumo en vacío (60 W).
+
+---
+
+De aquí hacia abajo está la lista original, tal como se planteó; si una pregunta ya está arriba en "Respondidas", vale lo de arriba (por ejemplo Q3, Q8, Q20, Q22, Q25, Q27, Q28, Q30 y Q31).
 
 ## Primero: lo que bloquea publicar
 

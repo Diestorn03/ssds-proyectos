@@ -23,10 +23,10 @@ const svg = (d) => `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" 
 const LIGHT_ICON = { ok: svg('<path d="m5 12 4 4L19 6"/>'), warn: svg('<path d="M12 4v9M12 18h.01"/>'), bad: svg('<path d="M6 6l12 12M18 6 6 18"/>') };
 const hasItems = (a) => Object.keys(a.items).length > 0 || a.custom.length > 0;
 
-// Fotos en public/equipos/<modelo en minúsculas>.webp (tamaño natural, para width/height y CLS 0). El Roccia no tiene foto: ilustración propia.
+// Fotos en public/equipos/<modelo en minúsculas, "/" → "-">.webp (tamaño natural, para width/height y CLS 0). Sin foto: ilustración de inversor (rocciaSvg).
 const EQ_IMG = {
-  'ivem1612-lv': [301, 420], 'ivem2024-lv': [351, 420], 'ivem3048-lv': [280, 399], 'ivem5048-lv': [280, 399], ivgm8klp2g1: [244, 420],
-  'fla12280-eu': [289, 240], 'fla24100-eu': [224, 252], 'fla48100-eu': [159, 288], 'fla48230-eu': [159, 272], 'fla48314-eu': [147, 279], 'fla48460tg2-eu': [191, 350],
+  'ivem1612-lv': [301, 420], 'ivcm2024-lv': [351, 420], 'ivem3048-lv': [280, 399], 'ivem5048-lv': [280, 399], ivgm8klp2g1: [244, 420], 'roccia-6k-120-220': [180, 316],
+  'fla12280-eu': [289, 240], 'fla12171-eu': [289, 240], 'fla24100pg2': [224, 252], 'fla48100-eu': [159, 288], 'fla48230-eu': [159, 272], 'fla48314-eu': [147, 279], 'fla48460tg2-eu': [191, 350],
 };
 const rocciaSvg = (alt) => `<svg width="140" height="196" viewBox="0 0 140 196" role="img" aria-label="${esc(alt)}"><rect x="50" y="0" width="40" height="7" rx="2" fill="#25488a"/><rect x="10" y="5" width="120" height="171" rx="14" fill="#1a3468"/><rect x="18" y="13" width="104" height="155" rx="9" fill="#10244f"/><rect x="30" y="26" width="80" height="46" rx="5" fill="#060d1f"/><rect x="38" y="38" width="40" height="5" rx="2.5" fill="#f26a1b"/><rect x="38" y="49" width="56" height="4" rx="2" fill="#ffd79a" opacity=".85"/><rect x="38" y="58" width="28" height="4" rx="2" fill="#a9b6cf"/><circle cx="44" cy="92" r="3.5" fill="#f26a1b"/><circle cx="58" cy="92" r="3.5" fill="#ffb454"/><circle cx="72" cy="92" r="3.5" fill="#a9b6cf"/><rect x="30" y="106" width="80" height="3" rx="1.5" fill="#f26a1b"/><path d="M32 124h76M32 133h76M32 142h76" stroke="#25488a" stroke-width="2.5" stroke-linecap="round"/><rect x="28" y="176" width="14" height="12" rx="2" fill="#0b1a3a"/><rect x="50" y="176" width="14" height="12" rx="2" fill="#0b1a3a"/><rect x="76" y="176" width="14" height="12" rx="2" fill="#0b1a3a"/><rect x="98" y="176" width="14" height="12" rx="2" fill="#0b1a3a"/></svg>`;
 
@@ -97,7 +97,7 @@ export function initDimensionador({ env, scrollTo }) {
       return { main: fmtUSD(t.total), raw: t.total, from: spread > 0, pl: 'instalado', sub: `Solo equipo ${fmtUSD(eq)}` };
     }
     if (a.install === 'manoObra') {
-      if (t.total == null) return { main: fmtUSD(eq), raw: eq, pl: 'solo equipo', sub: '+ mano de obra: se confirma en la visita' };
+      if (t.total == null) return { main: fmtUSD(eq), raw: eq, pl: 'equipo de referencia', sub: 'Tu mano de obra se cotiza en el sitio' };
       return { main: fmtUSD(t.total), raw: t.total, pl: 'con mano de obra', sub: `Solo equipo ${fmtUSD(eq)}` };
     }
     const ri = RI?.options.find((x) => x.tier === o.tier)?.totals;
@@ -112,7 +112,7 @@ export function initDimensionador({ env, scrollTo }) {
 
   /* ---------- equipment photos: inverter + battery of the option on screen ---------- */
   function setPic(slot, kind, item, n = 1) {
-    const slug = String(item.model).toLowerCase(), key = `${slug}|${n}`;
+    const slug = String(item.model).toLowerCase().replaceAll('/', '-'), key = `${slug}|${n}`;
     if (slot.dataset.k === key) return;
     slot.dataset.k = key;
     const alt = kind === 'inv' ? `Inversor híbrido ${fmt(item.kw)} kW` : n > 1 ? `${n} baterías de litio de ${fmt(item.kwh, 2)} kWh` : `Batería de litio ${fmt(item.kwh, 2)} kWh`;
@@ -286,7 +286,7 @@ export function initDimensionador({ env, scrollTo }) {
     if (t.name === 'preset') {
       applyPreset(t.value); sync();
       say(`${t.closest('.dz-card-opt').querySelector('.dz-opt__t').textContent}: ${units(S.a)} equipos, ${priceSay()}`);
-      if (env.coarse) navigator.vibrate?.(8);
+      if (env.coarse && pointer) navigator.vibrate?.(8);   // sin toque real (teclado, programático) Chrome bloquea vibrate y lo registra como error
       if (pointer) later(() => { if (!done && cur === 0 && answered(0)) go(1); }, 380);   // mouse / touch: long enough to see the choice; keyboard: Enter / Siguiente
       return;
     }
@@ -389,7 +389,7 @@ export function initDimensionador({ env, scrollTo }) {
     statusIc.innerHTML = LIGHT_ICON[statusEl.dataset.state];
     statusT.textContent = bad ? $('.dz-light__t', bad).textContent : 'Todo lo que marcaste arranca y se respalda.';
     $('[data-dz-whys]').replaceChildren(...o.why.map((w) => Object.assign(document.createElement('li'), { textContent: w })));
-    $('[data-dz-model]').textContent = pricing.showModel ? `${inv.brand} ${inv.disp || inv.model} · batería ${o.batteries.model} · con pérdidas normales ≈ ${hTxt(o.realH, o.realH >= K.maxAutonomyH)}` : '';
+    $('[data-dz-model]').textContent = pricing.showModel ? `${inv.brand} ${inv.disp || inv.model} · batería ${o.batteries.model} · con pérdidas normales: ${hTxt(o.realH, o.realH >= K.maxAutonomyH)}` : '';
     $('[data-dz-sel]').textContent = `Tu opción: ${o.label} · ${priceText(o, a)}`;
   }
   function fillHints(hints) {
@@ -470,7 +470,7 @@ export function initDimensionador({ env, scrollTo }) {
     $('[data-dz-prov]') && ($('[data-dz-prov]').hidden = oos);
     const inst = a.install;
     $('[data-dz-instopts]').hidden = inst === 'equipo';
-    $('[data-dz-adjline]').hidden = oos || inst === 'equipo';
+    $('[data-dz-adjline]').hidden = oos || inst !== 'instalado';   // "Incluye kit básico…" solo vale con instalación completa
     const RI = inst === 'equipo' && !oos ? size({ ...a, install: 'instalado' }) : null;
     let n = 0;
     TIERS.forEach((t) => {

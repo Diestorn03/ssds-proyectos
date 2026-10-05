@@ -25,19 +25,19 @@ export const K = {
   chargeEta: 0.95,  // ponytail: eficiencia de carga LiFePO4; no entra en el banco, sí en cuánta energía hay que reponer (recarga y paneles)
   panelW: 580,      // panel del catálogo (sin precio ni disponibilidad: solo se sugiere la cantidad)
   simult: 'base+mayor', // ponytail: P_cont = lo que queda encendido (≥ 2 h) + el aparato grande de uso corto; nunca "todo a la vez". // POR CONFIRMAR Q7
-  hotDuty: 1.3,     // ponytail: clima caluroso (> 32 °C, sol directo): nevera y aires ciclan más. // POR CONFIRMAR Q17
+  hotDuty: 1.3,     // ponytail: clima caluroso (> 32 °C, sol directo): los aires ciclan más (la nevera ya va al 100 %: tope Math.min(1, …)). // POR CONFIRMAR Q17
   plant: { wh: 20000, w: 8000, hAc: 12 }, // ponytail: umbrales para sugerir planta eléctrica (energía, potencia, horas con aire). // POR CONFIRMAR Q12
-  quoteFactor: 1.0, // ponytail: fracción de los kWh de placa con la que se cuentan las horas NOMINALES (kWh ÷ kW promedio, como las imprime el dueño: 5,12 kWh a 1 kW = 5,12 h). La Recomendada y la Básica dimensionan el banco con esto; dod × eta (0,81) son las horas reales con pérdidas (realH) y dimensionan la Holgada. Modo conservador en una línea: quoteFactor = dod * eta. // FUENTE: presupuestos [03][05][06][10][11] (horas = kWh ÷ kW). // POR CONFIRMAR Q31
+  quoteFactor: 1.0, // ponytail: fracción de los kWh de placa con la que se cuentan las horas NOMINALES (kWh ÷ kW promedio, como las imprime el dueño: 5,12 kWh a 1 kW = 5,12 h). La Recomendada y la Básica dimensionan el banco con esto; dod × eta (0,81) son las horas reales con pérdidas (realH) y dimensionan la Holgada. Modo conservador en una línea: quoteFactor = dod * eta. // FUENTE: presupuestos [03][05][06][10][11] (horas = kWh ÷ kW). David lo dio por bueno (5 oct 2026).
   maxAutonomyH: 72, // ponytail: tope de la autonomía publicada ("más de 72 h"): cifras de cientos de horas no son creíbles
   i15sDefault: 1.33, // ponytail: pico 15 s ≈ 1,33× la continua cuando la ficha no lo publica (único punto conocido: 150 A / 200 A); por confirmar con el manual
   tightShare: 0.8,  // ponytail: "justo" = el inversor trabaja a más del 80 % de lo que cubre la ficha (continuo con margen o pico); también marca checks.surgeTight
-  quoteSlack: 0.98, // ponytail: el dueño redondea las horas: un banco que cubre ≥ 98 % de lo pedido cuenta como "6 h" ([00]: 23,6 kWh para 6 h a 4 kW = 5,9 h). Solo la Recomendada y la Básica; la Holgada exige 100 % con pérdidas. // FUENTE: presupuestos [00][02][14][15]. // POR CONFIRMAR Q31
+  quoteSlack: 0.98, // ponytail: el dueño redondea las horas: un banco que cubre ≥ 98 % de lo pedido cuenta como "6 h" ([00]: 23,6 kWh para 6 h a 4 kW = 5,9 h). Solo la Recomendada y la Básica; la Holgada exige 100 % con pérdidas. // FUENTE: presupuestos [00][02][14][15].
   recMargin: 1.75,  // ponytail: holgura COMERCIAL de la Recomendada: el inversor trabaja a <= 57 % de su potencia (asi vende David: 30-57 % en las notas con carga declarada; [04] 1,8 kW -> 6 kW, [00] 4 kW -> 8 kW). La tecnica sigue siendo K.margin (1,25): la Basica la usa. // POR CONFIRMAR Q21
   upgradeMaxPct: 0.1, // ponytail: si el inversor justo tiene un hermano mayor por ≤ 10 % más de precio, el mayor pasa a Recomendada
 };
 
 /** Primera línea del mensaje: David etiqueta en WhatsApp Business los chats que empiezan así. */
-export const OPENING = 'Hola SSD&S, dimensioné mi respaldo en su web.'; // POR CONFIRMAR Q19
+export const OPENING = 'Hola SSD&S, dimensioné mi respaldo en su web.'; // POR CONFIRMAR Q19 (no se le preguntó a David)
 
 /**
  * Cargas curadas para Venezuela, en orden de prioridad (lo que la gente quiere mantener encendido).
@@ -48,13 +48,14 @@ export const OPENING = 'Hola SSD&S, dimensioné mi respaldo en su web.'; // POR 
  * hp = bomba/motor; minKw = inversor mínimo (LRA real 4–6×: nunca prometer "arranca con 3 kW");
  * softStart = aire convencional ≥ 18k: siempre "sujeto a revisión" (soft-starter o equipo inverter);
  * engineer = fuera del cotizador ("requiere cotización con ingeniero"), con su `reason`.
- * POR CONFIRMAR Q8: todas las potencias, ciclos (duty) y arranques son típicos, no medidos en campo.
- * POR CONFIRMAR Q9: v220 = 'ask' en los aires de 18k y 24k (¿de 220 V o de 120 V?).
+ * Potencias, ciclos (duty) y arranques son típicos, no medidos en campo. David (5 oct 2026): neveras y freezer a 230 W todo el tiempo (duty 1: "las neveras inverter
+ * no se apagan nunca, solo consumen menos"), aire de 12k a 1.200 W bien, 1 HP = 746 W (bomba 1 HP e hidroneumático; ½ HP = 373 W). Negocio (vitrinas, enfriador, freezer comercial) sin tocar.
+ * v220 = 'ask' en los aires de 18k y 24k y en las bombas (David: "hay que aclarar si es de 110 o de 220"): ¿de 220 V o de 120 V?
  */
-export const loads = [   // POR CONFIRMAR Q8
+export const loads = [
   // esencial
-  { id: 'nevera', t: 'Nevera', s: 'nevera', cat: 'esencial', w: 150, surge: 5, duty: 0.35, hUse: 24, v220: false, essential: true, icon: 'fridge', cold: true, note: 'El compresor arranca 5× por menos de un segundo; de promedio consume 55–80 W.' },
-  { id: 'freezer', t: 'Freezer / congelador', s: 'freezer', cat: 'esencial', w: 150, surge: 5, duty: 0.35, hUse: 24, v220: false, essential: true, icon: 'snowflake', cold: true },
+  { id: 'nevera', t: 'Nevera', s: 'nevera', cat: 'esencial', w: 230, surge: 5, duty: 1, hUse: 24, v220: false, essential: true, icon: 'fridge', cold: true, note: 'Se cuenta a 230 W todo el tiempo (valor estándar de David: las neveras inverter nunca se apagan, solo bajan el consumo); el compresor arranca 5× por menos de un segundo.' },
+  { id: 'freezer', t: 'Freezer / congelador', s: 'freezer', cat: 'esencial', w: 230, surge: 5, duty: 1, hUse: 24, v220: false, essential: true, icon: 'snowflake', cold: true },
   { id: 'router', t: 'Router / módem wifi', s: 'router', cat: 'esencial', w: 15, surge: 1, duty: 1, hUse: 24, v220: false, essential: true, icon: 'router' },
   { id: 'starlink', t: 'Starlink', s: 'Starlink', cat: 'esencial', w: 90, surge: 1, duty: 1, hUse: 24, v220: false, essential: true, icon: 'dish', note: 'Antena estándar 75–100 W; la Mini consume 20–30 W.' },
   { id: 'led', t: 'Bombillo LED', s: 'LED', cat: 'esencial', w: 10, surge: 1, duty: 1, hUse: 6, v220: false, essential: true, icon: 'bulb' },
@@ -64,9 +65,9 @@ export const loads = [   // POR CONFIRMAR Q8
   { id: 'camaras', t: 'Cámaras de seguridad + DVR', s: 'cámaras', cat: 'esencial', w: 60, surge: 1, duty: 1, hUse: 24, v220: false, essential: true, icon: 'camera' },
   { id: 'porton', t: 'Portón eléctrico', s: 'portón', cat: 'esencial', w: 500, surge: 3, duty: 1, hUse: 0.1, v220: false, essential: true, icon: 'gate', note: 'Trabaja 20–30 s por ciclo: casi no gasta batería, pero su arranque cuenta.' },
   // agua
-  { id: 'bomba05', t: 'Bomba de agua ½ HP', s: 'bomba ½ HP', cat: 'agua', w: 600, surge: 3.5, duty: 1, hUse: 0.5, v220: false, essential: true, icon: 'pump', hp: 0.5, note: 'La placa dice 370 W (mecánicos); de la red toma 500–750 W.' },
-  { id: 'bomba1', t: 'Bomba de agua 1 HP', s: 'bomba 1 HP', cat: 'agua', w: 1000, surge: 3.5, duty: 1, hUse: 0.5, v220: false, essential: true, icon: 'pump', hp: 1 },
-  { id: 'hidro', t: 'Hidroneumático 1 HP', s: 'hidroneumático', cat: 'agua', w: 1100, surge: 3.5, duty: 0.4, hUse: 2, v220: false, essential: true, icon: 'drop', hp: 1, note: 'Arranca cada vez que cae la presión: cuenta como carga continua.' },
+  { id: 'bomba05', t: 'Bomba de agua ½ HP', s: 'bomba ½ HP', cat: 'agua', w: 373, surge: 3.5, duty: 1, hUse: 0.5, v220: 'ask', essential: true, icon: 'pump', hp: 0.5, note: '½ HP son 373 W (la mitad de 746).' },
+  { id: 'bomba1', t: 'Bomba de agua 1 HP', s: 'bomba 1 HP', cat: 'agua', w: 746, surge: 3.5, duty: 1, hUse: 0.5, v220: 'ask', essential: true, icon: 'pump', hp: 1, note: '1 HP son 746 W, a 120 o a 220 V; a 220 V la corriente es la mitad.' },
+  { id: 'hidro', t: 'Hidroneumático 1 HP', s: 'hidroneumático', cat: 'agua', w: 746, surge: 3.5, duty: 0.4, hUse: 2, v220: 'ask', essential: true, icon: 'drop', hp: 1, note: 'Arranca cada vez que cae la presión: cuenta como carga continua.' },
   // clima
   { id: 'aa9c', t: 'Aire 9.000 BTU convencional', s: 'aire 9k', cat: 'clima', w: 900, surge: 4, duty: 0.6, hUse: 8, v220: false, essential: false, icon: 'ac', btu: 9000, cold: true },
   { id: 'aa9i', t: 'Aire 9.000 BTU inverter', s: 'aire 9k inv', cat: 'clima', w: 700, surge: 1.3, duty: 0.55, hUse: 8, v220: false, essential: false, icon: 'ac', btu: 9000, cold: true },
@@ -99,7 +100,7 @@ export const loads = [   // POR CONFIRMAR Q8
 ];
 
 /** Presets que precargan chips editables (el cliente quita o suma). `cero` ("Desde cero") no es un preset: la UI lo ofrece y el motor lo acepta en answers.preset. */
-export const presets = [   // POR CONFIRMAR Q16 (negocio y oficina desde la primera versión)
+export const presets = [   // POR CONFIRMAR Q16 (negocio y oficina desde la primera versión; no se le preguntó a David)
   { id: 'esencial', t: 'Lo esencial', d: 'Nevera, wifi, luces, TV, ventiladores y celulares', items: { nevera: 1, router: 1, led: 6, tv: 1, ventilador: 2, cargador: 2 } },
   { id: 'aire', t: 'Casa con un aire', d: 'Lo esencial más un aire de 12.000 BTU', items: { nevera: 1, router: 1, led: 8, tv: 1, ventilador: 1, cargador: 2, aa12c: 1 } },
   { id: 'completa', t: 'Casa completa', d: 'Dos aires inverter, bomba, lavadora y microondas', items: { nevera: 1, router: 1, led: 10, tv: 2, ventilador: 2, cargador: 4, aa12i: 2, bomba1: 1, laptop: 1, lavadora: 1, microondas: 1 } },
@@ -112,22 +113,23 @@ export const presets = [   // POR CONFIRMAR Q16 (negocio y oficina desde la prim
  * gridChargeA = corriente de carga desde la red; IVGM8K: 190 A es el máximo de batería, pero la entrada AC es 8.800 W → ≈ 170 A a 51,2 V.
  * idleW = consumo propio en vacío: ponytail, orden de magnitud típico de inversores de alta frecuencia; NO está en las fichas
  * descargadas, confirmar con el manual (entra en la autonomía, la energía a cubrir y la recarga).
- * disp = nombre comercial si difiere de model (el Roccia se vende como "PV3300"). Marca y modelo en el sitio y en el PDF: pricing.showModel. // POR CONFIRMAR Q3
- * La serie de 12/24 V (tier 'ivcm') la vende el dueño como IVEM1612-LV / IVEM2024-LV; se recarga de la red en 15 a 28 h.
+ * disp = nombre comercial si difiere de model (el Roccia se vende como "PV3300"). Marca y modelo en el sitio y en el PDF: pricing.showModel (David: se puede mostrar todo).
+ * La serie de 12/24 V (tier 'ivcm'): se imprime el nombre de la caja de David, IVCM2024-LV (la IVEM1612-LV queda con el nombre de sus presupuestos: no se vio su caja); se recarga de la red en 15 a 28 h.
  * POR CONFIRMAR Q10: kSurge del IVGM8K (1,2) → un aire convencional de 24k sale "sujeto a revisión".
  * pv.minSeries: IVGM8K 6 (MPPT 120–425 V y plena carga 230–425 V: 6 × 42,6 = 256 V); IVEM 3 (MPPT 90–500 V).
  */
 export const inverters = [
-  // Serie de 12/24 V del dueño (nombre tal como lo escribe en sus presupuestos). Sin ficha publica hallada: kSurge/idleW/pv son los de la IVCM equivalente. // POR CONFIRMAR Q22
+  // Serie de 12/24 V del dueño. David (5 oct 2026): los sigue vendiendo mientras haya. La caja del de 24 V dice IVCM2024-LV
+  // (2000 VA / 2000 W, MPPT 1600 W, FV máx. 145 V); David lo confirmó por audio: es el "IVCM 2024 LV". kSurge/idleW son los de la IVCM.
   { model: 'IVEM1612-LV', brand: 'Felicity Solar', kw: 1.6, busV: 12, ac: '110', kSurge: 1.5, gridChargeA: 10, idleW: 18, pv: { maxW: 800, minSeries: 1, maxPanels: 1 }, parallel: false, priceEq: 400, priceInst: null, available: true, tier: 'ivcm' },   // 400 en [02], 380 en [14]
-  { model: 'IVEM2024-LV', brand: 'Felicity Solar', kw: 2, busV: 24, ac: '110', kSurge: 1.5, gridChargeA: 15, idleW: 25, pv: { maxW: 1600, minSeries: 2, maxPanels: 2 }, parallel: false, priceEq: 400, priceInst: null, available: true, tier: 'ivcm' },   // 1 presupuesto ([15])
+  { model: 'IVCM2024-LV', brand: 'Felicity Solar', kw: 2, busV: 24, ac: '110', kSurge: 1.5, gridChargeA: 15, idleW: 25, pv: { maxW: 1600, minSeries: 2, maxPanels: 2 }, parallel: false, priceEq: 400, priceInst: null, available: true, tier: 'ivcm' },   // 1 presupuesto ([15], donde dice IVEM2024-LV). La caja de David dice IVCM2024-LV y ese nombre se imprime (decisión de Diego, 5 oct 2026).
   { model: 'IVEM3048-LV', brand: 'Felicity Solar', kw: 3, busV: 48, ac: '110', kSurge: 2, gridChargeA: 60, idleW: 35, pv: { maxW: 4000, minSeries: 3, maxPanels: 7 }, parallel: false, priceEq: 495, priceInst: null, available: true, tier: 'ivem3' },   // 495 en 8 de 8 presupuestos (precio ancla)
   // El dueño nunca lo cotizo (0 de 22): apagado hasta que confirme si lo vende; el 6 kW Roccia ocupa su lugar. // POR CONFIRMAR Q23
   { model: 'IVEM5048-LV', brand: 'Felicity Solar', kw: 5, busV: 48, ac: '110', kSurge: 2, gridChargeA: 100, idleW: 45, pv: { maxW: 6000, minSeries: 3, maxPanels: 9 }, parallel: 6, priceEq: 570, priceInst: null, available: false, tier: 'ivem5' },
-  // Roccia 6 kW "PV3300": ficha oficial NO hallada. Parece un reetiquetado del Must PV33-6048 TLV (inferencia, no confirmada): 6 kW, 48 V, fase dividida 120/240 V,
-  // surge 18 kVA segun Must (otro vendedor: 15 kW/5 ms -> se toma el menor, 2,5x), FV max. 5.000 W, MPPT 80 A, carga AC max. 40 A, Voc max. 145 V (el aviso de MercadoLibre dice 250 V: por eso minSeries 2 y no 3).
-  // idleW 60 es SUPUESTO (transformador de baja frecuencia). Verificar con el manual de la unidad. // POR CONFIRMAR Q24
-  { model: 'ROCCIA-6K-120/220', brand: 'Roccia', kw: 6, busV: 48, ac: '120/240', kSurge: 2.5, gridChargeA: 40, idleW: 60, pv: { maxW: 5000, minSeries: 2, maxPanels: 8 }, parallel: false, priceEq: 954, priceInst: null, available: true, tier: 'roccia', disp: 'PV3300' },   // 954 en 6 presupuestos, 990 en [01] y [16]
+  // Roccia 6 kW "PV3300": etiqueta fotografiada por David (5 oct 2026): PV3300 TLV · MD PV33-6048 TLV · 6000 W · 48 V · AC 120/240 V 25 A · carga AC 36 A de entrada, 40 A de salida DC ·
+  // cargador solar 80 A · MPPT 60-230 V · Voc máx. 245 V (confirma que es el Must PV33-6048 TLV reetiquetado). NO está en la etiqueta: surge (18 kVA según Must; otro vendedor 15 kW/5 ms
+  // -> se toma el menor, 2,5x), FV máx. (la ficha de Must dice 5.000 W; se usa 80 A × 48 V = 3.840 W, el tope de carga de la etiqueta: 6 paneles de 580 W) ni idleW 60 (SUPUESTO, transformador de baja frecuencia). // POR CONFIRMAR Q24 (manual)
+  { model: 'ROCCIA-6K-120/220', brand: 'Roccia', kw: 6, busV: 48, ac: '120/240', kSurge: 2.5, gridChargeA: 40, idleW: 60, pv: { maxW: 3840, minSeries: 2, maxPanels: 6 }, parallel: false, priceEq: 990, priceInst: null, available: true, tier: 'roccia', disp: 'PV3300' },   // 954 en 6 presupuestos, 990 en [01] y [16]: se vende el más caro (David, 5 oct 2026: "vendemos el precio de presupuestos más caros"; Diego confirmó que aplica)
   { model: 'IVGM8KLP2G1', brand: 'Felicity Solar', kw: 8, busV: 48, ac: '120/240', kSurge: 1.2, gridChargeA: 170, idleW: 70, pv: { maxW: 12000, minSeries: 6, maxPanels: 20 }, parallel: 6, priceEq: 1950, priceInst: null, available: true, tier: 'ivgm8' },   // 1.950 en 3 de 3 presupuestos. POR CONFIRMAR Q10 (kSurge 1,2)
 ];
 
@@ -135,15 +137,17 @@ export const inverters = [
  * Baterías LiFePO4. iCont = corriente continua recomendada (A), también tope de carga; i15s = pico 15 s.
  * Solo la FLA48100 publica i15s en ficha (150 A); las demás usan K.i15sDefault × iCont, marcado en i15sSource.
  * POR CONFIRMAR Q6: qué baterías se venden (FLA48100, FLA48314, FLA48460 sí; rack FLA48100UG1 no hasta confirmar compatibilidad).
- * Las de 12/24 V solo las usa la serie IVEM1612/2024 (tier 'ivcm').
+ * Las de 12/24 V solo las usa la serie IVEM1612/IVCM2024 (tier 'ivcm').
  */
 export const batteries = [
   // priceEq = precio de venta de los presupuestos del dueño (el mas repetido); kWh = V x Ah reales; sus descripciones de renglón las arma quote().
-  { model: 'FLA12280-EU', brand: 'Felicity Solar', kwh: 3.58, busV: 12, ah: 280, iCont: 150, i15s: 200, i15sSource: 'supuesto', priceEq: 780, priceInst: null, maxParallel: 15, available: true },   // sus presupuestos imprimen 2,56 kWh: error de plantilla. // POR CONFIRMAR Q25
-  { model: 'FLA24100-EU', brand: 'Felicity Solar', kwh: 2.56, busV: 24, ah: 100, iCont: 100, i15s: 150, i15sSource: 'ficha', priceEq: 700, priceInst: null, maxParallel: 15, available: true },   // [15]
+  { model: 'FLA12280-EU', brand: 'Felicity Solar', kwh: 3.58, busV: 12, ah: 280, iCont: 150, i15s: 200, i15sSource: 'supuesto', priceEq: 780, priceInst: null, maxParallel: 15, available: true },   // sus presupuestos imprimen 2,56 kWh: error de plantilla. CONFIRMADO por David con la caja (5 oct 2026): 3,6 kWh · 12,8 V · 280 Ah. Con la FLA12171-EU (2,2 kWh · 171 Ah) son sus únicos dos modelos de 12 V; la 12171 falta (sin precio).
+  // FLA12171-EU (2,2 kWh · 12,8 V · 171 Ah): David la vende; "vale 130 dólares menos que la otra" de 12 V (780) → 650 (derivado, audio 5 oct 2026). Corriente y foto SUPUESTAS: iCont 100 A conservador (la FLA48171 de las mismas celdas da 120 A), foto = la de la FLA12280. // POR CONFIRMAR (ficha)
+  { model: 'FLA12171-EU', brand: 'Felicity Solar', kwh: 2.19, busV: 12, ah: 171, iCont: 100, i15s: 133, i15sSource: 'supuesto', priceEq: 650, priceInst: null, maxParallel: 15, available: true },
+  { model: 'FLA24100PG2', brand: 'Felicity Solar', kwh: 2.56, busV: 24, ah: 100, iCont: 100, i15s: 150, i15sSource: 'ficha', priceEq: 700, priceInst: null, maxParallel: 15, available: true },   // [15], donde dice FLA24100-EU. La caja de David dice FLA24100PG2 (2,56 kWh · 25,6 V) y ese nombre se imprime (decisión de Diego, 5 oct 2026).
   { model: 'FLA48100-EU', brand: 'Felicity Solar', kwh: 5.12, busV: 48, ah: 100, iCont: 100, i15s: 150, i15sSource: 'ficha', priceEq: 1200, priceInst: null, maxParallel: 15, available: true },   // 1.200 en 8 de 8
   // 6 de 6 ventas van con el Roccia y ninguna con un Felicity: onlyWith lo reproduce. // POR CONFIRMAR Q26
-  { model: 'FLA48230-EU', brand: 'Felicity Solar', kwh: 11.78, busV: 48, ah: 230, iCont: 120, i15s: null, priceEq: 2100, priceInst: null, maxParallel: 15, available: true, onlyWith: ['roccia'] },   // 2.100 en 5, 2.150 en [01]
+  { model: 'FLA48230-EU', brand: 'Felicity Solar', kwh: 11.78, busV: 48, ah: 230, iCont: 120, i15s: null, priceEq: 2150, priceInst: null, maxParallel: 15, available: true, onlyWith: ['roccia'] },   // 2.100 en 5, 2.150 en [01]: se vende el más caro (David, 5 oct 2026; Diego confirmó que aplica)
   { model: 'FLA48314-EU', brand: 'Felicity Solar', kwh: 16.08, busV: 48, ah: 314, iCont: 160, i15s: 213, i15sSource: 'supuesto', priceEq: 3315, priceInst: null, maxParallel: 15, available: true },   // 3.315 en [08],[21]; 3.060 c/u en [13]
   { model: 'FLA48460TG2-EU', brand: 'Felicity Solar', kwh: 23.55, busV: 48, ah: 460, iCont: 200, i15s: 266, i15sSource: 'supuesto', priceEq: 4950, priceInst: null, maxParallel: 15, available: true },   // 4.950 en [00], 4.940 en [08]
   // el dueño no las vende / sin precio: apagadas
@@ -154,19 +158,19 @@ export const batteries = [
   { model: 'FLA48100UG1', brand: 'Felicity Solar', kwh: 5.12, busV: 48, ah: 100, iCont: 50, i15s: null, priceEq: 990, priceInst: null, maxParallel: 15, available: false },   // POR CONFIRMAR Q6
 ];
 
-/** Panel del catálogo: marcado "No disponible", sin precio. Solo se sugiere la cantidad. */
-export const panel = /* POR CONFIRMAR Q5 */ { model: '580W', w: 580, voc: 51.47, vmp: 42.59, isc: 14.37, price: null, available: false };
+/** Panel de 580 W del catálogo, solo para sugerir la cantidad. David (5 oct 2026): sí vende paneles, pero se cotizan aparte (futuro módulo de cotización): sin precio, no suman al total. POR CONFIRMAR: de cuántos vatios son los que vende. */
+export const panel = { model: '580W', w: 580, voc: 51.47, vmp: 42.59, isc: 14.37, price: null, available: false };
 
 /** Todo editable. null = "se confirma en la visita" (la UI no inventa cifras). */
 export const pricing = {
   provisional: true,       // mientras sea true la UI muestra "Precios de prueba · por confirmar". // POR CONFIRMAR Q20 (merge a main = demo pública)
   installMode: 'tier',     // 'tier' = kit + mano de obra por tramo de inversor (datos de 19 presupuestos) | 'factor' = equipo × installFactor (los datos lo contradicen: error de ±400 US$)
-  installFactor: 1.25,     // instalado = equipo × 1,25 → instalación = 25 % de los equipos, una vez por sistema (kit básico hasta 2 m + mano de obra). // POR CONFIRMAR Q1
+  installFactor: 1.25,     // solo modo 'factor' (alterno, de pruebas): instalación = 25 % del equipo. David lo descartó: el 25 % es SU ganancia sobre el equipo, ya incluida en su lista, no un recargo de instalación.
   // kit + mano de obra por tramo; el texto del kit es el que imprime David (kitDesc). El tablero va DENTRO del kit; el numero de baterias no cambia la instalacion; > 1 inversor = ingenieria.
   install: {
     ivcm:   { kit: 450, mo: 350, kitType: 'transferencia', range: [800, 800] },     // [02] [14] [15]: 3 de 3
     ivem3:  { kit: 450, mo: 450, kitType: 'transferencia', range: [900, 900] },     // 8 de 8
-    roccia: { kit: 500, mo: 350, kitType: 'cargas',        range: [850, 1000] },    // [04] [19] 850 · [20] 900 · [09] 1.000. // POR CONFIRMAR Q2b: ¿que mueve la mano de obra entre 350 y 500?
+    roccia: { kit: 500, mo: 350, kitType: 'cargas',        range: [850, 1000] },    // [04] [19] 850 · [20] 900 · [09] 1.000. David: mano de obra de 350 a 600, la más alta en el 8 kW.
     ivgm8:  { kit: 500, mo: 500, kitType: 'cargas',        range: [1000, 1200] },   // [08] [21] 1.000 · [00] 1.200 (kit 700 con 1×23,6 kWh)
   },
   kitDesc: {   // FUENTE: presupuestos [02]-[21] (el texto del dueño, redactado en mayúscula inicial)
@@ -174,19 +178,18 @@ export const pricing = {
     cargas: 'Kit básico de instalación con tablero de cargas preferencial automático, hasta 2 m de cableado',
   },
   laborDesc: { transferencia: 'Mano de obra de instalación completa', cargas: 'Mano de obra de instalación completa' },   // FUENTE: presupuestos [02]-[21]
-  warranty: ['Garantía de la batería: 2 años', 'Garantía del inversor: 1 año', 'Garantía del tablero eléctrico: 3 meses', 'Garantía de la instalación: 3 meses'],   // FUENTE: presupuestos [03][05][06][10][11] (solo 5 de 22 las imprimen). // POR CONFIRMAR Q27
-  payment: 'Pagos a realizar por Zelle, efectivo o Binance; para pagos en bolívares se usa la tasa Binance.',   // FUENTE: 21 de 22 presupuestos // POR CONFIRMAR Q30
+  warranty: ['Garantía de la batería: 2 años', 'Garantía del inversor: 1 año', 'Garantía del tablero eléctrico: 3 meses', 'Garantía de la instalación: 3 meses'],   // FUENTE: presupuestos [03][05][06][10][11] (solo 5 de 22 las imprimen). David: "OK" (5 oct 2026).
+  payment: 'Pagos a realizar por Zelle, efectivo o Binance; para pagos en bolívares se usa la tasa Binance.',   // FUENTE: 21 de 22 presupuestos; Diego lo confirmó (5 oct 2026)
   company: { name: 'SERVICIOS Y SUMINISTROS D&S, C.A.', rif: 'J-40625203-4' },   // razón social y RIF de la empresa (la misma que SSD&S C.A.): van en el PDF. // FUENTE: decisión del dueño
   batteryTail: 'BMS inteligente con breaker y fusible · 6.000 ciclos profundos',   // FUENTE: presupuestos (todas las descripciones de batería)
-  validityDays: null,      // ningun presupuesto trae validez ni IVA. // POR CONFIRMAR Q28
-  installConfirmed: false, // false → "por confirmar" en todo precio instalado (totals.confirmed nunca es true). // POR CONFIRMAR Q1
+  validityDays: 3,         // David (5 oct 2026, audio): "tres días de validez"; Diego lo escuchó y lo confirmó. Ningún presupuesto trae IVA.
+  installConfirmed: true,  // David (5 oct 2026): kit + mano de obra por tramo "estaría bien"; sus cifras: mano de obra 350 a 600, la más alta en el 8 kW. false → "por confirmar" en todo precio instalado.
   basicKitM: 2,            // el kit básico cubre hasta 2 m del tablero. // POR CONFIRMAR Q2
   cablePerM: null,         // US$ por metro adicional (ida y vuelta). // POR CONFIRMAR Q2
-  laborOnly: null,         // "una media" de solo mano de obra (el cliente ya tiene el kit). // POR CONFIRMAR Q2
+  laborOnly: null,         // solo mano de obra (el cliente ya tiene el kit): se cotiza en el sitio, por eso null (Diego, 5 oct 2026).
   transferKit: null,       // kit de transferencia. // POR CONFIRMAR Q2
-  panelUsd: null,          // precio por panel; mientras sea null los paneles no suman al total. // POR CONFIRMAR Q5
-  showModel: true,         // marca y modelo en el sitio, el mensaje y el PDF: los presupuestos reales SIEMPRE los muestran. false = descripciones genéricas. // POR CONFIRMAR Q3
-  note: 'Precios de venta de los presupuestos de David (oct. 2026), no los del catalogo publico. Instalacion = kit + mano de obra por tramo (19 presupuestos). Todo por confirmar.',
+  panelUsd: null,          // precio por panel; null a propósito: David los cotiza aparte (5 oct 2026), un módulo futuro. Mientras sea null los paneles no suman al total.
+  showModel: true,         // marca y modelo en el sitio, el mensaje y el PDF: los presupuestos reales SIEMPRE los muestran (David: se puede mostrar todo). false = descripciones genéricas.
 };
 
 // ───────────────────────────── helpers ─────────────────────────────
@@ -479,10 +482,10 @@ function message(a, rows, sel, oos, d, ask) {
     }
     let price, inst = [];
     if (sel) {
-      const t = sel.totals, eqS = `${fmtUSD(t.equipo)} solo equipo`, flag = t.confirmed ? 'sujeto a visita' : 'estimado, por confirmar';
+      const t = sel.totals, eqS = `${fmtUSD(t.equipo)} solo equipo`, flag = t.confirmed ? 'sujeto a visita' : 'estimado, por confirmar', desde = t.detalle && t.detalle.range[1] > t.detalle.range[0] ? 'desde ' : '';   // el Roccia y el 8 kW tienen rango de instalación: como en la página, "desde"
       price = a.install === 'equipo' ? eqS
         : a.install === 'manoObra' ? (t.total != null ? `${eqS} · ≈ ${fmtUSD(t.total)} con mano de obra (${flag})` : eqS)
-          : t.total != null ? `${eqS} · ≈ ${fmtUSD(t.total)} instalado (${flag})` : `${eqS} · instalación: se confirma en la visita`;
+          : t.total != null ? `${eqS} · ≈ ${desde}${fmtUSD(t.total)} instalado (${flag})` : `${eqS} · instalación: se confirma en la visita`;
       if (a.install === 'instalado') inst.push(`kit básico hasta ${pricing.basicKitM} m del tablero`);
       if (a.install === 'manoObra') inst.push('solo mano de obra');
       if (TRANSFER[a.transfer]) inst.push(`transferencia: ${TRANSFER[a.transfer]}`);
@@ -616,6 +619,8 @@ export function size(answers) {
 // ───────────────────── presupuesto (PDF) ─────────────────────
 const MESES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
 const CONFIRMA = 'Se confirma en la visita';
+/** "3 días" (o "1 día"); null si no hay validez. Lo usan el PDF (encabezado) y la nota del resultado. */
+export const validezTxt = () => (pricing.validityDays ? `${pricing.validityDays} ${pricing.validityDays === 1 ? 'día' : 'días'}` : null);
 const acV = (inv) => (inv.ac.includes('240') ? '120/240 V' : '120 V');   // el sitio habla de 110 V; el presupuesto, como el dueño, de 120 V
 const invLine = (inv) => (pricing.showModel
   ? `Inversor híbrido ${inv.brand} ${inv.disp || inv.model} · ${fmtNum(inv.kw * 1000, 0)} W · ${acV(inv)}`
@@ -631,7 +636,7 @@ const dateParts = (f) => {   // Date | 'AAAA-MM-DD' | nada (hoy)
 
 /**
  * Presupuesto en PDF de la opción elegida (sin DOM): { numero, fechaTexto, empresa, cliente, titulo: 'PRESUPUESTO', lines, notas, garantias,
- * pagos, aviso, subtotal, abono: 0, total, incompleto, provisional: true, sistema, url } o null si no hay opción (vacío o fuera de alcance).
+ * pagos, aviso, subtotal, abono: 0, total, incompleto, provisional (= pricing.provisional), validez ("3 días" o null), sistema, url } o null si no hay opción (vacío o fuera de alcance).
  * lines = [{ n, desc, und: 'PZA' | 'KIT' | 'ACT', cant, precio, total }] numeradas de corrido: 1 inversor, 2 baterías, 3 kit, 4 mano de obra
  * (solo con install 'instalado'); lo que no tiene cifra (mano de obra sola, transferencia, metros extra) va con precio null y la leyenda
  * "Se confirma en la visita", y no suma. subtotal = total = Σ de los renglones con precio (incompleto = hay renglones sin cifra).
@@ -671,7 +676,7 @@ export function quote(answers, { tier, cliente, fecha, url } = {}) {
     fechaTexto: `Maracay, ${f.d} de ${MESES[f.m - 1]} de ${f.y}`, empresa: { ...pricing.company }, cliente: txt(cliente, 60), titulo: 'PRESUPUESTO',
     lines, notas, garantias: [...pricing.warranty], pagos: pricing.payment,
     aviso: 'Documento no fiscal. Precios referenciales en dólares (US$), sujetos a la visita técnica.',
-    subtotal, abono: 0, total: subtotal, incompleto: lines.some((l) => l.precio == null), provisional: true,
+    subtotal, abono: 0, total: subtotal, incompleto: lines.some((l) => l.precio == null), provisional: pricing.provisional, validez: validezTxt(),
     sistema: { inversor: pricing.showModel ? `${inv.brand} ${inv.disp || inv.model}` : `Inversor híbrido ${fmtNum(inv.kw, 1)} kW`, baterias: sel.batteries.n, kwh: sel.batteries.kwh, kw: inv.kw },
     url: clean({ url }).url,
   };
