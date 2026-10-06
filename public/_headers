@@ -1,0 +1,12 @@
+# Cloudflare Pages: cabeceras HTTP (reemplaza a vercel.json).
+/*
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+
+# Archivos con hash en el nombre: nunca cambian, se guardan un año.
+/_astro/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# Fotos de los equipos: un día en caché y se refrescan en segundo plano.
+/equipos/*
+  Cache-Control: public, max-age=86400, stale-while-revalidate=604800

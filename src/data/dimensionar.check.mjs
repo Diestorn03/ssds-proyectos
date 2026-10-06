@@ -54,8 +54,8 @@ for (const l of loads.filter((x) => x.engineer)) assert.ok(l.reason, l.id);
 for (const id of ['aa18c', 'aa24c']) assert.ok(loads.find((l) => l.id === id).softStart && loads.find((l) => l.id === id).surge >= 5, id);
 for (const p of presets) for (const id of Object.keys(p.items)) assert.ok(loads.find((l) => l.id === id), `${p.id}.${id}`);
 assert.equal(OPENING, 'Hola SSD&S, dimensioné mi respaldo en su web.');
-// pricing: instalación por tramo (kit + mano de obra), una vez por sistema; todo provisional
-assert.equal(pricing.provisional, true); assert.equal(pricing.installMode, 'tier'); assert.equal(pricing.installConfirmed, true); assert.equal(pricing.showModel, true);
+// pricing: instalación por tramo (kit + mano de obra), una vez por sistema; precios en firme desde el lanzamiento
+assert.equal(pricing.provisional, false); assert.equal(pricing.installMode, 'tier'); assert.equal(pricing.installConfirmed, true); assert.equal(pricing.showModel, true);
 assert.deepEqual(Object.fromEntries(Object.entries(pricing.install).map(([k, t]) => [k, [t.kit, t.mo, t.kitType, t.range]])), {
   ivcm: [450, 350, 'transferencia', [800, 800]], ivem3: [450, 450, 'transferencia', [900, 900]], roccia: [500, 350, 'cargas', [850, 1000]], ivgm8: [500, 500, 'cargas', [1000, 1200]] });
 for (const [k, t] of Object.entries(pricing.install)) { assert.ok(t.kit + t.mo >= t.range[0] && t.kit + t.mo <= t.range[1], `${k}: el valor por defecto cae dentro del rango`); assert.ok(pricing.kitDesc[t.kitType] && pricing.laborDesc[t.kitType], k); }
@@ -560,7 +560,7 @@ assert.ok(SCENARIOS.filter((s) => !EXC.has(s.id)).length === 16);
 const QA = { items: Bitems, hours: 8, install: 'instalado' };
 const q1 = quote(QA, { cliente: 'María Pérez', fecha: '2026-10-04', url: URL });
 assert.equal(q1.titulo, 'PRESUPUESTO'); assert.equal(q1.fechaTexto, 'Maracay, 4 de octubre de 2026'); assert.equal(q1.cliente, 'María Pérez'); assert.equal(q1.url, URL);
-assert.deepEqual(q1.empresa, { name: 'SERVICIOS Y SUMINISTROS D&S, C.A.', rif: 'J-40625203-4' }); assert.equal(q1.provisional, true); assert.equal(q1.abono, 0);
+assert.deepEqual(q1.empresa, { name: 'SERVICIOS Y SUMINISTROS D&S, C.A.', rif: 'J-40625203-4' }); assert.equal(q1.provisional, false); assert.equal(q1.abono, 0);
 assert.match(q1.numero, /^P-261004-[0-9A-Z]{4}$/);
 assert.equal(q1.lines.length, 4);   // 1 inversor, 2 baterías, 3 kit, 4 mano de obra
 assert.deepEqual(q1.lines.map((l) => [l.n, l.und, l.cant, l.precio, l.total]), [[1, 'PZA', 1, 990, 990], [2, 'PZA', 1, 2150, 2150], [3, 'KIT', 1, 500, 500], [4, 'ACT', 1, 350, 350]]);

@@ -79,7 +79,8 @@ npm run dev -- --host 127.0.0.1 --port 4321
 
 - Requiere Google Chrome en `C:/Program Files/Google/Chrome/Application/chrome.exe`. Si está en otra ruta, ajusta la línea `spawn(...)` en `tools/qa/*.mjs`.
 - En Git Bash, antepone `MSYS_NO_PATHCONV=1` a todo comando que pase rutas como `/servicios/` o `PAGES_BASE=/ssds-proyectos`. Si no, Git Bash las convierte en rutas de Windows y rompe la build.
-- **Build de producción para GitHub Pages:**
+- **Publicación:** desde octubre de 2026 el sitio sale en Cloudflare Pages (push a `main` = producción; otras ramas = vista previa). Guía: `docs/DESPLIEGUE-CLOUDFLARE.md`.
+- **Build de prueba con base de GitHub Pages (histórico):**
   ```bash
   MSYS_NO_PATHCONV=1 PAGES_BASE=/ssds-proyectos SITE_URL=https://diestorn03.github.io PUBLIC_DEMO=1 npm run build
   ```
@@ -119,7 +120,7 @@ Guardan sus salidas en `%TEMP%/ssds-shots`, o en la carpeta que indiques con `SH
 
 1. Verifica y pule el loader (ver arriba). Es lo más urgente porque el usuario grabará un video.
 2. Corre el workflow `tools/qa/deep-audit.workflow.js` con la herramienta Workflow (`scriptPath`). Es el mismo flujo de 10 auditores, 9 correctores, 9 verificadores y regresión final que se cortó. Ya apunta a las herramientas de `tools/qa/` y a la ruta del repo. Si la ruta del proyecto en casa es otra, cambia `ROOT` al inicio del script.
-3. Al terminar: build de producción, revisar hrefs, `git add -A`, commit y `git push origin main`. Después confirma que el deploy de GitHub Pages quede en verde. La auditoría escribe su informe en `docs/AUDITORIA.md`.
+3. Al terminar: build de producción, revisar hrefs, `git add -A`, commit y `git push origin main`. Después confirma que el deploy (Actions → Deploy to Cloudflare Pages) quede en verde. La auditoría escribe su informe en `docs/AUDITORIA.md`.
 4. Comprueba que `docs/AUDITORIA.md` exista y reporta al usuario, en español, qué se corrigió y qué queda.
 
 Reglas que valen para cualquier cambio: mantener los gates (pines y WebGL solo en desktop, sin pines en táctil, estado final estático con movimiento reducido, sin WebGL en modo liviano), CLS 0, sin desbordes de 320 a 2560 px, áreas táctiles de 44 px o más, y ningún dato inventado.
