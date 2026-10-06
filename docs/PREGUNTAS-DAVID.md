@@ -6,7 +6,7 @@ Contexto: armamos una página donde el cliente marca sus equipos y las horas de 
 
 Los números de abajo (1 a 12) son los de la lista corta que Diego le mandó por WhatsApp, no los Q del resto de este documento. Los audios son transcripciones automáticas de WhatsApp: lo dudoso está marcado.
 
-- **Q20 y Q3 (mostrar precios, marcas, potencias):** se puede mostrar todo. El rótulo "Precios de prueba · por confirmar" (`pricing.provisional`) se queda hasta cerrar lo pendiente de abajo.
+- **Q20 y Q3 (mostrar precios, marcas, potencias):** se puede mostrar todo. El rótulo "Precios de prueba · por confirmar" (`pricing.provisional`) se apagó en el lanzamiento del 6-oct-2026.
 - **Q30 (pago):** "Zelle, efectivo o Binance; en bolívares a tasa Binance" (confirmó Diego).
 - **El 25 %:** es la ganancia de David sobre el costo de los equipos y ya está en su lista de precios de venta; no es un recargo de instalación (`installMode: 'factor'` no aplica).
 - **1 · Instalación (Q1, Q2b):** mano de obra de 350 a 600 US$, la más alta en los 8 kW; "más o menos las mismas" que ya estaban. Los kits valen lo mismo en las tres opciones: cambiar de batería no implica más herraje ni más montaje. Aprobó kit + mano de obra por tramo (800, 900, 850 a 1.000 y 1.000 a 1.200): `installConfirmed: true`. El "excesiva" de su primer audio era "accesible" (error de la transcripción). Parte del audio quedó cortada ("ya que una sola...").

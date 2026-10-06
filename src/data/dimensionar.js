@@ -163,7 +163,7 @@ export const panel = { model: '580W', w: 580, voc: 51.47, vmp: 42.59, isc: 14.37
 
 /** Todo editable. null = "se confirma en la visita" (la UI no inventa cifras). */
 export const pricing = {
-  provisional: true,       // mientras sea true la UI muestra "Precios de prueba · por confirmar". // POR CONFIRMAR Q20 (merge a main = demo pública)
+  provisional: false,      // true = la UI y el PDF muestran "Precios de prueba · por confirmar". Apagado en el lanzamiento (6-oct-2026); Q20 respondida.
   installMode: 'tier',     // 'tier' = kit + mano de obra por tramo de inversor (datos de 19 presupuestos) | 'factor' = equipo × installFactor (los datos lo contradicen: error de ±400 US$)
   installFactor: 1.25,     // solo modo 'factor' (alterno, de pruebas): instalación = 25 % del equipo. David lo descartó: el 25 % es SU ganancia sobre el equipo, ya incluida en su lista, no un recargo de instalación.
   // kit + mano de obra por tramo; el texto del kit es el que imprime David (kitDesc). El tablero va DENTRO del kit; el numero de baterias no cambia la instalacion; > 1 inversor = ingenieria.
