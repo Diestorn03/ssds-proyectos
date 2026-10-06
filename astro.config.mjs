@@ -1,10 +1,9 @@
 import { defineConfig } from 'astro/config';
 import sitemap from '@astrojs/sitemap';
 
-// GitHub Pages project site: SITE_URL=https://<user>.github.io  PAGES_BASE=/<repo> (set by .github/workflows/deploy.yml).
-// Own domain: SITE_URL=https://<domain> and no PAGES_BASE. Whether the client has a domain is unknown (docs/BRIEF.md,
-// "confirm with client"), so there is no default: without SITE_URL the build emits no absolute canonical / og:url /
-// sitemap rather than pointing search engines and share previews at a domain nobody has confirmed.
+// Cloudflare Pages (.github/workflows/deploy.yml): production builds get SITE_URL from the repo variable (the own
+// domain) and no PAGES_BASE. PAGES_BASE=/<repo> is only for a GitHub Pages project site. Without SITE_URL (previews,
+// local builds) the build emits no absolute canonical / og:url / sitemap instead of pointing at an unconfirmed domain.
 const site = process.env.SITE_URL || undefined;
 const base = process.env.PAGES_BASE || '/';
 

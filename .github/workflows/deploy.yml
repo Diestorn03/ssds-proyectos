@@ -1,50 +1,67 @@
-name: Deploy to GitHub Pages
+name: Deploy to Cloudflare Pages
+
+# main → producción (dominio propio). Cualquier otra rama → vista previa en <rama>.<proyecto>.pages.dev, sin indexar.
+# Necesita en GitHub (Settings → Secrets and variables → Actions):
+#   secrets   CLOUDFLARE_API_TOKEN  (permiso "Account · Cloudflare Pages · Edit")
+#             CLOUDFLARE_ACCOUNT_ID
+#   variables SITE_URL              (p. ej. https://ssdsproyectos.com; vacío = sin canonical ni sitemap absolutos)
+#             CF_PAGES_PROJECT      (opcional; por defecto ssds-proyectos)
+# Guía completa: docs/DESPLIEGUE-CLOUDFLARE.md
 
 on:
   push:
-    branches: [main]
+    branches: ['**']
   workflow_dispatch:
 
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
 concurrency:
-  group: pages
+  group: deploy-${{ github.ref }}
   cancel-in-progress: true
 
+env:
+  PROJECT: ${{ vars.CF_PAGES_PROJECT || 'ssds-proyectos' }}
+  PROD: ${{ github.ref == 'refs/heads/main' }}
+  HAS_CF: ${{ secrets.CLOUDFLARE_API_TOKEN != '' && secrets.CLOUDFLARE_ACCOUNT_ID != '' }}
+
 jobs:
-  build:
+  deploy:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/configure-pages@v5
-        with:
-          enablement: true
-        continue-on-error: true
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
       - run: npm ci
-      - run: npm run build
-        env:
-          # Project site: https://<owner>.github.io/<repo>/ — remove PAGES_BASE when a custom domain is attached.
-          SITE_URL: https://${{ github.repository_owner }}.github.io
-          PAGES_BASE: /${{ github.event.repository.name }}
-          # Proposal build: noindex + discreet "propuesta" ribbon. Set the repo variable PUBLIC_DEMO to "" once it becomes the real site.
-          PUBLIC_DEMO: ${{ vars.PUBLIC_DEMO || '1' }}
-      - uses: actions/upload-pages-artifact@v3
-        with:
-          path: dist
 
-  deploy:
-    needs: build
-    runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - id: deployment
-        uses: actions/deploy-pages@v4
+      # Si el motor del dimensionador da un precio equivocado, no se publica nada.
+      - name: Autoprueba del motor
+        run: node src/data/dimensionar.check.mjs
+
+      - name: Build
+        run: npm run build
+        env:
+          # Producción: dominio propio, indexable. Vistas previas: sin canonical absoluto y con noindex.
+          SITE_URL: ${{ env.PROD == 'true' && vars.SITE_URL || '' }}
+          PUBLIC_DEMO: ${{ env.PROD != 'true' && '1' || '' }}
+
+      - name: Faltan los secretos de Cloudflare
+        if: env.HAS_CF != 'true'
+        run: |
+          echo "::warning::Build y autoprueba OK, pero no se publicó. Faltan CLOUDFLARE_API_TOKEN y CLOUDFLARE_ACCOUNT_ID (ver docs/DESPLIEGUE-CLOUDFLARE.md)."
+
+      - name: Crear el proyecto en Cloudflare Pages (solo la primera vez)
+        if: env.HAS_CF == 'true'
+        run: npx --yes wrangler@4 pages project create "$PROJECT" --production-branch=main || echo "El proyecto ya existe"
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+      - name: Publicar
+        if: env.HAS_CF == 'true'
+        run: npx --yes wrangler@4 pages deploy dist --project-name="$PROJECT" --branch="$GITHUB_REF_NAME" --commit-hash="$GITHUB_SHA" --commit-dirty=true
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
