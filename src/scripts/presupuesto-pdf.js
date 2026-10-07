@@ -204,7 +204,7 @@ export function armarPresupuesto(JsPDF, fuentes, q, fotos = []) {
   const colR = M + 88, padB = 5, xT = M + padB + 1;
   use('h', 10.5, C.navy); const nombre = wrapEq(`Sr(s). ${q.cliente}`, colR - xT - 6);
   use('r', 8.6, C.navy); const sis = wrapEq(sistema, R - colR - padB);
-  const hCli = Math.max(padB + 8 + (q.cliente ? nombre.length * 4.6 : 4.6) + 4.2 + 2.2, padB + 8 + sis.length * 4.1 + 1.6);
+  const hCli = Math.max(padB + 8 + (q.cliente ? nombre.length * 4.6 : 4.6) + 4.2 + (q.telefono ? 4.2 : 0) + 2.2, padB + 8 + sis.length * 4.1 + 1.6);   // el teléfono solo viene de la app /app/: en el sitio no cambia nada
   rect(M, y, CW, hCli, C.paper, 2.2);
   rect(M, y + 3, 1.1, hCli - 6, C.orange);
   use('b', 6.2, C.orangeInk, 0.16); put('CLIENTE', xT, y + padB + 1.4); put('SISTEMA', colR, y + padB + 1.4);
@@ -213,6 +213,7 @@ export function armarPresupuesto(JsPDF, fuentes, q, fotos = []) {
   if (q.cliente) nombre.forEach((l, i) => put(l, xT, yc + i * 4.6));
   else { put('Sr(s).', xT, yc); hair(xT + width('Sr(s). '), yc + 0.6, colR - 8, yc + 0.6, C.ink2, 0.25); }
   use('r', 8, C.ink2); put('Presente.', xT, yc + (q.cliente ? (nombre.length - 1) * 4.6 : 0) + 4.8);
+  if (q.telefono) put(`Tel. ${q.telefono}`, xT, yc + (q.cliente ? (nombre.length - 1) * 4.6 : 0) + 9);
   use('r', 8.6, C.navy); sis.forEach((l, i) => put(l, colR, yc - 0.6 + i * 4.1));
   y += hCli + 7;
 
@@ -317,16 +318,34 @@ export function armarPresupuesto(JsPDF, fuentes, q, fotos = []) {
   return doc;
 }
 
-/**
- * Arma el presupuesto de la opción elegida y lo descarga como "Presupuesto-SSDS-<numero>.pdf".
- * state = lo que devuelve document.getElementById('dimensionar').dzState(); cliente = nombre opcional (una línea, máx. 60).
- */
-export async function descargarPresupuesto(state, { cliente = '' } = {}) {
-  const q = quote(state.answers, { tier: state.tier, cliente, url: state.url });
+// Todo lo que cuesta (quote, fuentes y fotos, jsPDF, dibujo) vive aquí; descargar (sitio) y blob (app) solo cambian cómo sale el archivo.
+async function construir(state, { cliente = '', telefono = '' } = {}) {
+  const q = quote(state.answers, { tier: state.tier, cliente, telefono, url: state.url });
   if (!q) throw new Error('No hay una opción para presupuestar.');
   const fuentes = cargarFuentes().catch((e) => { console.warn('Presupuesto PDF: sin fuentes de marca, se usa Helvetica.', e); return null; });
   const fotos = Promise.all([state.option?.inverter?.model, state.option?.batteries?.model].map((m) => (m ? cargarFoto(m) : null)));
   const [{ jsPDF }, f, ph] = await Promise.all([import('jspdf'), fuentes, fotos]);
-  armarPresupuesto(jsPDF, f, q, ph).save(`Presupuesto-SSDS-${q.numero}.pdf`);
+  return { doc: armarPresupuesto(jsPDF, f, q, ph), q, conFuentes: !!f };
+}
+
+/**
+ * Arma el presupuesto de la opción elegida y lo descarga como "Presupuesto-SSDS-<numero>.pdf" (/dimensionar/, sin cambios).
+ * state = lo que devuelve document.getElementById('dimensionar').dzState(); cliente = nombre opcional (una línea, máx. 60).
+ */
+export async function descargarPresupuesto(state, opts) {
+  const { doc, q } = await construir(state, opts);
+  doc.save(`Presupuesto-SSDS-${q.numero}.pdf`);
   return q;
+}
+
+/** Nombre de archivo de la app: "Presupuesto-SSDS-<numero>[-<cliente-sin-acentos>].pdf" (solo letras y números, máx. 30 del nombre). */
+export const nombreArchivo = (q) => {
+  const c = q.cliente.normalize('NFD').replace(/\p{M}/gu, '').replace(/[^A-Za-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 30).replace(/-+$/, '');
+  return `Presupuesto-SSDS-${q.numero}${c ? `-${c}` : ''}.pdf`;
+};
+
+/** Para la app /app/: el PDF como Blob (no usa doc.save: en una app de iPhone ese clic a <a download> deja la vista atascada) → { blob, q, nombre, conFuentes }. */
+export async function blobPresupuesto(state, opts) {
+  const { doc, q, conFuentes } = await construir(state, opts);
+  return { blob: doc.output('blob'), q, nombre: nombreArchivo(q), conFuentes };
 }

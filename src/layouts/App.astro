@@ -1,0 +1,122 @@
+---
+// Carcasa de la app del dueño (/app/): el cotizador solo, instalable en el iPhone ("Añadir a pantalla de inicio") y sin internet.
+// Sin Header, Footer, Loader, botón de WhatsApp, ClientRouter, motor de animación ni JSON-LD: lo que no se usa no se descarga ni se guarda sin conexión.
+// Base.astro no se toca. El manifest y el service worker los escribe tools/app-pwa.mjs después de `astro build` (llevan rutas con hash).
+import '@fontsource-variable/sora/wght.css?app';
+import '@fontsource-variable/inter/wght.css?app';
+import '../styles/base.css?app';   // «?app»: otra copia del CSS, para que el sitio público no pierda su hoja única (Vite sacaría lo compartido a una hoja aparte)
+import soraLatin from '@fontsource-variable/sora/files/sora-latin-wght-normal.woff2?url';
+import interLatin from '@fontsource-variable/inter/files/inter-latin-wght-normal.woff2?url';
+
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+---
+<!doctype html>
+<html lang="es" data-theme="dark" class="js">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>SSD&amp;S Cotizador</title>
+    <meta name="description" content="Cotizador de respaldo con inversor y baterías de SSD&S C.A., para uso interno." />
+    <meta name="robots" content="noindex, nofollow" />
+    <meta name="theme-color" content="#0b1a3a" />
+    <meta name="format-detection" content="telephone=no" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="Cotizador" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <link rel="manifest" href={`${base}/app/manifest.webmanifest`} />
+    <link rel="icon" href={`${base}/favicon.svg`} type="image/svg+xml" />
+    <link rel="apple-touch-icon" sizes="180x180" href={`${base}/app/icons/apple-touch-icon-180.png`} />
+    <link rel="preload" href={soraLatin} as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href={interLatin} as="font" type="font/woff2" crossorigin />
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Ir al cotizador</a>
+    <header class="appbar" data-app-bar>
+      <span class="appbar__brand">
+        <!-- el logo de Logo.astro, a mano: si la app lo importara, su CSS saldría de Base.css y cambiaría la cascada del sitio -->
+        <svg class="appbar__mark" viewBox="0 0 100 100" width="28" height="28" aria-hidden="true" focusable="false"><polyline points="14,71 14,29 50,8 86,29" fill="none" stroke="#f26a1b" stroke-width="10" stroke-linejoin="round" stroke-linecap="round" /><polyline points="86,29 86,71 50,92 14,71" fill="none" stroke="#fff" stroke-width="10" stroke-linejoin="round" stroke-linecap="round" /><path d="M66 32 H38 a6 6 0 0 0 -6 6 v6 a6 6 0 0 0 6 6 H50" fill="none" stroke="#f26a1b" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" /><path d="M50 50 H62 a6 6 0 0 1 6 6 v6 a6 6 0 0 1 -6 6 H34" fill="none" stroke="#fff" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" /></svg>
+        <span class="appbar__word">SSD<span>&amp;</span>S</span>
+        <span class="appbar__name">Cotizador</span>
+      </span>
+      <span class="appbar__net" data-app-net role="status" hidden>Sin internet</span>
+      <button type="button" class="appbar__btn" data-app-recents aria-label="Ver recientes"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg><span>Recientes</span></button>
+    </header>
+    <main id="main" tabindex="-1">
+      <h1 class="sr-only">Cotizador SSD&amp;S</h1>
+      <slot />
+    </main>
+    <p class="app-ver" data-app-ver></p>
+    <!-- avisos encima de la página (posición fija: no mueven el contenido, CLS 0) -->
+    <div class="app-toasts" data-app-toasts aria-live="polite"></div>
+  </body>
+</html>
+
+<style is:global>
+  :root { --header-h: calc(52px + env(safe-area-inset-top, 0px)); }
+  html { background: var(--navy-950); overscroll-behavior-y: none; -webkit-tap-highlight-color: transparent; }
+  body { touch-action: manipulation; -webkit-touch-callout: none; padding-inline: env(safe-area-inset-left, 0px) env(safe-area-inset-right, 0px); }
+  input, textarea { -webkit-touch-callout: default; }
+  main:focus { outline: none; }
+
+  /* ---------- barra superior: logo + «Cotizador», debajo de la barra de estado (black-translucent) ---------- */
+  .appbar {
+    position: sticky; top: 0; z-index: var(--z-header); display: flex; align-items: center; gap: 12px; min-height: var(--header-h);
+    padding: env(safe-area-inset-top, 0px) 8px 0 max(16px, env(safe-area-inset-left, 0px)); background: var(--navy-950); color: #fff; border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  }
+  .appbar__brand { display: inline-flex; align-items: center; gap: 12px; min-width: 0; margin-right: auto; }
+  .appbar__mark { flex: none; }
+  .appbar__word { font: italic 800 17px/1 var(--font-display); letter-spacing: -0.04em; white-space: nowrap; }
+  .appbar__word span { color: var(--accent); }
+  .appbar__name { padding-left: 12px; border-left: 1px solid rgba(255, 255, 255, 0.18); font: 600 15px/1 var(--font-display); letter-spacing: -0.01em; color: var(--muted); white-space: nowrap; }
+  .appbar__net { padding: 6px 10px; border-radius: 999px; font: 600 13px/1 var(--font-body); color: var(--navy-900); background: var(--amber-400); white-space: nowrap; }
+  .appbar__btn { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; min-width: 44px; padding: 0 10px; border-radius: 12px; font: 600 14px/1 var(--font-body); color: #fff; }
+  .appbar__btn:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+  @media (max-width: 359px) { .appbar__btn span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; } }
+
+  /* ---------- el cotizador como pantalla de app ---------- */
+  .dz[data-dz-mode='app'] { padding-top: 12px; padding-bottom: calc(24px + env(safe-area-inset-bottom, 0px)); }
+  .dz[data-dz-mode='app'] .dz-sum { display: none; }
+  .dz[data-dz-mode='app'] .dz-grid, .dz[data-dz-mode='app'] .dz-grid[data-done] { grid-template-columns: minmax(0, 1fr); }
+  .dz[data-dz-mode='app'] .container { width: min(100% - 2 * var(--gutter), 640px); }
+  .dz[data-dz-mode='app'] .dz-bar__sum { display: grid; }   /* el precio vivo viaja en la barra de abajo en cualquier ancho */
+  .dz[data-dz-mode='app'] .dz-nav { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; }
+  .dz[data-dz-mode='app'] .dz-tiers { grid-template-columns: minmax(0, 1fr); }
+
+  /* datos del cliente (resultado) */
+  .dz-client { display: grid; gap: 14px; min-width: 0; margin: 0; padding: 16px; border: 1px solid var(--line); border-radius: var(--dz-r); background: var(--paper); }
+  .dz-client__t { padding: 0 4px; font: 600 18px/1.3 var(--font-display); color: var(--ink); }
+  .dz-client .dz-field { background: var(--white); }
+  .dz-client__warn { color: var(--dz-warn); font-weight: 600; }
+  .dz-cta .dz-share { flex: 1.5 1 0; min-width: 0; min-height: 52px; padding-inline: 12px; font: 600 15px/1.1 var(--font-body); white-space: nowrap; }
+  .dz[data-dz-mode='app'] .dz-cta .btn--wa { flex: 1 1 0; }
+  .dz-share[aria-busy] { opacity: 0.75; }
+  /* táctiles de 44 px también en lo que en el sitio mide 32-40 */
+  .dz[data-dz-mode='app'] .dz-from .btn--text, .dz[data-dz-mode='app'] .dz-links .btn--text, .dz[data-dz-mode='app'] .dz-acc__b .btn--text { min-height: 44px; }
+  .dz[data-dz-mode='app'] .dz-qty input { width: 44px; height: 44px; }
+
+  /* recientes (al pie del paso 1) */
+  .dz-recents { display: grid; gap: 10px; margin-top: 32px; padding-top: 24px; border-top: 1px solid var(--line); }
+  .dz-recents__t { font: 600 18px/1.3 var(--font-display); letter-spacing: -0.01em; color: var(--ink); }
+  .dz-recents__list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+  .dz-recents__list:empty { display: none; }
+  .dz-recent { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: stretch; border: 1px solid var(--line); border-radius: var(--dz-r); background: var(--white); overflow: hidden; }
+  .dz-recent__open { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 12px; align-items: baseline; min-height: 64px; padding: 10px 12px 10px 14px; text-align: left; }
+  .dz-recent__open:focus-visible, .dz-recent__del:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; border-radius: var(--dz-r); }
+  .dz-recent__who { font: 600 16px/1.3 var(--font-body); color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .dz-recent__tot { font: 700 17px/1.2 var(--font-display); color: var(--ink); white-space: nowrap; }
+  .dz-recent__meta { grid-column: 1 / -1; font: 400 13px/1.35 var(--font-body); color: var(--ink-2); overflow-wrap: anywhere; }
+  .dz-recent__del { min-width: 64px; min-height: 44px; padding: 0 12px; border-left: 1px solid var(--line); font: 600 14px/1.2 var(--font-body); color: var(--ink-2); }
+  .dz-recent__del.is-armed, .dz-recents__all.is-armed { color: #fff; background: var(--dz-bad); }
+  .dz-recents__all { justify-self: start; min-height: 44px; padding-inline: 4px; --btn-fg: var(--ink-2); text-decoration: underline; background: none; font: 500 14px/1.4 var(--font-body); }
+
+  /* ---------- avisos fijos (actualización, instalación, «lista sin internet») ---------- */
+  .app-toasts { position: fixed; z-index: 150; left: max(12px, env(safe-area-inset-left, 0px)); right: max(12px, env(safe-area-inset-right, 0px)); top: calc(var(--header-h) + 8px); display: grid; gap: 8px; pointer-events: none; }
+  .app-toast { pointer-events: auto; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px 12px; max-width: 520px; width: 100%; margin-inline: auto; padding: 8px 8px 8px 16px; border-radius: 16px; background: var(--navy-900); color: #fff; font: 500 15px/1.4 var(--font-body); box-shadow: 0 16px 40px -12px rgba(6, 13, 31, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.12); }
+  .app-toast p { margin: 0; flex: 1 1 200px; }
+  .app-toast .btn { min-height: 44px; padding: 0 18px; font: 600 15px/1 var(--font-body); }
+  .app-toast .btn--text { --btn-fg: #fff; min-width: 44px; text-decoration: underline; background: none; }
+  .app-ver { margin: 0; padding: 12px 16px calc(16px + env(safe-area-inset-bottom, 0px)); text-align: center; font: 400 12px/17px var(--font-body); color: var(--muted); background: var(--navy-950); height: calc(45px + env(safe-area-inset-bottom, 0px)); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }   /* una sola línea de alto fijo: el texto llega después y no mueve nada */
+
+  @media (display-mode: standalone) { .app-install { display: none; } }
+</style>

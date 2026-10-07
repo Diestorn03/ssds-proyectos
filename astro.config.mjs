@@ -11,7 +11,7 @@ export default defineConfig({
   site,
   base,
   trailingSlash: 'always',
-  integrations: [sitemap()],
+  integrations: [sitemap({ filter: (page) => !new URL(page).pathname.startsWith(`${base.replace(/\/$/, '')}/app/`) })],   // /app/ es la herramienta del dueño: ni en el mapa del sitio ni en Google (la página también lleva noindex)
   build: { inlineStylesheets: 'auto' },
   devToolbar: { enabled: false },
 });

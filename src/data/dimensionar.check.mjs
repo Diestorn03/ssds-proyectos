@@ -3,7 +3,7 @@
 // de presupuestos reales: nunca nombres de clientes ni costos de distribuidor; aquí solo precios de venta.
 import assert from 'node:assert/strict';
 import { existsSync } from 'node:fs';
-import { K, OPENING, loads, presets, inverters, batteries, panel, pricing, size, clean, pickBatteries, encodeState, decodeState, fmtUSD, fmtUSD2, quote, validezTxt, loadMeter } from './dimensionar.js';
+import { K, OPENING, loads, presets, inverters, batteries, panel, pricing, size, clean, pickBatteries, encodeState, decodeState, fmtUSD, fmtUSD2, quote, validezTxt, loadMeter, mensajeCliente, normalizaTel } from './dimensionar.js';
 
 const inv = (m) => inverters.find((i) => i.model === m);
 const bat = (m) => batteries.find((b) => b.model === m);
@@ -640,5 +640,15 @@ assert.equal(lm.zone, 'lo', 'la Recomendada trabaja a ≤ 57 % del inversor (la 
 for (const r of seen) for (const o of r.options) { const m = loadMeter(r, o); assert.ok(m.pct >= 0 && m.pct <= 100 && m.zone !== 'hi', 'con K.margin 1,25 ninguna opción pasa del 80 % (la zona roja es el límite que no se recomienda)'); if (o.tier === 'recomendado' && o.inverter.kw * 1000 >= K.recMargin * r.contW) assert.equal(m.zone, 'lo'); }
 const mb = loadMeter(comp, opt(comp, 'basico'));
 assert.ok(mb && mb.zone === 'mid' && mb.pct > 57 && mb.pct <= 80, 'la Básica va más justa: zona ámbar');
+
+// ── app del dueño (/app/): mensaje al cliente y teléfono para wa.me ──
+const qm = quote({ items: Bitems, hours: 8, install: 'instalado' }, { cliente: 'María Pérez', telefono: '0412-1234567', fecha: '2026-10-06' });
+const msgC = mensajeCliente(qm, { cliente: 'María Pérez' });
+assert.equal(qm.telefono, '0412-1234567'); assert.equal(qm.instalacion, 'instalado');
+assert.ok(msgC.startsWith('Hola María Pérez,') && msgC.includes(qm.numero) && msgC.includes(fmtUSD2(qm.total)) && msgC.includes('instalado') && msgC.includes('Válido por 3 días'), msgC);
+assert.ok(!msgC.includes('0412') && !msgC.includes('+58 424') && !/costo|distribuidor|margen/i.test(msgC), 'el mensaje al cliente no lleva teléfonos ni datos internos');
+assert.ok(mensajeCliente(quote({ items: Bitems, hours: 8 })).startsWith('Hola, te comparto') && mensajeCliente(null) === '');
+assert.equal(quote({ items: Bitems, hours: 8 }, { fecha: '2026-10-06' }).numero, quote({ items: Bitems, hours: 8 }, { telefono: '04121234567', fecha: '2026-10-06' }).numero, 'el teléfono no cambia el número');
+for (const [t, r] of [['0412-1234567', '584121234567'], ['+58 412 1234567', '584121234567'], ['412 1234567', '584121234567'], ['584121234567', '584121234567'], ['+1 305 555 0100', '13055550100'], ['123', null], ['', null], [null, null], ['abc', null]]) assert.equal(normalizaTel(t), r, String(t));
 
 console.log('dimensionar.check: ok');

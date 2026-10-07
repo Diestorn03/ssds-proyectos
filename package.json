@@ -5,7 +5,8 @@
   "private": true,
   "scripts": {
     "dev": "astro dev",
-    "build": "astro build",
+    "build": "astro build && node tools/app-pwa.mjs",
+    "icons": "node tools/app-icons.mjs",
     "preview": "astro preview"
   },
   "dependencies": {

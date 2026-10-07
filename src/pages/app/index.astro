@@ -1,0 +1,13 @@
+---
+// /app/ — el cotizador del dueño como app de iPhone (PWA): abre directo en el paso 1, sin hero, y funciona sin internet.
+// Carcasa: src/layouts/App.astro · lógica: src/scripts/app.js (arranque, service worker, avisos) y src/scripts/dimensionar.js (modo app).
+import App from '../../layouts/App.astro';
+import Dimensionador from '../../components/pages/Dimensionador.astro';
+---
+<App>
+  <Dimensionador mode="app" />
+</App>
+
+<script>
+  import '../../scripts/app.js';
+</script>

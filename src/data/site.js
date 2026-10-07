@@ -33,6 +33,9 @@ export const contact = {
 export const wa = (text = 'Hola SSD&S, quiero cotizar un servicio.') =>
   `https://wa.me/${contact.whatsapp}?text=${encodeURIComponent(text)}`;
 
+/** WhatsApp a un número cualquiera (dígitos con código de país, p. ej. 584121234567); sin número abre el selector de contacto. Lo usa la app /app/. */
+export const waTo = (telefono, text) => `https://wa.me/${telefono ?? ''}?text=${encodeURIComponent(text)}`;
+
 export const social = {
   instagram: `https://www.instagram.com/${contact.instagram}/`,
   instagramAlt: `https://www.instagram.com/${contact.instagramAlt}/`,

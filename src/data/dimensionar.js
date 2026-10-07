@@ -658,7 +658,7 @@ const dateParts = (f) => {   // Date | 'AAAA-MM-DD' | nada (hoy)
  * "Se confirma en la visita", y no suma. subtotal = total = Σ de los renglones con precio (incompleto = hay renglones sin cifra).
  * numero = 'P-AAMMDD-XXXX', determinista (hash de encodeState + opción). `tier` pisa a answers.tier; `fecha`: Date o 'AAAA-MM-DD'.
  */
-export function quote(answers, { tier, cliente, fecha, url } = {}) {
+export function quote(answers, { tier, cliente, telefono, fecha, url } = {}) {
   const base = clean(answers), a = clean({ ...base, ...(tier ? { tier } : {}) });
   const r = size(a), sel = r.options.find((o) => o.tier === r.chosen);
   if (!sel) return null;
@@ -689,13 +689,43 @@ export function quote(answers, { tier, cliente, fecha, url } = {}) {
   const f = dateParts(fecha), pad = (n) => String(n).padStart(2, '0');
   return {
     numero: `P-${pad(f.y % 100)}${pad(f.m)}${pad(f.d)}-${(fnv(`${encodeState(a)}|${sel.tier}`) % 36 ** 4).toString(36).toUpperCase().padStart(4, '0')}`,
-    fechaTexto: `Maracay, ${f.d} de ${MESES[f.m - 1]} de ${f.y}`, empresa: { ...pricing.company }, cliente: txt(cliente, 60), titulo: 'PRESUPUESTO',
+    fechaTexto: `Maracay, ${f.d} de ${MESES[f.m - 1]} de ${f.y}`, empresa: { ...pricing.company }, cliente: txt(cliente, 60), telefono: txt(telefono, 20), instalacion: a.install, titulo: 'PRESUPUESTO',
     lines, notas, garantias: [...pricing.warranty], pagos: pricing.payment,
     aviso: 'Documento no fiscal. Precios referenciales en dólares (US$), sujetos a la visita técnica.',
     subtotal, abono: 0, total: subtotal, incompleto: lines.some((l) => l.precio == null), provisional: pricing.provisional, validez: validezTxt(),
     sistema: { inversor: pricing.showModel ? `${inv.brand} ${inv.disp || inv.model}` : `Inversor híbrido ${fmtNum(inv.kw, 1)} kW`, baterias: sel.batteries.n, kwh: sel.batteries.kwh, kw: inv.kw },
     url: clean({ url }).url,
   };
+}
+
+/**
+ * Teléfono → dígitos con código de país para wa.me, o null si no sirve. «0412-1234567», «412 1234567», «+58 412 1234567» → «584121234567».
+ * Un número con «+» de otro país pasa tal cual (solo dígitos). Lo usa la app del dueño (/app/) para abrir el chat del cliente.
+ */
+export function normalizaTel(t) {
+  const raw = String(t ?? '').trim(), d = raw.replace(/\D/g, '').replace(/^00/, '');
+  if (/^58\d{10}$/.test(d)) return d;
+  if (/^0\d{10}$/.test(d)) return `58${d.slice(1)}`;
+  if (/^\d{10}$/.test(d)) return `58${d}`;
+  return raw.startsWith('+') && /^\d{8,15}$/.test(d) ? d : null;
+}
+
+/**
+ * Texto para mandarle al CLIENTE junto con el PDF (WhatsApp, Mensajes, correo): resumen y total, sin datos internos. q = salida de quote().
+ * Español de Venezuela, tuteo. El teléfono y los costos de SSD&S no salen aquí: solo lo que ya dice el presupuesto.
+ */
+export function mensajeCliente(q, { cliente } = {}) {
+  if (!q) return '';
+  const s = q.sistema, nombre = txt(cliente ?? q.cliente, 60), uno = s.kwh / s.baterias;
+  const inv = /^inversor/i.test(s.inversor) ? s.inversor : `inversor ${s.inversor}`;
+  const sistema = `${inv.charAt(0).toUpperCase()}${inv.slice(1)} (${fmtNum(s.kw, 1)} kW) + ${s.baterias} ${s.baterias === 1 ? 'batería' : 'baterías'} de ${fmtNum(uno, 2)} kWh`;
+  const incluye = q.instalacion === 'instalado' ? 'instalado' : q.instalacion === 'manoObra' ? 'con mano de obra' : 'solo equipo';
+  return [
+    `Hola${nombre ? ` ${nombre}` : ''}, te comparto el presupuesto ${q.numero} de SSD&S C.A.`,
+    `${sistema}.`,
+    `Total referencial: ${fmtUSD2(q.total)} (${incluye})${q.incompleto ? '; falta confirmar en la visita lo que está marcado como pendiente' : ''}${q.validez ? `. Válido por ${q.validez}` : ''}.`,
+    'Te adjunto el PDF con el detalle. Cualquier duda me escribes.',
+  ].join('\n');
 }
 
 // ───────────────────── estado compartible (?c=) ─────────────────────

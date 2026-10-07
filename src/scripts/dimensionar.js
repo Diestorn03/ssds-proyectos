@@ -2,10 +2,12 @@
 // Registered from components/pages/Dimensionador.astro via onPage(initDimensionador). Rules, prices and the WhatsApp message: src/data/dimensionar.js
 // (the controller NEVER builds or edits message lines). State lives in the DOM (the form) and in the URL (?c=&o=&w=&via=).
 // For the PDF module: root.dzState() → { answers, tier, result, option, url, done } and a 'dz:state' CustomEvent on #dimensionar after each fill.
+// Modo app (/app/, <section data-dz-mode="app">): el cotizador del dueño en el iPhone, sin internet. Misma lógica; cambia la carcasa: nombre y teléfono
+// del cliente, «Compartir PDF» (hoja de compartir de iOS, el PDF se prepara ANTES del toque), WhatsApp al cliente y «Recientes» en localStorage.
 // No GSAP here: the only motion is one opacity+translate entrance per step / result, a transform on the load bar and the meter of the result
 // (needle, arc and LCD: CSS transitions + a short count), all gated by env.reduced. The meter's markup/style: components/pages/MedidorCarga.astro.
-import { K, loads, presets, size, clean, encodeState, decodeState, fmtUSD, pricing, batteries, loadMeter } from '../data/dimensionar.js';
-import { wa } from '../data/site.js';
+import { K, loads, presets, size, clean, encodeState, decodeState, fmtUSD, pricing, batteries, loadMeter, quote, mensajeCliente, normalizaTel } from '../data/dimensionar.js';
+import { wa, waTo } from '../data/site.js';
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, '');
 const HOURS = [2, 4, 8, 12, 24];
@@ -34,6 +36,7 @@ const rocciaSvg = (alt) => `<svg width="140" height="196" viewBox="0 0 140 196" 
 export function initDimensionador({ env, scrollTo }) {
   const root = document.getElementById('dimensionar');
   if (!root) return;
+  const APP = root.dataset.dzMode === 'app';
   const $ = (s, r = root) => r.querySelector(s);
   const $$ = (s, r = root) => [...r.querySelectorAll(s)];
   const form = $('[data-dz-form]'), grid = $('[data-dz-grid]'), steps = $$('[data-dz-step]'), next = $('[data-dz-next]'), back = $('[data-dz-back]');
@@ -49,13 +52,15 @@ export function initDimensionador({ env, scrollTo }) {
   const okBox = $('[data-dz-ok]'), oosBox = $('[data-dz-oos]'), tiersBox = $('[data-dz-tiers]');
   const tierEl = Object.fromEntries(TIERS.map((t) => [t, $(`[data-dz-tier="${t}"]`)]));
   const statusEl = $('[data-dz-status]'), statusIc = $('.dz-status__ic', statusEl), statusT = $('[data-dz-status-t]');
-  const resume = $('[data-dz-resume]'), igTip = $('[data-dz-igtip]'), msgBox = $('.dz-res__msg');
+  const resume = $('[data-dz-resume]'), igTip = $('[data-dz-igtip]'), msgBox = $('.dz-res__msg');   // resume e igTip solo existen en el sitio
+  const hide = (el, v) => { if (el) el.hidden = v; };
   const reduced = env.reduced;
   const timers = new Set();
   const later = (fn, ms) => { const id = setTimeout(() => { timers.delete(id); fn(); }, ms); timers.add(id); return id; };
   const last = steps.length - 1;
   let cur = 0, done = false, pointer = false, via = null, raf = 0;
   let S = { a: clean({}), R: size({}), o: null };   // last computed state
+  let Q = null;   // modo app: el presupuesto (quote) de la opción elegida; null si no hay opción
 
   /* ---------- form → answers ---------- */
   const qtyOf = (row) => parseInt($('[data-dz-qty]', row).value, 10) || 0;
@@ -231,7 +236,8 @@ export function initDimensionador({ env, scrollTo }) {
   };
   function setStep(to) { steps.forEach((s, i) => { s.classList.toggle('is-active', i === to); s.inert = i !== to; }); }
   const enter = (el) => { if (!reduced) el.animate([{ opacity: 0, transform: 'translateY(10px)' }, { opacity: 1, transform: 'none' }], { duration: 280, easing: 'cubic-bezier(.16,1,.3,1)' }); };
-  const headerH = () => parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--header-h')) || 72;
+  const appBar = APP ? document.querySelector('[data-app-bar]') : null;
+  const headerH = () => (APP ? appBar?.offsetHeight || 56 : parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--header-h')) || 72);   // la barra de la app lleva env(safe-area-inset-top): se mide, no se lee la variable
   function toCardTop(el = card) {   // the question always lands in view after Siguiente / Atrás / Editar / Volver a empezar
     const top = headerH() + 12, r = el.getBoundingClientRect();
     // absolute y + immediate: the step swap changes the page height, and a smooth Lenis tween started from a stale
@@ -255,7 +261,7 @@ export function initDimensionador({ env, scrollTo }) {
   // Enter on a radio / checkbox moves on (native forms only do that for text fields); arrows move between the equipment tabs
   function onKey(e) {
     pointer = false;
-    if (e.key === 'Enter' && e.target.matches('[data-dz-pdf-name]')) { e.preventDefault(); downloadPdf(); return; }   // "Ir" del teclado del celular
+    if (e.key === 'Enter' && e.target.matches('[data-dz-pdf-name], [data-dz-pdf-tel]')) { e.preventDefault(); if (APP) e.target.blur(); else downloadPdf(); return; }   // "Ir" del teclado del celular (en la app solo lo cierra: compartir pide un toque con el PDF ya listo)
     if (e.target.matches('[role="tab"]') && ['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(e.key)) {
       e.preventDefault();
       const i = tabs.indexOf(e.target), j = e.key === 'Home' ? 0 : e.key === 'End' ? tabs.length - 1 : (i + (e.key === 'ArrowRight' ? 1 : -1) + tabs.length) % tabs.length;
@@ -304,6 +310,7 @@ export function initDimensionador({ env, scrollTo }) {
   function onInput(e) {
     const t = e.target;
     if (t.matches('[data-dz-extra]')) { t.value = t.value.replace(/\D/g, ''); return; }
+    if (t.matches('[data-dz-pdf-name], [data-dz-pdf-tel]')) { clientInput(); return; }
     if (done) return;
     if (t.matches('[data-dz-qty], [name^="cw"], [name^="cn"]')) {
       const clean0 = t.value.replace(/\D/g, '');
@@ -314,7 +321,8 @@ export function initDimensionador({ env, scrollTo }) {
   }
   function onChange(e) {
     const t = e.target;
-    if (!t.matches('input') || t.matches('[data-dz-pdf-name]')) return;   // el nombre del PDF no dimensiona: no refresca el resultado
+    if (!t.matches('input')) return;
+    if (t.matches('[data-dz-pdf-name], [data-dz-pdf-tel]')) { if (APP) clientInput(true); return; }   // el nombre y el teléfono no dimensionan: no refrescan el resultado
     if (t.matches('[data-dz-extra]')) t.value = String(clamp(parseInt(t.value, 10) || 0, 0, 30));
     if (done) { refresh(); sayPrice(); return; }
     if (t.matches('[data-dz-qty]')) { const row = t.closest('[data-dz-row]'); setQty(row, parseInt(t.value, 10) || 0); }
@@ -350,7 +358,14 @@ export function initDimensionador({ env, scrollTo }) {
     if (t.closest('[data-dz-pdf-btn]')) return downloadPdf();
     const cp = t.closest('[data-dz-copy]');
     if (cp) return copy(cp.dataset.dzCopy, cp);
+    if (t.closest('[data-dz-wa-client]')) { saveRecent(true); say('Se abrió WhatsApp con el resumen para el cliente'); return; }   // el enlace sigue su camino
     if (t.closest('[data-dz-wa]')) say('Se abrió WhatsApp con tu mensaje');
+    const rc = t.closest('[data-dz-recent]');
+    if (rc) return openRecent(rc.dataset.dzRecent);
+    const rd = t.closest('[data-dz-recent-del]');
+    if (rd) return arm(rd, 'Borrar', '¿Seguro?', () => delRecent(rd.dataset.dzRecentDel));
+    const ra = t.closest('[data-dz-recent-clear]');
+    if (ra) return arm(ra, 'Borrar todos', '¿Borrar todos?', () => { setRecents([]); paintRecents(); say('Recientes borrados'); });
   }
 
   /* ---------- result ---------- */
@@ -365,10 +380,11 @@ export function initDimensionador({ env, scrollTo }) {
     if (tier) q.push(`o=${T2O[tier]}`);
     if (a.when) q.push(`w=${a.when}`);
     if (a.via) q.push(`via=${a.via}`);
-    return location.origin + location.pathname + (q.length ? `?${q.join('&')}` : '');
+    // en la app el enlace del PDF (y de «Abrir esta configuración») va al sitio público: el cliente no puede abrir /app/
+    return location.origin + (APP ? `${BASE}/dimensionar/` : location.pathname) + (q.length ? `?${q.join('&')}` : '');
   }
   function writeUrl(url) {
-    try { const u = new URL(url); history.replaceState(history.state, '', u.pathname + u.search); } catch (e) { /* sandboxed frame */ }
+    try { const u = new URL(url); history.replaceState(history.state, '', (APP ? location.pathname : u.pathname) + u.search); } catch (e) { /* sandboxed frame */ }   // la app se queda en /app/ (si no, al recargar saldría de su alcance)
   }
   const unanswered = (a) => rows.filter((r) => $('[data-dz-ask]', r) && a.items[r.dataset.dzRow] && a.v220[r.dataset.dzRow] === undefined).map((r) => byId[r.dataset.dzRow].s);
 
@@ -433,7 +449,7 @@ export function initDimensionador({ env, scrollTo }) {
     ul.replaceChildren(...hints.map((h) => {
       const li = document.createElement('li');
       li.textContent = h;
-      if (/planta eléctrica/.test(h)) {
+      if (!APP && /planta eléctrica/.test(h)) {
         const link = Object.assign(document.createElement('a'), { className: 'btn btn--text', textContent: 'Ver Respaldo Energético', href: $('[data-dz-plant] a').getAttribute('href') });
         li.append(' ', link);
       }
@@ -527,9 +543,15 @@ export function initDimensionador({ env, scrollTo }) {
       tierEl[R.chosen].querySelector('input').checked = true;
       fillDetail(o, a, R); fillHints(R.hints); fillCalc(o, a, R); fillBreak(o, a);
     } else fillOos(a, R);
-    $('[data-dz-msg]').textContent = R.message;
-    $('[data-dz-wa]').href = wa(R.message);
-    igTip.hidden = via !== 'ig';
+    if (APP) {
+      Q = oos ? null : quote(a, { tier: R.chosen });
+      paintClient();
+      if (done) { saveRecent(); schedulePdf(300); }
+    } else {
+      $('[data-dz-msg]').textContent = R.message;
+      $('[data-dz-wa]').href = wa(R.message);
+    }
+    hide(igTip, via !== 'ig');
     root.dispatchEvent(new CustomEvent('dz:state', { detail: state() }));
     return url;
   }
@@ -554,7 +576,7 @@ export function initDimensionador({ env, scrollTo }) {
     if (!done) return;
     done = false;
     delete grid.dataset.done;
-    res.hidden = true; card.hidden = false; resume.hidden = true;
+    res.hidden = true; card.hidden = false; hide(resume, true);
     cur = to;
     setStep(to); sync(); syncTrack();
     if (to === 2) { hourCover(); paintLive(); }
@@ -582,7 +604,8 @@ export function initDimensionador({ env, scrollTo }) {
     form.reset();
     rows.forEach((r) => paintRow(r, qtyOf(r)));
     showTab('esencial');
-    fromRow.hidden = true; resume.hidden = true;
+    fromRow.hidden = true; hide(resume, true);
+    recentId = null; pdfJob = null; Q = null;
     cur = 0;
     res.hidden = true; card.hidden = false;
     setStep(0); sync(); syncTrack();
@@ -590,12 +613,13 @@ export function initDimensionador({ env, scrollTo }) {
     focusStep(steps[0]);
     toCardTop();
     enter(card);
+    paintRecents();
     root.dispatchEvent(new CustomEvent('dz:state', { detail: state() }));
   }
 
   /* ---------- copy ---------- */
   async function copy(kind, btn) {
-    const text = kind === 'url' ? S.a.url : S.R.message;
+    const text = kind === 'url' ? S.a.url : APP ? $('[data-dz-msg]').textContent : S.R.message;
     let ok = false;
     try { await navigator.clipboard.writeText(text); ok = true; } catch (e) {
       try {   // fallback for webviews (Instagram, old Safari): a temporary textarea
@@ -623,10 +647,12 @@ export function initDimensionador({ env, scrollTo }) {
 
   /* ---------- presupuesto en PDF: el módulo (y jsPDF con él) se carga recién al tocar el botón ---------- */
   const pdfBtn = $('[data-dz-pdf-btn]'), pdfLbl = $('[data-dz-pdf-lbl]'), pdfName = $('[data-dz-pdf-name]'), pdfErr = $('[data-dz-pdf-err]');
+  const pdfTel = $('[data-dz-pdf-tel]');   // solo en la app
   const PDF_LBL = pdfLbl.innerHTML;
-  $('[data-dz-pdf-ig]').hidden = !/Instagram|FBAN|FBAV/.test(navigator.userAgent);   // su navegador interno suele bloquear las descargas: se avisa antes y se deja intentar igual
+  hide($('[data-dz-pdf-ig]'), !/Instagram|FBAN|FBAV/.test(navigator.userAgent));   // su navegador interno suele bloquear las descargas: se avisa antes y se deja intentar igual
   let pdfBusy = false;
   async function downloadPdf() {
+    if (APP) return sharePdf();
     if (pdfBusy || !done || !S.o) return;
     pdfBusy = true; pdfErr.hidden = true;
     pdfBtn.setAttribute('aria-busy', 'true'); pdfLbl.textContent = 'Generando…';
@@ -646,6 +672,135 @@ export function initDimensionador({ env, scrollTo }) {
     pdfBtn.removeAttribute('aria-busy');
     if (ok) pdfLbl.textContent = 'Descargado'; else pdfLbl.innerHTML = PDF_LBL;
     if (ok) later(() => { pdfLbl.innerHTML = PDF_LBL; }, 2200);
+  }
+
+  /* ---------- modo app: datos del cliente, PDF listo antes del toque, compartir ---------- */
+  // WebKit solo deja abrir la hoja de compartir dentro del gesto del usuario, y jsPDF con fuentes y fotos tarda más que eso: el PDF se arma
+  // en segundo plano (al llegar al resultado y 0,5 s después de cada cambio) y el toque solo llama a navigator.share, sin ningún await antes.
+  let pdfJob = null, pdfT = 0, pdfRetry = false, recentId = null, clientMsg = '';
+  const pdfKey = () => JSON.stringify([S.a.url, pdfName?.value.trim(), pdfTel?.value.trim()]);
+  const canShareFile = (file) => { try { return !!navigator.canShare?.({ files: [file] }) && !!navigator.share; } catch { return false; } };
+  const probe = () => (typeof File === 'function' ? new File([''], 'p.pdf', { type: 'application/pdf' }) : null);
+  function paintShare() {
+    if (!APP) return;
+    const fresh = pdfJob && pdfJob.key === pdfKey() && pdfJob.ready;
+    const lbl = !fresh || pdfBusy ? 'Preparando PDF…' : pdfRetry ? 'Compartir de nuevo' : canShareFile(probe()) ? 'Compartir PDF' : 'Descargar PDF';
+    if (pdfLbl.textContent !== lbl) pdfLbl.textContent = lbl;
+    pdfBtn.toggleAttribute('aria-busy', !fresh || pdfBusy);
+  }
+  function prepararPdf() {
+    if (!APP || !done || !S.o) return null;
+    const key = pdfKey();
+    if (pdfJob && pdfJob.key === key && !pdfJob.failed) return pdfJob;
+    const st = state(), opts = { cliente: pdfName.value, telefono: pdfTel.value }, job = { key, ready: false, failed: false };
+    pdfRetry = false;
+    job.p = import('./presupuesto-pdf.js').then((m) => m.blobPresupuesto(st, opts)).then((r) => {
+      job.res = r; job.file = new File([r.blob], r.nombre, { type: 'application/pdf' }); job.ready = true;
+      if (!r.conFuentes) console.warn('PDF de la app sin fuentes de marca');
+      paintShare();
+      return job;
+    }, (e) => { job.failed = true; console.error('Presupuesto PDF', e); paintShare(); throw e; });
+    job.p.catch(() => {});
+    pdfJob = job; paintShare();
+    return job;
+  }
+  const schedulePdf = (ms = 500) => { if (!APP) return; clearTimeout(pdfT); pdfT = later(prepararPdf, ms); paintShare(); };
+  function saveBlob(job) {   // sin Web Share de archivos (escritorio, navegadores viejos): descarga normal
+    const url = URL.createObjectURL(job.res.blob), a = Object.assign(document.createElement('a'), { href: url, download: job.res.nombre });
+    document.body.append(a); a.click(); a.remove();
+    later(() => URL.revokeObjectURL(url), 60000);
+    say(`PDF descargado: ${job.res.nombre}`);
+  }
+  function doShare(job) {   // síncrono hasta navigator.share: conserva el gesto del toque
+    if (!canShareFile(job.file)) { saveBlob(job); return; }
+    saveRecent(true);
+    return navigator.share({ files: [job.file] }).then(() => { pdfRetry = false; paintShare(); say('PDF compartido'); }, (e) => {
+      if (e?.name === 'AbortError') return;   // cerró la hoja: no es un error
+      pdfRetry = true; paintShare();
+      if (e?.name === 'NotAllowedError') say('Toca otra vez para compartir el PDF');
+      else {
+        console.error('Compartir PDF', e);
+        if (navigator.standalone === true || matchMedia('(display-mode: standalone)').matches) {   // en la app instalada de iOS un enlace de descarga puede abrir el PDF sin forma de volver: se pide reintentar
+          pdfErr.textContent = 'No se pudo abrir la hoja de compartir. Toca «Compartir de nuevo».'; pdfErr.hidden = false; say('No se pudo abrir la hoja de compartir');
+        } else saveBlob(job);
+      }
+    });
+  }
+  async function sharePdf() {
+    if (pdfBusy || !done || !S.o) return;
+    const job = prepararPdf();
+    if (!job) return;
+    pdfErr.hidden = true;
+    if (job.ready) return doShare(job);
+    pdfBusy = true; paintShare();
+    try { await job.p; } catch {
+      pdfBusy = false; paintShare();
+      pdfErr.textContent = 'No se pudo preparar el PDF. Cierra y vuelve a abrir la app e inténtalo de nuevo.';
+      pdfErr.hidden = false; say('No se pudo preparar el PDF');
+      return;
+    }
+    pdfBusy = false; paintShare();
+    if (pdfJob === job) return doShare(job);   // si cambió algo mientras tanto, el nuevo PDF se prepara y se toca otra vez
+  }
+  function clientInput(commit = false) {   // nombre / teléfono: el WhatsApp y el mensaje al momento; el PDF y el reciente, con una pausa
+    if (!APP || !done) return;
+    paintClient();
+    $('[data-dz-tel-note]').hidden = !pdfTel.value.trim() || !!normalizaTel(pdfTel.value);
+    schedulePdf(commit ? 150 : 600);
+    clearTimeout(clientT); clientT = later(() => saveRecent(), 800);
+  }
+  let clientT = 0;
+  function paintClient() {
+    if (!APP) return;
+    clientMsg = Q ? mensajeCliente(Q, { cliente: pdfName.value }) : '';
+    $('[data-dz-msg]').textContent = clientMsg;
+    const a = $('[data-dz-wa-client]');
+    if (a && Q) a.href = waTo(normalizaTel(pdfTel.value), clientMsg);
+  }
+
+  /* ---------- modo app: Recientes (localStorage, últimos 20; nada sale del teléfono) ---------- */
+  const RKEY = 'ssds-app-recientes', RMAX = 20;
+  const recents = () => { try { const v = JSON.parse(localStorage.getItem(RKEY)); return Array.isArray(v) ? v.filter((r) => r && typeof r.id === 'string' && typeof r.c === 'string' && Number.isFinite(r.t)) : []; } catch { return []; } };
+  const setRecents = (v) => { try { localStorage.setItem(RKEY, JSON.stringify(v)); } catch { /* sin almacenamiento: la app sigue sin Recientes */ } };
+  const recList = $('[data-dz-recents-list]'), recEmpty = $('[data-dz-recents-empty]'), recClear = $('[data-dz-recent-clear]');
+  function saveRecent(force = false) {   // sin nombre ni teléfono solo se guarda al compartir o abrir WhatsApp: probar sin cliente no llena la lista
+    if (!APP || !done || !Q || !S.o) return;
+    if (!force && !recentId && !pdfName.value.trim() && !pdfTel.value.trim()) return;
+    recentId ||= `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`;   // una sola entrada por presupuesto: editar o cambiar de opción la actualiza
+    const s = Q.sistema, e = { id: recentId, t: Date.now(), cliente: pdfName.value.trim().slice(0, 60), tel: pdfTel.value.trim().slice(0, 20), total: Q.total, opt: S.o.label, sis: `${fmt(s.kw)} kW · ${s.baterias} × ${fmt(s.kwh / s.baterias, 2)} kWh`, c: (S.a.url || '').split('?')[1] || '' };
+    if (!e.c) return;
+    setRecents([e, ...recents().filter((r) => r.id !== recentId)].slice(0, RMAX));
+    paintRecents();
+  }
+  function paintRecents() {
+    if (!recList) return;
+    const list = recents(), fecha = (t) => new Date(t).toLocaleDateString('es-VE', { day: 'numeric', month: 'short' }).replace('.', '');
+    recEmpty.hidden = list.length > 0; recClear.hidden = !list.length;
+    recList.replaceChildren(...list.map((r) => {   // el nombre es dato del usuario: solo textContent, nunca innerHTML
+      const li = document.createElement('li'), open = document.createElement('button'), del = document.createElement('button'), mk = (cls, txt) => Object.assign(document.createElement('span'), { className: cls, textContent: txt });
+      li.className = 'dz-recent';
+      open.type = 'button'; open.className = 'dz-recent__open'; open.dataset.dzRecent = r.id;
+      open.append(mk('dz-recent__who', r.cliente || 'Sin nombre'), mk('dz-recent__tot num', fmtUSD(r.total)), mk('dz-recent__meta', `${fecha(r.t)} · ${r.opt || ''} · ${r.sis || ''}`));
+      del.type = 'button'; del.className = 'dz-recent__del'; del.dataset.dzRecentDel = r.id; del.textContent = 'Borrar'; del.setAttribute('aria-label', `Borrar el presupuesto de ${r.cliente || 'sin nombre'}`);
+      li.append(open, del);
+      return li;
+    }));
+  }
+  function delRecent(id) { setRecents(recents().filter((r) => r.id !== id)); if (id === recentId) recentId = null; paintRecents(); say('Presupuesto borrado de recientes'); }
+  let armed = null;
+  function arm(btn, idle, ask, action) {   // confirmación en la propia fila: un toque pregunta, el segundo borra (el viewer no muestra confirm())
+    if (armed?.btn === btn) { clearTimeout(armed.t); armed = null; action(); return; }
+    if (armed) { clearTimeout(armed.t); armed.btn.textContent = armed.idle; armed.btn.classList.remove('is-armed'); }
+    btn.textContent = ask; btn.classList.add('is-armed');
+    armed = { btn, idle, t: later(() => { btn.textContent = idle; btn.classList.remove('is-armed'); armed = null; }, 3500) };
+  }
+  function openRecent(id) {
+    const r = recents().find((x) => x.id === id);
+    if (!r) return;
+    recentId = r.id; pdfJob = null; pdfRetry = false;
+    pdfName.value = r.cliente || ''; pdfTel.value = r.tel || '';
+    if (!resumeFrom(`?${r.c}`)) { delRecent(id); return; }
+    say(`Presupuesto abierto${r.cliente ? ` de ${r.cliente}` : ''}`);
   }
 
   /* ---------- resume from ?c= ---------- */
@@ -676,18 +831,34 @@ export function initDimensionador({ env, scrollTo }) {
   form.addEventListener('submit', onSubmit);
   form.addEventListener('keydown', onKey);
   form.addEventListener('click', onClick);
+  const recBtn = APP ? document.querySelector('[data-app-recents]') : null;   // botón «Recientes» de la barra: al paso 1, donde está la lista
+  const onRecBtn = () => {
+    if (done) restart(); else if (cur !== 0) go(0);
+    later(() => { const r = $('[data-dz-recents]').getBoundingClientRect(); scrollTo(Math.max(0, window.scrollY + r.top - headerH() - 12), { offset: 0, immediate: true }); }, 60);
+  };
+  recBtn?.addEventListener('click', onRecBtn);
 
-  // start: ?via=, then ?c= (straight to the result), else restored answers (bfcache / breakpoint re-init) → first unanswered step
-  const sp = new URLSearchParams(location.search), v = sp.get('via');
-  via = v === 'ig' || v === 'dx' ? v : /Instagram|FBAN|FBAV/.test(navigator.userAgent) ? 'ig' : null;
-  const st = sp.get('c') ? decodeState(sp.get('c')) : null;
-  if (st && hasItems(st)) {
+  // ?c= (y ?o=, ?w=) → directo al resultado; lo usan el arranque y «Recientes» de la app
+  function resumeFrom(search, immediate = false) {
+    const sp = new URLSearchParams(search), st = sp.get('c') ? decodeState(sp.get('c')) : null;
+    if (!st || !hasItems(st)) return false;
+    if (done) { done = false; delete grid.dataset.done; }
     fillForm(st, sp);
     sync();
     cur = last;
     setStep(last);
-    finish({ immediate: true });
-    resume.hidden = false;
+    finish({ immediate });
+    return true;
+  }
+
+  // start: ?via=, then ?c= (straight to the result), else restored answers (bfcache / breakpoint re-init) → first unanswered step
+  const sp = new URLSearchParams(location.search), v = sp.get('via');
+  via = APP ? null : v === 'ig' || v === 'dx' ? v : /Instagram|FBAN|FBAV/.test(navigator.userAgent) ? 'ig' : null;
+  paintRecents();
+  const startRecent = APP && sp.get('c') ? recents().find((r) => r.c === location.search.slice(1)) : null;   // la app recargada por iOS (volvió de WhatsApp): recupera nombre y teléfono
+  if (startRecent) { recentId = startRecent.id; pdfName.value = startRecent.cliente || ''; pdfTel.value = startRecent.tel || ''; }
+  if (resumeFrom(location.search, true)) {
+    hide(resume, false);
   } else {
     const firstOpen = steps.findIndex((_, i) => !answered(i)), prev = parseInt(card.dataset.step, 10) || 0;
     cur = Math.min(clamp(prev, 0, last), firstOpen === -1 ? last : firstOpen);   // same step after a re-init, never past the first unanswered
@@ -706,6 +877,7 @@ export function initDimensionador({ env, scrollTo }) {
     form.removeEventListener('submit', onSubmit);
     form.removeEventListener('keydown', onKey);
     form.removeEventListener('click', onClick);
+    recBtn?.removeEventListener('click', onRecBtn);
     delete root.dzState;
   };
 }

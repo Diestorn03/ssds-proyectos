@@ -2,9 +2,13 @@
 // Escena #dimensionar "Dimensiona tu respaldo" (light). Tres pasos (Punto de partida · Equipos · Horas) + resultado con opciones
 // Básica / Recomendada / Holgada, y un resumen fijo "Tu sistema". Reglas y precios: src/data/dimensionar.js · lógica: src/scripts/dimensionar.js
 // Diseño: una cifra protagonista por pantalla, cada dato se ve una sola vez; naranja solo para acción y selección. Todo número es orientativo.
-import Icon from '../ui/Icon.astro';
+import Icon from './DzIcon.astro';
 import MedidorCarga from './MedidorCarga.astro';
 import { wa } from '../../data/site.js';
+interface Props { mode?: 'site' | 'app' }   // 'app' = cotizador del dueño en /app/ (iPhone, sin internet): src/layouts/App.astro
+const { mode = 'site' } = Astro.props;
+const app = mode === 'app';
+const rv = (delay?: string) => (app ? {} : { 'data-reveal': 'up', ...(delay ? { 'data-delay': delay } : {}) });   // sin motor en la app: nada que revelar
 import { K, loads, presets, inverters, pricing, validezTxt } from '../../data/dimensionar.js';
 
 const base = import.meta.env.BASE_URL.replace(/\/$/, '');
@@ -56,17 +60,17 @@ const maxKw = Math.max(...inverters.filter((i: any) => i.available && i.priceEq 
 const waHi = wa('Hola SSD&S, quiero dimensionar un respaldo con inversor y baterías para mi casa o negocio.');
 const svgIc = (d: string, s = 20) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
 ---
-<section id="dimensionar" class="section dz" data-theme="light" data-fab-hide aria-labelledby="dimensionar-title">
-  <div class="dz__bg" aria-hidden="true">
+<section id="dimensionar" class="section dz" data-theme="light" {...(app ? {} : { 'data-fab-hide': '' })} data-dz-mode={mode} aria-labelledby="dimensionar-title">
+  {!app && <div class="dz__bg" aria-hidden="true">
     <span class="streak streak--thick dz__ray"></span>
-  </div>
+  </div>}
 
   <div class="container">
-    <h2 id="dimensionar-title" class="sr-only">Dimensiona tu respaldo</h2>
+    <h2 id="dimensionar-title" class="sr-only">{app ? 'Presupuesto de respaldo' : 'Dimensiona tu respaldo'}</h2>
 
     <div class="dz-grid" data-dz-grid>
       <form class="dz-main" data-dz-form novalidate aria-label="Dimensiona tu respaldo en 3 pasos">
-        <div class="dz-card" data-dz-card data-step="0" data-reveal="up" data-delay=".05">
+        <div class="dz-card" data-dz-card data-step="0" {...rv('.05')}>
           <div class="dz-prog" data-dz-track aria-hidden="true">
             <p class="dz-count">Paso <b data-dz-count>1</b> de 3 · <span data-dz-steplbl>Punto de partida</span></p>
             <div class="dz-seg3"><i data-dz-seg></i><i data-dz-seg></i><i data-dz-seg></i></div>
@@ -87,6 +91,14 @@ const svgIc = (d: string, s = 20) => `<svg width="${s}" height="${s}" viewBox="0
                   </label>
                 ))}
               </div>
+              {app && (
+                <section class="dz-recents" data-dz-recents aria-labelledby="dz-recents-t">
+                  <h3 class="dz-recents__t" id="dz-recents-t">Recientes</h3>
+                  <p class="dz-micro" data-dz-recents-empty>Aquí quedan tus últimos 20 presupuestos, solo en este teléfono. Toca uno para abrirlo otra vez.</p>
+                  <ul class="dz-recents__list" role="list" data-dz-recents-list></ul>
+                  <button type="button" class="btn btn--text dz-recents__all" data-dz-recent-clear hidden>Borrar todos</button>
+                </section>
+              )}
             </fieldset>
 
             <!-- 2 · Equipos -->
@@ -158,7 +170,7 @@ const svgIc = (d: string, s = 20) => `<svg width="${s}" height="${s}" viewBox="0
                 ))}
               </div>
               <p class="dz-live" data-dz-liveline></p>
-              <p class="dz-plant" data-dz-plant hidden>Para cortes tan largos conviene evaluar también una planta eléctrica. <a class="btn btn--text" href={`${base}/servicios/respaldo-energetico/`}>Ver Respaldo Energético</a></p>
+              <p class="dz-plant" data-dz-plant hidden>Para cortes tan largos conviene evaluar también una planta eléctrica.{!app && <> <a class="btn btn--text" href={`${base}/servicios/respaldo-energetico/`}>Ver Respaldo Energético</a></>}</p>
               <fieldset class="dz-fs dz-q2">
                 <legend class="dz-q2__t">¿Dónde va el sistema?</legend>
                 <div class="dz-places">
@@ -174,19 +186,19 @@ const svgIc = (d: string, s = 20) => `<svg width="${s}" height="${s}" viewBox="0
               <span class="dz-back__t">Atrás</span>
             </button>
             <p class="dz-bar__sum" aria-hidden="true"><b class="num" data-dz-bar-price></b><span data-dz-bar-sub></span></p>
-            <button type="submit" class="btn btn--primary dz-next" data-dz-next disabled data-magnetic="0.2">
+            <button type="submit" class="btn btn--primary dz-next" data-dz-next disabled data-magnetic={app ? undefined : '0.2'}>
               <span data-dz-next-lbl>Siguiente</span><Icon name="arrow" size={20} class="arrow" />
             </button>
           </div>
-          <p class="dz-nojs">
+          {!app && <p class="dz-nojs">
             Esta herramienta necesita JavaScript. Cuéntanos qué quieres mantener encendido y te respondemos por WhatsApp.<br />
             <a class="btn btn--wa" href={waHi} target="_blank" rel="noopener"><Icon name="whatsapp" size={20} />Dimensionar por WhatsApp</a>
-          </p>
+          </p>}
         </div>
 
         <!-- Resultado -->
         <article class="dz-res" data-dz-res hidden tabindex="-1" aria-labelledby="dz-res-title">
-          <p class="dz-resume" data-dz-resume hidden><span>Configuración cargada desde el enlace.</span><button type="button" class="btn btn--text" data-dz-edit>Editar equipos</button></p>
+          {!app && <p class="dz-resume" data-dz-resume hidden><span>Configuración cargada desde el enlace.</span><button type="button" class="btn btn--text" data-dz-edit>Editar equipos</button></p>}
           <header class="dz-res__top">
             <h3 id="dz-res-title" class="dz-res__title" data-dz-rtitle>Tu respaldo</h3>
             <p class="dz-res__sub" data-dz-rsub>Precio referencial en USD. Se confirma en la visita técnica.</p>
@@ -226,9 +238,9 @@ const svgIc = (d: string, s = 20) => `<svg width="${s}" height="${s}" viewBox="0
 
           <div class="dz-oos" data-dz-oos hidden>
             <h3 class="dz-oos__t">Esto se dimensiona con un ingeniero.</h3>
-            <p class="dz-oos__s">Tu lista ya está en el mensaje: escríbenos y lo vemos contigo.</p>
+            <p class="dz-oos__s">{app ? 'Este caso se cotiza aparte, con un ingeniero.' : 'Tu lista ya está en el mensaje: escríbenos y lo vemos contigo.'}</p>
             <p class="dz-oos__why"><b>Motivo</b><span data-dz-reason></span></p>
-            <p class="dz-oos__lim">En línea cotizamos un solo inversor, de hasta {nf(maxKw, 0)} kW. Tu caso pasa de eso, o incluye equipos que no se respaldan con baterías de este tamaño.</p>
+            <p class="dz-oos__lim">{app ? 'Aquí cotizamos' : 'En línea cotizamos'} un solo inversor, de hasta {nf(maxKw, 0)} kW. {app ? 'Este caso pasa' : 'Tu caso pasa'} de eso, o incluye equipos que no se respaldan con baterías de este tamaño.</p>
             <ul class="dz-oos__list" role="list" data-dz-list></ul>
             <ul class="dz-kpis" role="list" data-dz-figs></ul>
             <p class="dz-oos__tip" data-dz-tip hidden></p>
@@ -239,33 +251,64 @@ const svgIc = (d: string, s = 20) => `<svg width="${s}" height="${s}" viewBox="0
             <p class="dz-sel__t" data-dz-sel></p>
           </section>
 
-          <div class="dz-cta">
-            <a class="btn btn--wa" data-dz-wa data-magnetic="0.2" href={waHi} target="_blank" rel="noopener"><Icon name="whatsapp" size={20} /><span><span class="dz-xs-hide">Pedir por </span>WhatsApp</span></a>
-            <button type="button" class="btn btn--ghost dz-pdf__btn" data-dz-pdf-btn data-dz-okonly aria-describedby="dz-pdf-hint">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11M7.5 10.5 12 15l4.5-4.5M5 19h14" /></svg>
-              <span data-dz-pdf-lbl><span class="dz-xs-hide">Descargar presupuesto </span>PDF</span>
-            </button>
-          </div>
+          {app ? (
+            <>
+              <fieldset class="dz-client" data-dz-okonly>
+                <legend class="dz-client__t">Datos del cliente</legend>
+                <label class="dz-f"><span class="dz-f__l">Teléfono (opcional)</span><input class="dz-field" type="tel" inputmode="tel" name="pdfTel" maxlength="20" autocomplete="off" placeholder="Ej. 0412-1234567" aria-describedby="dz-pdf-hint" data-dz-pdf-tel /></label>
+                <label class="dz-f"><span class="dz-f__l">Nombre del cliente</span><input class="dz-field" type="text" name="pdfName" maxlength="60" autocomplete="off" autocapitalize="words" enterkeyhint="done" placeholder="Ej. María Pérez" aria-describedby="dz-pdf-hint" data-dz-pdf-name /></label>
+                <p class="dz-micro" id="dz-pdf-hint">Salen en el PDF y se guardan solo en este teléfono. Con el teléfono, el botón de WhatsApp abre el chat del cliente.</p>
+                <p class="dz-micro dz-client__warn" data-dz-tel-note hidden>Revisa el teléfono: escríbelo como 0412-1234567. Mientras tanto, WhatsApp te deja elegir el contacto.</p>
+              </fieldset>
 
-          <div class="dz-after">
-            <details class="dz-pdfname" data-dz-okonly>
-              <summary>Poner mi nombre en el PDF (opcional)</summary>
-              <label class="dz-f"><span class="dz-f__l">Tu nombre</span><input class="dz-field" type="text" name="pdfName" maxlength="60" autocomplete="name" enterkeyhint="done" placeholder="Ej. María Pérez" aria-describedby="dz-pdf-hint" data-dz-pdf-name /></label>
-              <p class="dz-micro" id="dz-pdf-hint">No se envía a ningún lado: solo se imprime en tu PDF.</p>
-            </details>
-            <p class="dz-pdf__ig" data-dz-pdf-ig hidden>
-              <span>Para descargar, abre esta página en tu navegador.</span>
-              <button type="button" class="btn btn--text" data-dz-copy="url"><span>Copiar enlace</span></button>
-            </p>
-            <p class="dz-pdf__err" role="alert" data-dz-pdf-err hidden></p>
-            <p class="dz-micro">No pedimos tu teléfono ni tu correo. Se abre WhatsApp con el texto listo; lo envías tú.</p>
-            <p class="dz-micro" data-dz-igtip hidden>Si WhatsApp no abre desde Instagram, toca ⋯ y elige Abrir en el navegador, o copia el mensaje.</p>
-            <p class="dz-links">
-              <button type="button" class="btn btn--text" data-dz-copy="url"><span>Copiar enlace</span></button>
-              <button type="button" class="btn btn--text" data-dz-edit>Editar mis equipos</button>
-              <button type="button" class="btn btn--text" data-dz-restart>Volver a empezar</button>
-            </p>
-          </div>
+              <div class="dz-cta" data-dz-okonly>
+                <button type="button" class="btn btn--primary dz-share" data-dz-pdf-btn aria-describedby="dz-pdf-hint2">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V4M8 8l4-4 4 4M6 12H5a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-6a1 1 0 0 0-1-1h-1" /></svg>
+                  <span data-dz-pdf-lbl>Preparando PDF…</span>
+                </button>
+                <a class="btn btn--wa" data-dz-wa-client href={waHi} target="_blank" rel="noopener"><Icon name="whatsapp" size={20} /><span>Texto por WhatsApp<span class="dz-xs-hide"> al cliente</span></span></a>
+              </div>
+
+              <div class="dz-after">
+                <p class="dz-micro" id="dz-pdf-hint2">«Compartir PDF» abre la hoja de iPhone: elige WhatsApp, Archivos, Correo o AirDrop y el PDF va adjunto. El botón verde manda solo el resumen en texto.</p>
+                <p class="dz-pdf__err" role="alert" data-dz-pdf-err hidden></p>
+                <p class="dz-links">
+                  <button type="button" class="btn btn--text" data-dz-edit>Editar mis equipos</button>
+                  <button type="button" class="btn btn--text" data-dz-restart>Nuevo presupuesto</button>
+                </p>
+              </div>
+            </>
+          ) : (
+            <>
+            <div class="dz-cta">
+              <a class="btn btn--wa" data-dz-wa data-magnetic="0.2" href={waHi} target="_blank" rel="noopener"><Icon name="whatsapp" size={20} /><span><span class="dz-xs-hide">Pedir por </span>WhatsApp</span></a>
+              <button type="button" class="btn btn--ghost dz-pdf__btn" data-dz-pdf-btn data-dz-okonly aria-describedby="dz-pdf-hint">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11M7.5 10.5 12 15l4.5-4.5M5 19h14" /></svg>
+                <span data-dz-pdf-lbl><span class="dz-xs-hide">Descargar presupuesto </span>PDF</span>
+              </button>
+            </div>
+
+            <div class="dz-after">
+              <details class="dz-pdfname" data-dz-okonly>
+                <summary>Poner mi nombre en el PDF (opcional)</summary>
+                <label class="dz-f"><span class="dz-f__l">Tu nombre</span><input class="dz-field" type="text" name="pdfName" maxlength="60" autocomplete="name" enterkeyhint="done" placeholder="Ej. María Pérez" aria-describedby="dz-pdf-hint" data-dz-pdf-name /></label>
+                <p class="dz-micro" id="dz-pdf-hint">No se envía a ningún lado: solo se imprime en tu PDF.</p>
+              </details>
+              <p class="dz-pdf__ig" data-dz-pdf-ig hidden>
+                <span>Para descargar, abre esta página en tu navegador.</span>
+                <button type="button" class="btn btn--text" data-dz-copy="url"><span>Copiar enlace</span></button>
+              </p>
+              <p class="dz-pdf__err" role="alert" data-dz-pdf-err hidden></p>
+              <p class="dz-micro">No pedimos tu teléfono ni tu correo. Se abre WhatsApp con el texto listo; lo envías tú.</p>
+              <p class="dz-micro" data-dz-igtip hidden>Si WhatsApp no abre desde Instagram, toca ⋯ y elige Abrir en el navegador, o copia el mensaje.</p>
+              <p class="dz-links">
+                <button type="button" class="btn btn--text" data-dz-copy="url"><span>Copiar enlace</span></button>
+                <button type="button" class="btn btn--text" data-dz-edit>Editar mis equipos</button>
+                <button type="button" class="btn btn--text" data-dz-restart>Volver a empezar</button>
+              </p>
+            </div>
+            </>
+          )}
 
           <section class="dz-more" data-dz-okonly>
             <h4 class="dz-more__h">Detalles</h4>
@@ -295,6 +338,7 @@ const svgIc = (d: string, s = 20) => `<svg width="${s}" height="${s}" viewBox="0
             <details class="dz-acc" data-dz-acc-adjust>
               <summary>Ajustar mi caso<Icon name="chevron" size={18} class="dz-chev" /></summary>
               <div class="dz-acc__b dz-tune">
+                {!app && (
                 <fieldset class="dz-fs">
                   <legend class="dz-f__l">¿Para cuándo? (opcional)</legend>
                   <div class="dz-chips">
@@ -303,6 +347,7 @@ const svgIc = (d: string, s = 20) => `<svg width="${s}" height="${s}" viewBox="0
                     <label class="dz-pill"><input type="radio" name="when" value="exp" />Explorando</label>
                   </div>
                 </fieldset>
+                )}
                 <fieldset class="dz-fs">
                   <legend class="dz-f__l">Instalación</legend>
                   <div class="dz-chips">
@@ -345,7 +390,7 @@ const svgIc = (d: string, s = 20) => `<svg width="${s}" height="${s}" viewBox="0
               </div>
             </details>
             <details class="dz-acc dz-res__msg">
-              <summary>Mensaje que se enviará por WhatsApp<Icon name="chevron" size={18} class="dz-chev" /></summary>
+              <summary>{app ? 'Mensaje para el cliente' : 'Mensaje que se enviará por WhatsApp'}<Icon name="chevron" size={18} class="dz-chev" /></summary>
               <div class="dz-acc__b">
                 <p class="dz-msg" data-dz-msg></p>
                 <button type="button" class="btn btn--text" data-dz-copy="msg"><span>Copiar mensaje</span></button>
@@ -360,7 +405,7 @@ const svgIc = (d: string, s = 20) => `<svg width="${s}" height="${s}" viewBox="0
         </article>
       </form>
 
-      <div class="dz-sum" role="group" data-theme="dark" data-dz-sum data-state="empty" aria-labelledby="dz-sum-t" data-reveal="up" data-delay=".15">
+      <div class="dz-sum" role="group" data-theme="dark" data-dz-sum data-state="empty" aria-labelledby="dz-sum-t" {...rv('.15')}>
         <h3 id="dz-sum-t" class="dz-sum__k">Tu sistema</h3>
         <p class="dz-sum__empty" data-dz-sum-empty>Elige un punto de partida y aquí verás tu inversor, tus baterías y el precio.</p>
         <div class="dz-sum__full" data-dz-sum-full hidden>
@@ -382,13 +427,8 @@ const svgIc = (d: string, s = 20) => `<svg width="${s}" height="${s}" viewBox="0
   </div>
 </section>
 
-<script>
-  import { onPage } from '../../scripts/engine.js';
-  import { initDimensionador } from '../../scripts/dimensionar.js';
-  onPage(initDimensionador);
-</script>
-
 <style is:global>
+  .dz .icon { display: inline-block; flex: none; vertical-align: middle; }   /* lo que antes ponía el <style> de Icon.astro (ver DzIcon.astro) */
   .dz {
     overflow: clip; padding-top: clamp(40px, 6vw, 72px);
     --dz-pad: clamp(16px, 4vw, 40px); --dz-r-lg: 24px; --dz-r: 14px;
@@ -733,6 +773,8 @@ const svgIc = (d: string, s = 20) => `<svg width="${s}" height="${s}" viewBox="0
     .dz-cta .btn--wa { flex: 1.4 1 0; min-width: 0; padding-inline: 12px; font-size: 15px; white-space: nowrap; }
     .dz-cta .dz-pdf__btn { flex: 1 1 0; min-width: 0; padding-inline: 10px; font-size: 15px; white-space: nowrap; }
     .dz-cta .dz-pdf__btn svg { display: none; }
+    .dz-cta .btn--wa[data-dz-wa-client] { white-space: normal; line-height: 1.15; text-align: center; padding-inline: 10px; }   /* «Texto por WhatsApp» pasa a dos líneas en vez de salirse */
+    .dz-cta .btn--wa[data-dz-wa-client] svg { flex: none; }
   }
 
   /* details */

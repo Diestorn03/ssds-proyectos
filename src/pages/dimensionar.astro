@@ -46,6 +46,12 @@ const [ax, ay] = pt(0, 276), [bx, by] = pt(100, 276);
   <Cta title="¿Prefieres que lo veamos en tu casa?" text="Si lo tuyo es más grande, o prefieres que midamos la carga en sitio, escríbenos y coordinamos una visita técnica." waText="Hola SSD&S, quiero una visita técnica para dimensionar mi respaldo." label="Pedir visita por WhatsApp" />
 </Base>
 
+<script>
+  import { onPage } from '../scripts/engine.js';
+  import { initDimensionador } from '../scripts/dimensionar.js';
+  onPage(initDimensionador);
+</script>
+
 <style>
   .dzl-hero {
     overflow: hidden; min-height: 30.5rem; padding-top: calc(var(--header-h) + clamp(24px, 4vw, 48px)); padding-bottom: clamp(32px, 4vw, 48px);   /* ≈ su altura final: sin esto el primer pintado era de 168 px y las capas decorativas saltaban (CLS 0,16 con CPU lenta) */
